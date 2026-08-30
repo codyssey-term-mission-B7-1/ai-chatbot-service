@@ -1,0 +1,50 @@
+name: 🐞 버그 리포트
+description: 기존 기능이 의도대로 동작하지 않는 문제 보고
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 무슨 일이 생겼나요?
+      description: 증상을 구체적으로. 기대한 동작과 실제 동작을 나눠 적어주세요.
+      placeholder: |
+        기대: 채팅 입력 시 AI 응답이 화면에 표시됨
+        실제: "error: AI_TIMEOUT" 안내만 표시되고 응답 없음 (매번 발생)
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 재현 방법 (단계별)
+      placeholder: |
+        1. 로그인
+        2. "긴 글 요약해줘" 입력
+        3. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 심각도
+      options:
+        - 🔴 치명상 (서버 죽음 / 핵심 기능 불가)
+        - 🟠 주요 (핵심 기능 일부 불가)
+        - 🟡 보통 (우회 방법 있음)
+        - 🟢 사소 (UI 오류 등)
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 서버 로그 (있으면 붙여넣기)
+      description: '`event=ai_call_fail` 같은 로그 컨벤션 라인이 원인 추적에 가장 유용합니다. API 키/토큰은 가리고 붙여주세요!'
+      render: shell
+
+  - type: input
+    id: env
+    attributes:
+      label: 환경
+      placeholder: 예) 로컬(개발) / 배포 서버(https://...) · Chrome · Windows
