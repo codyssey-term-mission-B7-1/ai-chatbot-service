@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ mode == 'signup' ? '회원가입' : '로그인' }}{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <h1>{{ mode == 'signup' ? '회원가입' : '로그인' }}</h1>
+  <p class="muted">{{ mode == 'signup' ? '서비스를 이용하려면 가입이 필요해요.' : '챗봇은 로그인한 사용자만 이용할 수 있어요.' }}</p>
+
+  <form id="auth-form" onsubmit="return submitForm(event)">
+    <label>이메일
+      <input type="email" id="email" required placeholder="you@example.com" autocomplete="email">
+    </label>
+    <label>비밀번호
+      <input type="password" id="password" required minlength="{{ mode == 'signup' ? 8 : 1 }}"
+             placeholder="{{ mode == 'signup' ? '8자 이상' : '비밀번호' }}" autocomplete="current-password">
+    </label>
+    {% if mode == 'signup' %}
+    <label>닉네임 (선택)
+      <input type="text" id="nickname" maxlength="20" placeholder="표시될 이름">
+    </label>
+    {% endif %}
+    <button type="submit" id="submit-btn">{{ mode == 'signup' ? '가입하기' : '로그인' }}</button>
+  </form>
+
+  <p id="msg" class="msg" hidden></p>
+  <p class="muted small">
+    {{ mode == 'signup'
+       ? '이미 계정이 있나요? <a href="/login">로그인</a>'
+       : '계정이 없나요? <a href="/signup">회원가입</a>' }}
+  </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const MODE = '{{ mode }}';
+  async function submitForm(e) {
+    e.preventDefault();
+    const msg = document.getElementById('msg');
+    const btn = document.getElementById('submit-btn');
+    const body = {
+      email: document.getElementById('email').value.trim(),
+      password: document.getElementById('password').value,
+    };
+    if (MODE === 'signup') {
+      body.nickname = document.getElementById('nickname').value.trim();
+      if (body.password.length < 8) return showMsg('비밀번호는 8자 이상이어야 해요.', true);
+    }
+    btn.disabled = true; btn.textContent = '처리 중…';
+    try {
+      const res = await fetch(MODE === 'signup' ? '/api/auth/signup' : '/api/auth/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) return showMsg(typeof data.detail === 'string' ? data.detail : '입력을 확인해 주세요.', true);
+      location.href = '/';
+    } catch (err) {
+      showMsg('네트워크 오류예요. 잠시 후 다시 시도해 주세요.', true);
+    } finally {
+      btn.disabled = false; btn.textContent = MODE === 'signup' ? '가입하기' : '로그인';
+    }
+  }
+  function showMsg(text, isError) {
+    const msg = document.getElementById('msg');
+    msg.hidden = false; msg.textContent = text;
+    msg.className = 'msg ' + (isError ? 'error' : 'ok');
+  }
+</script>
+{% endblock %}
