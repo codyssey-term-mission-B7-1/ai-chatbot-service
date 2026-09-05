@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}채팅{% endblock %}
+
+{% block content %}
+<div class="chat-wrap">
+  {% if demo_mode %}
+  <div class="banner">⚠️ 데모 모드 — <code>AI_API_KEY</code> 미설정. 가짜 응답이 반환됩니다.</div>
+  {% endif %}
+
+  <div id="chat-window" class="chat-window">
+    <div class="bubble ai">
+      안녕하세요, {{ nickname }}님! 😊<br>
+      궁금한 걸 물어보세요. 직전 {{ context_turns }}개의 대화를 기억해 문맥을 유지합니다.
+    </div>
+  </div>
+
+  <form id="chat-form" class="chat-input" onsubmit="return send(event)">
+    <textarea id="question" rows="1" maxlength="1000"
+              placeholder="질문을 입력하세요 (최대 1000자)"></textarea>
+    <button type="submit" id="send-btn">보내기</button>
+  </form>
+  <div class="counter"><span id="count">0</span> / 1000</div>
+  <p id="chat-error" class="msg error" hidden></p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/chat.js"></script>
+{% endblock %}
