@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}내 대화 기록{% endblock %}
+
+{% block content %}
+<div class="logs-wrap">
+  <h1>📜 내 대화 기록 <span class="muted small">({{ logs | length }}건, 최근 100건)</span></h1>
+  {% if not logs %}
+    <p class="muted">아직 대화 기록이 없어요. <a href="/">채팅하러 가기 →</a></p>
+  {% else %}
+  <table class="logs-table">
+    <thead>
+      <tr><th>#</th><th>시각</th><th>질문</th><th>응답</th><th>상태</th><th>지연</th></tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr class="{{ log.status == 'ai_error' ? 'row-error' : '' }}">
+        <td>{{ log.id }}</td>
+        <td class="nowrap">{{ log.created_at.strftime('%m-%d %H:%M') }}</td>
+        <td class="q">{{ log.question }}</td>
+        <td class="a">{{ log.answer or '(AI 오류로 응답 없음)' }}</td>
+        <td>{{ '✅' if log.status == 'success' else '⚠️ ' + log.status }}</td>
+        <td>{{ log.latency_ms }}ms</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

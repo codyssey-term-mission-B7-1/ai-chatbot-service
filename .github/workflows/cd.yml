@@ -1,0 +1,47 @@
+# CD — main 병합 시 배포 트리거 + E2E 스모크
+#
+# 사전 설정 (저장소 Settings → Secrets and variables → Actions):
+#   DEPLOY_WEBHOOK_URL : 배포 플랫폼 웹훅 (Cloudtype/Render/Railway 등의 재배포 훅)
+#   DEPLOY_URL         : 배포된 서비스 URL (스모크 대상, 예: https://xxx.onrender.com)
+#
+# 두 시크릿이 없으면 해당 단계는 자동 스킵됩니다 (초기에는 안전하게 통과).
+# 카드 12(배포·운영) 담당이 플랫폼 선정 후 값을 채우면 활성화.
+
+name: CD (Deploy & Smoke)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 배포 트리거 (웹훅)
+        env:
+          WEBHOOK: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+        if: env.WEBHOOK != ''
+        run: |
+          echo "🚀 배포 웹훅 호출..."
+          curl -sf -X POST "$WEBHOOK" && echo "✅ 웹훅 호출 성공" || { echo "❌ 웹훅 실패"; exit 1; }
+
+      - name: 배포 대기 (프랫폼 기준 조정 — 카드12)
+        if: env.WEBHOOK != ''
+        run: echo "플랫폼 빌드 대기 시간이 필요하면 sleep 초를 조정하세요" && sleep 10
+
+      - name: E2E 스모크 테스트
+        env:
+          URL: ${{ secrets.DEPLOY_URL }}
+        if: env.URL != ''
+        run: |
+          chmod +x scripts/e2e_smoke.sh
+          ./scripts/e2e_smoke.sh "$URL"
+
+      - name: 미설정 안내
+        env:
+          WEBHOOK: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          URL: ${{ secrets.DEPLOY_URL }}
+        if: env.WEBHOOK == '' && env.URL == ''
+        run: echo "⚙️ DEPLOY_WEBHOOK_URL / DEPLOY_URL 시크릿 미설정 — 배포 단계 스킵 (카드12 담당이 설정)"

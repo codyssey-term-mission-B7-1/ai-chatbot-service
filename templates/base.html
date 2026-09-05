@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}AI 챗봇{% endblock %} · AI Chatbot Service</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/">🤖 AI 챗봇</a>
+    <div class="nav-right">
+      {% if nickname %}
+        <span class="user-chip">{{ nickname }}님</span>
+        <a class="nav-link" href="/logs">내 기록</a>
+        <button class="nav-link linklike" onclick="logout()">로그아웃</button>
+      {% else %}
+        <a class="nav-link" href="/login">로그인</a>
+        <a class="nav-link primary" href="/signup">회원가입</a>
+      {% endif %}
+    </div>
+  </nav>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  <script>
+    async function logout() {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      location.href = '/login';
+    }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
