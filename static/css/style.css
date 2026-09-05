@@ -1,0 +1,71 @@
+/* AI Chatbot Service — 공통 스타일 */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f4f6fb; --card: #ffffff; --ink: #1f2430; --muted: #7a8194;
+  --brand: #4f6df5; --brand-dark: #3b55d9; --user: #4f6df5; --ai: #ffffff;
+  --danger: #d64545; --ok: #2e9e5b; --border: #e3e7f0;
+}
+body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+
+/* 네비게이션 */
+.nav { display: flex; justify-content: space-between; align-items: center;
+       padding: 14px 24px; background: var(--card); border-bottom: 1px solid var(--border); }
+.brand { font-weight: 800; font-size: 18px; text-decoration: none; color: var(--ink); }
+.nav-right { display: flex; gap: 14px; align-items: center; }
+.nav-link { color: var(--muted); text-decoration: none; font-size: 14px; }
+.nav-link:hover { color: var(--ink); }
+.nav-link.primary { background: var(--brand); color: #fff; padding: 7px 14px; border-radius: 8px; }
+.linklike { border: none; background: none; cursor: pointer; font: inherit; }
+.user-chip { background: #eef1fe; color: var(--brand-dark); border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 600; }
+
+.container { max-width: 880px; margin: 0 auto; padding: 24px 16px; }
+.muted { color: var(--muted); } .small { font-size: 13px; }
+.msg { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; }
+.msg.error { background: #fdecec; color: var(--danger); }
+.msg.ok { background: #e8f7ee; color: var(--ok); }
+
+/* 인증 카드 */
+.auth-card { max-width: 380px; margin: 48px auto; background: var(--card); border: 1px solid var(--border);
+             border-radius: 16px; padding: 32px; }
+.auth-card h1 { font-size: 22px; margin-bottom: 6px; }
+.auth-card form { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; }
+.auth-card label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.auth-card input { border: 1px solid var(--border); border-radius: 8px; padding: 11px 12px; font-size: 15px; }
+.auth-card input:focus { outline: 2px solid var(--brand); border-color: transparent; }
+.auth-card button { background: var(--brand); border: none; color: #fff; padding: 12px; border-radius: 8px;
+                    font-size: 15px; font-weight: 700; cursor: pointer; }
+.auth-card button:disabled { opacity: .6; }
+
+/* 채팅 */
+.chat-wrap { display: flex; flex-direction: column; height: calc(100vh - 150px); }
+.banner { background: #fff7e0; border: 1px solid #f0dfa8; color: #8a6d1a;
+          border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 10px; }
+.chat-window { flex: 1; overflow-y: auto; background: var(--card); border: 1px solid var(--border);
+               border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.bubble { max-width: 78%; padding: 12px 14px; border-radius: 14px; font-size: 15px; line-height: 1.55;
+          white-space: pre-wrap; word-break: break-word; }
+.bubble.user { align-self: flex-end; background: var(--user); color: #fff; border-bottom-right-radius: 4px; }
+.bubble.ai { align-self: flex-start; background: var(--ai); border: 1px solid var(--border);
+             border-bottom-left-radius: 4px; }
+.bubble.loading { color: var(--muted); font-style: italic; }
+.bubble.error-bubble { background: #fdecec; border: 1px solid #f2c5c5; color: var(--danger); }
+
+.chat-input { display: flex; gap: 10px; margin-top: 12px; }
+.chat-input textarea { flex: 1; resize: none; border: 1px solid var(--border); border-radius: 12px;
+                       padding: 12px 14px; font: inherit; font-size: 15px; max-height: 120px; }
+.chat-input textarea:focus { outline: 2px solid var(--brand); border-color: transparent; }
+.chat-input button { background: var(--brand); color: #fff; border: none; border-radius: 12px;
+                     padding: 0 22px; font-size: 15px; font-weight: 700; cursor: pointer; }
+.chat-input button:disabled { opacity: .6; }
+.counter { text-align: right; font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* 로그 테이블 */
+.logs-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+.logs-wrap h1 { font-size: 20px; margin-bottom: 14px; }
+.logs-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.logs-table th, .logs-table td { padding: 10px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.logs-table th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.logs-table .q { font-weight: 600; max-width: 240px; }
+.logs-table .a { color: var(--muted); max-width: 320px; }
+.logs-table .nowrap { white-space: nowrap; }
+.row-error { background: #fff7f7; }
