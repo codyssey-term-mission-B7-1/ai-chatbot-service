@@ -103,7 +103,7 @@ DATABASE_URL=sqlite:///./app.db
 
 ## 1.5 로그 컨벤션
 
-> 범위 확인: 아래는 문서에 등록된 표준 이벤트 목록이다. 코드에서 사용하지만 아직 이 목록에 없는 이름은 `request_finished`, `unhandled_error`, `user_login`, `user_signup`이다. 표준 목록에 포함할지 여부는 팀 확인이 필요하며, 여기서는 정책을 임의로 변경하지 않는다.
+> 범위 확인: 아래는 문서에 등록된 표준 이벤트 목록이다. 코드에서 사용하지만 아직 이 목록에 없는 이름은 `ai_retry`, `request_finished`, `unhandled_error`, `user_login`, `user_signup`이다. 표준 목록에 포함할지 여부는 팀 확인이 필요하며, 여기서는 정책을 임의로 변경하지 않는다.
 
 표준 이벤트 이름은 **고정된 snake_case 세트**를 사용한다 (채점 증빙 자료).
 
@@ -378,8 +378,8 @@ from app.services.context import build_context
 def test_context_returns_only_last_n_pairs():
     history = [(f"q{i}", f"a{i}") for i in range(1, 11)]  # 10개
     ctx = build_context(history, n=3)
-    assert len(ctx) == 3
-    assert ctx[0] == ("q8", "a8")   # 최신 3개만, 오래된 순서 유지
+    assert len(ctx) == 6  # 질문·응답 3쌍 = 과거 문맥 메시지 6개
+    assert ctx[0] == {"role": "user", "content": "q8"}  # 최신 3쌍, 오래된 순서 유지
 
 
 def test_context_with_empty_history_returns_empty():
