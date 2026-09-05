@@ -1,0 +1,9 @@
+# ruff 설정 — 컨벤션 문서(CONTRIBUTING.md) 코드 스타일 규칙과 일치
+line-length = 100
+target-version = "py311"
+
+[lint]
+select = ["E", "F", "W"]
+
+[format]
+quote-style = "double"
