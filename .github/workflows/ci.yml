@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: 의존성 설치
+        run: pip install -r requirements-dev.txt
+
+      - name: 린트 (ruff)
+        run: ruff check app tests
+
+      - name: 테스트 (pytest + 커버리지)
+        run: pytest --cov=app --cov-report=term-missing
+        env:
+          DATABASE_URL: "sqlite://"
