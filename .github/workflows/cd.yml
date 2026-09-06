@@ -27,7 +27,7 @@ jobs:
           echo "🚀 배포 웹훅 호출..."
           curl -sf -X POST "$WEBHOOK" && echo "✅ 웹훅 호출 성공" || { echo "❌ 웹훅 실패"; exit 1; }
 
-      - name: 배포 대기 (프랫폼 기준 조정 — 카드12)
+      - name: 배포 대기 (플랫폼 기준 조정 — 카드12)
         if: env.WEBHOOK != ''
         run: echo "플랫폼 빌드 대기 시간이 필요하면 sleep 초를 조정하세요" && sleep 10
 
