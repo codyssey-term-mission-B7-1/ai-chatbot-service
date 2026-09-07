@@ -1,7 +1,41 @@
 """환경설정 — 실제 비밀값은 .env 파일 또는 프로세스 환경변수에서 로딩 (코드에 직접 기입 금지)."""
+import logging
+import secrets
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
+
+# 세션 서명 키 품질 기준 — 공개된 예시 값이나 짧은 키로는 쿠키를 위조할 수 있다.
+MIN_SECRET_LEN = 32
+INSECURE_SECRETS = {
+    "change-me",
+    "change-me-to-random-string",
+    "dev-secret-change-me",
+    "secret",
+    "changeme",
+    "your-secret-key",
+}
+
+
+def resolve_session_secret(secret: str, *, debug: bool) -> str:
+    """운영(debug=False)에서 약한 SESSION_SECRET을 거부하고, 개발에서는 임시 키로 대체한다."""
+    if secret not in INSECURE_SECRETS and len(secret) >= MIN_SECRET_LEN:
+        return secret
+    if not debug:
+        raise RuntimeError(
+            "SESSION_SECRET 이 안전하지 않아요. 공개된 기본값이거나 "
+            f"{MIN_SECRET_LEN}자 미만입니다.\n"
+            '  발급: python -c "import secrets; print(secrets.token_hex(32))"\n'
+            "  로컬 개발에서는 .env 에 DEBUG=true 를 켜면 임시 키로 자동 대체됩니다."
+        )
+    logger.warning(
+        "SESSION_SECRET 이 공개된 예시 값이거나 최소 길이에 미달하여 개발용 임시 키로 대체합니다 "
+        "(재시작 시 세션 초기화). 운영에서는 .env에 %d자 이상 무작위 값을 설정하세요.",
+        MIN_SECRET_LEN,
+    )
+    return secrets.token_hex(32)
 
 
 class Settings(BaseSettings):
@@ -29,9 +63,16 @@ class Settings(BaseSettings):
     max_question_length: int = 1000        # 입력 검증: 길이 제한
 
 
+def load_settings() -> Settings:
+    """설정을 불러온 뒤 세션 서명 키를 검증한다. get_settings에서 실제로 호출된다."""
+    s = Settings()
+    s.session_secret = resolve_session_secret(s.session_secret, debug=s.debug)
+    return s
+
+
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    return load_settings()
 
 
 settings = get_settings()

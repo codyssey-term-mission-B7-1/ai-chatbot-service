@@ -108,7 +108,16 @@ erDiagram
 - `status`: `success` | `ai_error` (타임아웃 등 실패도 추적 대상으로 기록)
 - 시각 필드는 모두 **UTC** (`created_at`)
 - 인덱스: `chat_logs.user_id`, `chat_logs.created_at` — 사용자별 조회(`GET /api/me/chats`)와 시각순 정렬용
-- 사용자 삭제 시 대화 로그도 함께 삭제 (`cascade="all, delete-orphan"`)
+- 사용자 삭제 시 대화 로그도 함께 삭제 — ORM 경유(`cascade="all, delete-orphan"`)와 **SQL 레벨**(`ON DELETE CASCADE` + `PRAGMA foreign_keys=ON`) 양쪽 모두 성립 (#51)
+  ※ 단 SQLite는 `ALTER TABLE`로 FK를 바꿀 수 없어 **새로 생성된 DB**에만 적용됩니다. 기존 배포 DB는 별도의 외래키 마이그레이션 절차가 필요합니다. 시딩은 스키마 변경을 대신하지 않습니다. 데이터 보존 방침과 백업·복구 검증 후 절차를 결정해야 합니다.
+
+## 4-1. 서비스 접속
+
+| 경로 | 주소 |
+|---|---|
+| **배포 URL (평가 시점)** | `https://REPLACE-WITH-RAILWAY-DOMAIN.up.railway.app` — **§9의 Secrets 등록 후 실값으로 교체** (#44) |
+| 데모 계정 | `demo@demo.com` / `Test1234!` (시드: `python scripts/seed_mock_data.py`) |
+| 배포 없이 확인 | 아래 §5 그대로 → `http://localhost:8000` (`.env.example`을 복사하고 로컬용 `DEBUG=true`를 사용하면 AI 키 없이 데모 모드로 기동) |
 
 ## 5. 실행 방법
 
@@ -122,7 +131,9 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 환경변수 (실제 비밀값은 개인 .env 또는 프로세스 환경변수로 주입)
-`AI_API_KEY` · `AI_BASE_URL` · `AI_MODEL` · `AI_TIMEOUT_SEC` · `AI_MAX_RETRIES` · `CONTEXT_TURNS` · `DATABASE_URL` · `SESSION_SECRET` — 상세 설명은 `.env.example` 참고
+`AI_API_KEY` · `AI_BASE_URL` · `AI_MODEL` · `AI_TIMEOUT_SEC` · `AI_MAX_RETRIES` · `CONTEXT_TURNS` · `MAX_QUESTION_LENGTH` · `DATABASE_URL` · `SESSION_SECRET` · `DEBUG` · `APP_NAME` — 상세 설명은 `.env.example` 참고
+
+> `DEBUG=true`는 **로컬 개발 전용**입니다. 켜면 약한 `SESSION_SECRET`을 임시 키로 대체하고 http 쿠키를 허용합니다. 운영(Railway)에서는 `DEBUG=false`와 32자 이상의 무작위 `SESSION_SECRET`을 사용하세요. 운영 설정에서 약한 시크릿을 사용하면 `RuntimeError`로 기동을 차단합니다 (#54·#55).
 
 ### AI 제공사 교체하기 (코디세이 '네이토' 등 OpenAI 호환)
 
@@ -153,7 +164,7 @@ db_save_fail      user_id=12 reason=db_exception
 
 **오류 처리**: AI 타임아웃 → 504 `AI_TIMEOUT` 안내 / AI 오류 → 502 `AI_ERROR` / 미처리 예외 → 전역 핸들러가 500 안내 (서버 비정상 종료 없음) — `tests/integration/test_chat_flow.py::test_timeout_returns_504_and_server_survives`로 검증
 
-**입력 검증**: 빈 질문/공백 차단 + 1000자 길이 제한 (Pydantic + 프론트 이중 검증), 비밀번호 8자 이상, 이메일 형식
+**입력 검증**: 빈 질문/공백 차단 + 서버 `MAX_QUESTION_LENGTH` 제한(기본 1000자). 현재 프론트 제한은 별도 1000자이므로 설정 변경 시 양쪽을 함께 확인합니다. 회원가입은 비밀번호 8자 이상·이메일 형식을 검증합니다.
 
 ## 7. 테스트 · CI/CD
 
@@ -186,8 +197,13 @@ ruff check app tests                          # 린트
 ## 8. DB 확인 가이드
 
 ```bash
-# 방법 1) 확인용 SQL 스크립트
+# 방법 1) 확인용 SQL 스크립트 (로컬 기본: app.db / Railway: /data/app.db)
 sqlite3 app.db < scripts/check_logs.sql
+sqlite3 /data/app.db < scripts/check_logs.sql   # 배포 환경
+
+# 방법 1-대안) sqlite3 CLI가 없을 때 (Python 표준 lib으로 동일 조회)
+python3 -c "import sqlite3;print(sqlite3.connect('app.db').execute(
+  'SELECT id,user_id,status,substr(question,1,40) FROM chat_logs ORDER BY id DESC LIMIT 5').fetchall())"
 
 # 방법 2) 로그 조회 API (내 로그)
 curl -b cookies.txt https://SERVER/api/me/chats
@@ -207,4 +223,18 @@ curl -b cookies.txt https://SERVER/api/me/chats
 - 브랜치: `main ← develop ← feature/#이슈번호-설명` · PR 리뷰어 1명 승인 후 머지 (Squash 금지)
 - 커밋: `type(scope): 제목 (#이슈번호)` — 상세 규칙은 팀 문서(CONTRIBUTING.md) 참고
 - 역할 카드 13장은 GitHub Issues에서 관리 — 각자 3개 셀프어사인
-- **[TODO: 팀 구성원 역할 및 개인별 작업 요약 — D10에 작성]**
+
+### 팀 구성원 역할 및 개인별 작업 요약
+
+> 2026-09-08 기준, `origin/develop`(`dafa1d7`) 실측. 재현: `git shortlog -sne --no-merges origin/develop` (집계 규칙은 [docs/commit-audit.md](docs/commit-audit.md))
+
+| 구성원 | 역할 (담당 카드) | develop 작업 커밋 | 머지한 PR | 대표 작업 |
+|---|---|---:|---:|---|
+| **giyeop-cody** | PM · 서버 코어 — 카드 01·03·04·05 | **38** | 13 | 초기 스켈레톤(#15), 인증 마무리·이메일 정규화(#37), 세션-계정 바인딩(#34), 접근 제어 매트릭스(#19), Railway CD(#36), Enter 전송(#30), AI 타임아웃 45초(#42), 운영 정책 3종(#20) |
+| **Im-Jongseok** | 문서 · QA — 카드 02·07·08 | **18** | 4 | README ERD·`check_logs.sql` 수정(#21), 문맥 유지 실험·시연(#22), 형상관리/커밋 감사 증빙(#23), HTML 500 수정(#24) |
+| **loader1017** | 프론트 — 카드 06·09·10·11 | **1** | 1 | `chat.js` 채팅 UI 개선 + 네이토 연동 시도(#43, 9/8 머지). **10회 요구에 9회 미달** → 역할 카드 09·10·11과 공지 이슈 #18의 작업 후보를 참고해 진행 중 ([#45](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/issues/45)) |
+| ygyg | (미참여) | 0 | 0 | 카드 미배정 · 저장소 초대한정 상태 |
+
+- **#61 머지 완료**(`dafa1d7`): PR #43으로 소멸했던 Enter 전송·IME 가드를 복구 (#60)
+- PR의 실시간 승인·병합 상태는 GitHub Pull requests 목록을 확인하세요. 위 표는 명시된 기준 커밋의 스냅샷입니다.
+- 위 숫자는 문서가 아니라 Git에서 계산됩니다. 제출 직전 `docs/commit-audit.md`의 최신 주차 표를 보세요.

@@ -2,6 +2,7 @@
 import os
 
 os.environ.setdefault("DATABASE_URL", "sqlite://")  # 테스트 중 파일 DB 생성 방지
+os.environ.setdefault("DEBUG", "1")  # 테스트는 개발 컨텍스트 — http 쿠키/임시 시크릿 허용
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

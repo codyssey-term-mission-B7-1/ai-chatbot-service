@@ -9,7 +9,7 @@ from app.deps import get_current_user
 from app.logging_config import log_event
 from app.models import User
 from app.schemas import LoginIn, SignupIn, UserOut
-from app.services.security import hash_password, verify_password
+from app.services.security import email_fingerprint, hash_password, verify_password
 
 logger = logging.getLogger("app.auth")
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -47,7 +47,8 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않아요.")
 
     request.session["user_id"] = user.id  # 세션 쿠키 발급
-    request.session["email"] = user.email  # 세션-계정 바인딩 (stale 쿠키 오인 방지, #33)
+    # 세션-계정 바인딩(stale 쿠키 오인 방지, #33) — 평문 이메일 대신 지문 (#59)
+    request.session["email_fp"] = email_fingerprint(user.email)
     log_event(logger, "user_login", user_id=user.id)
     return UserOut(email=user.email, nickname=user.nickname)
 
