@@ -12,6 +12,10 @@
 |------|------|
 | **[docs/API.md](docs/API.md)** | API 명세 — 요청/응답 예시, 오류 코드, curl 시나리오 |
 | **[docs/TODO.md](docs/TODO.md)** | 역할별 TODO 리스트 (카드 01~13 ↔ 이슈 #1~#13) |
+| **[docs/ACCESS_CONTROL.md](docs/ACCESS_CONTROL.md)** | 접근 제어 매트릭스 (경로 × 인증 상태) |
+| **[docs/BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md)** | DB 백업·복원 정책 (RPO/RTO, `scripts/backup_db.sh`) |
+| **[docs/OBFUSCATION.md](docs/OBFUSCATION.md)** | 난독화·코드 보호 정책 (미적용 결정 + 대체 전략) |
+| **[docs/VOLUME_MANAGEMENT.md](docs/VOLUME_MANAGEMENT.md)** | 볼륨·디스크 관리 정책 (배포 시 영구 볼륨 필수) |
 | **CONTRIBUTING.md** | 컨벤션 — 브랜치/커밋/PR/리뷰/로그 규칙 |
 | **Swagger UI** | 서버 실행 후 `/docs` (대화형 API 문서) · `/redoc` |
 
