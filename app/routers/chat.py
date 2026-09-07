@@ -49,7 +49,7 @@ def _save_log(db: Session, user_id: int, question: str, answer: str,
              ),
              responses={
                  401: {"description": "로그인 필요 — 챗봇은 인증된 사용자만 사용 가능"},
-                 422: {"description": "입력 검증 실패 (빈 질문 / 1000자 초과)"},
+                 422: {"description": "입력 검증 실패 (빈 질문 / 상한 초과; 기본 1000자)"},
                  502: {"description": "AI 호출 실패 (error: AI_ERROR) — 서버는 종료되지 않음"},
                  504: {"description": "AI 타임아웃 (error: AI_TIMEOUT) — 서버는 종료되지 않음"},
              })
