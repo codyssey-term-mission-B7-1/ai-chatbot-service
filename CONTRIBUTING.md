@@ -112,10 +112,11 @@ INFO  event=ai_call_success request_id=abc123 latency_ms=1240
 ERROR event=ai_call_fail request_id=abc123 reason=timeout latency_ms=10000
 INFO  event=db_save_success user_id=12 chat_id=987
 ERROR event=db_save_fail user_id=12 reason=<exception 요약>
+ERROR event=unhandled_error path=/api/chat error=ValueError   ← 전역 핸들러(예상 못한 예외)
 ```
 
 규칙:
-1. `event=` 은 위 6종만 사용 (새 이벤트 추가 시 이 문서에 먼저 등록)
+1. `event=` 은 위 7종만 사용 (새 이벤트 추가 시 이 문서에 먼저 등록)
 2. 키=값 쌍은 `key=value` 스페이스 구분 (로그 파싱/grep 쉽게)
 3. 사용자 질문 전문은 로그에 남기지 않음(최대 50자) — 개인정보·비용 고려
 4. **API 키, 비밀번호, 세션 토큰은 어떤 로그에도 출력 금지**
