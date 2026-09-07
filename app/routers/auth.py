@@ -51,12 +51,14 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
     return UserOut(email=user.email, nickname=user.nickname)
 
 
-@router.post("/logout")
+@router.post("/logout", summary="로그아웃",
+             description="세션 쿠키를 파기합니다.")
 def logout(request: Request):
     request.session.clear()
     return {"detail": "로그아웃했어요."}
 
 
-@router.get("/me", response_model=UserOut)
+@router.get("/me", response_model=UserOut, summary="내 정보",
+            description="현재 로그인한 사용자의 이메일·닉네임을 반환합니다.")
 def me(user: User = Depends(get_current_user)):
     return UserOut(email=user.email, nickname=user.nickname)
