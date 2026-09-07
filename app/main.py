@@ -52,7 +52,9 @@ app = FastAPI(
 )
 
 # (주의) 아래 커스텀 미들웨어보다 나중에 추가 → Session이 바깥에서 실행됨
-app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
+app.add_middleware(
+    SessionMiddleware, secret_key=settings.session_secret, max_age=60 * 60 * 24 * 7  # 7일 (#12)
+)
 
 
 @app.middleware("http")
