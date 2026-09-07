@@ -17,14 +17,37 @@ input.addEventListener('input', () => {
   counter.textContent = input.value.length;
 });
 
+input.addEventListener('keydown', (e) => {
+  // Enter 전송 / Shift+Enter 줄바꿈 — IME 조합 중 Enter 오발송 방지 (#29)
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    if (!sendBtn.disabled) form.requestSubmit();  // 전송 중 중복 발송 방지
+  }
+});
+
 function addBubble(text, cls) {
   const div = document.createElement('div');
   div.className = 'bubble ' + cls;
-  if (typeof text === 'string') div.textContent = text;
-  else div.appendChild(text); // 노드가 들어올 수 있음
+  // 텍스트만 삽입한다(innerHTML 금지 — 서버/사용자 문자열 보간 XSS 방어). null/undefined는 빈 문자열로
+  div.textContent = text ?? '';
   window_.appendChild(div);
   window_.scrollTop = window_.scrollHeight;
   return div;
+}
+
+// 서버 오류 메시지를 안전하고 읽기 쉽게 정규화
+// (FastAPI 422의 detail은 배열이고 사용자 입력이 포함될 수 있어 textContent 전용 사용)
+function errorText(data, status) {
+  const d = data?.detail;
+  if (typeof d === 'string' && d) return `오류: ${d}`;
+  if (Array.isArray(d) && d.length) {
+    const first = d[0];
+    const where = Array.isArray(first?.loc) ? first.loc.filter((x) => typeof x === 'string').join('.') : '';
+    const msg = typeof first?.msg === 'string' ? first.msg : '';
+    if (msg) return `오류: ${where ? where + ' — ' : ''}${msg}`;
+  }
+  if (status === 504) return '응답 지연 — AI가 시간이 걸리고 있어요.';
+  return '오류가 발생했어요. 다시 시도해 주세요.';
 }
 
 function showError(text) {
@@ -70,10 +93,7 @@ async function send(e) {
     loading.remove();
 
     if (!res.ok) { // 타임아웃(504)/AI 오류(502) 등 서버 안내 메시지 표시
-      const detail = data?.detail || (res.status === 504 ? '응답 지연 — AI가 시간이 걸리고 있어요.' : '오류가 발생했어요. 다시 시도해 주세요.');
-      const node = document.createElement('div');
-      node.innerHTML = `<strong>오류:</strong> ${detail}`;
-      addBubble(node, 'ai error-bubble');
+      addBubble(errorText(data, res.status), 'ai error-bubble');
       return;
     }
 
