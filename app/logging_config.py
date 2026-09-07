@@ -1,8 +1,8 @@
 """표준 이벤트 로그 — team-conventions.md의 로그 컨벤션 준수.
 
 형식: event=<이름> key=value key=value  (grep/파싱 용이)
-이벤트 6종: request_received / ai_call_start / ai_call_success / ai_call_fail
-            db_save_success / db_save_fail
+이벤트 8종: request_received / ai_call_start / ai_call_success / ai_call_fail
+            db_save_success / db_save_fail / unhandled_error / auth_stale_session
 주의: API 키·비밀번호·세션 토큰은 절대 로그에 남기지 않는다.
 """
 import logging
