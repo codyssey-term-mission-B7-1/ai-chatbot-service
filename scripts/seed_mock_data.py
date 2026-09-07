@@ -44,7 +44,7 @@ MOCK_CHATS = {
         ("SQLite 로그 확인하는 법?",
          "sqlite3 app.db < scripts/check_logs.sql 로 최근 대화 로그를 조회할 수 있습니다.", 1050),
         ("타임아웃은 어떻게 되지?",
-         "AI_TIMEOUT_SEC(기본 10초)를 초과하면 504와 함께 AI_TIMEOUT 안내가 반환됩니다.", 990),
+         "AI_TIMEOUT_SEC(기본 45초)를 초과하면 504와 함께 AI_TIMEOUT 안내가 반환됩니다.", 990),
         ("타임아웃 강제 발생 테스트", "", 2007),  # status=ai_error
     ],
     "admin@demo.com": [],

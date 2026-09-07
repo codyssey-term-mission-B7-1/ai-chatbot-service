@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     ai_api_key: str | None = None          # 없으면 데모(Fake) 모드로 동작
     ai_base_url: str = "https://api.openai.com/v1/chat/completions"  # /v1까지만 적어도 됨
     ai_model: str = "gpt-4o-mini"
-    ai_timeout_sec: float = 10.0           # 과제 제약: 타임아웃 필수
+    ai_timeout_sec: float = 45.0           # 과제 제약: 타임아웃 필수 (기본 45초, #41)
     ai_max_retries: int = 1
 
     # 챗 파이프라인
