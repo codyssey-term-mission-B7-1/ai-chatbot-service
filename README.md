@@ -16,6 +16,7 @@
 | **[docs/BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md)** | DB 백업·복원 정책 (RPO/RTO, `scripts/backup_db.sh`) |
 | **[docs/OBFUSCATION.md](docs/OBFUSCATION.md)** | 난독화·코드 보호 정책 (미적용 결정 + 대체 전략) |
 | **[docs/VOLUME_MANAGEMENT.md](docs/VOLUME_MANAGEMENT.md)** | 볼륨·디스크 관리 정책 (배포 시 영구 볼륨 필수) |
+| **[docs/DEMO_CONTEXT.md](docs/DEMO_CONTEXT.md)** | 문맥 유지 시연 증빙 + `CONTEXT_TURNS` 값 실험 결과 |
 | **CONTRIBUTING.md** | 컨벤션 — 브랜치/커밋/PR/리뷰/로그 규칙 |
 | **Swagger UI** | 서버 실행 후 `/docs` (대화형 API 문서) · `/redoc` |
 
