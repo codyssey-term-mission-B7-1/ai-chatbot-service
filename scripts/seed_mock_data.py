@@ -51,6 +51,12 @@ MOCK_CHATS = {
 }
 
 
+def db_path_hint() -> str:
+    """실제로 사용 중인 DB 파일 경로 (#52) — 하드코딩 app.db 안내가 평가자를 헛돌게 한다."""
+    return engine.url.database or "app.db"
+
+
+
 def seed(fresh: bool) -> None:
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
@@ -87,7 +93,9 @@ def seed(fresh: bool) -> None:
             print(f"✅ {email}: 대화 {len(chats)}건 생성")
 
         print("\n🎉 목데이터 시딩 완료 — 로그인: demo@demo.com / Test1234!")
-        print("   확인: sqlite3 app.db < scripts/check_logs.sql")
+        hint = db_path_hint()
+        print(f"   확인: sqlite3 {hint} < scripts/check_logs.sql")
+        print(f"        (시드 대상 db: {hint} — .env의 DATABASE_URL을 따릅니다)")
     finally:
         db.close()
 

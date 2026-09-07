@@ -2,6 +2,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
+from app.config import settings
 
 
 # ── 인증 ──────────────────────────────────────────────
@@ -51,7 +52,7 @@ class UserOut(BaseModel):
 class ChatRequest(BaseModel):
     """채팅 요청 — 빈 질문/공백 차단, 최대 1000자."""
 
-    question: str = Field(min_length=1, max_length=1000)
+    question: str = Field(min_length=1, max_length=settings.max_question_length)
 
     model_config = {"json_schema_extra": {
         "examples": [{"question": "FastAPI 배포 방법 알려줘"},
