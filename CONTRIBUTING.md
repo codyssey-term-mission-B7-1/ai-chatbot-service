@@ -103,7 +103,7 @@ DATABASE_URL=sqlite:///./app.db
 
 ## 1.5 로그 컨벤션
 
-> 범위 확인: 아래는 문서에 등록된 표준 이벤트 목록이다. 코드에서 사용하지만 아직 이 목록에 없는 이름은 `ai_retry`, `request_finished`, `unhandled_error`, `user_login`, `user_signup`이다. 표준 목록에 포함할지 여부는 팀 확인이 필요하며, 여기서는 정책을 임의로 변경하지 않는다.
+> 범위 확인: 아래는 문서에 등록된 표준 이벤트 목록이다. 코드에서 사용하지만 아직 이 목록에 없는 이름은 `ai_retry`, `request_finished`, `user_login`, `user_signup`이다. 표준 목록에 포함할지 여부는 팀 확인이 필요하며, 여기서는 정책을 임의로 변경하지 않는다.
 
 표준 이벤트 이름은 **고정된 snake_case 세트**를 사용한다 (채점 증빙 자료).
 
@@ -114,10 +114,11 @@ INFO  event=ai_call_success request_id=abc123 latency_ms=1240
 ERROR event=ai_call_fail request_id=abc123 reason=timeout latency_ms=10000
 INFO  event=db_save_success user_id=12 chat_id=987
 ERROR event=db_save_fail user_id=12 reason=<exception 요약>
+ERROR event=unhandled_error path=/api/chat error=ValueError   ← 전역 핸들러(예상 못한 예외)
 ```
 
 규칙:
-1. `event=` 은 위 6종만 사용 (새 이벤트 추가 시 이 문서에 먼저 등록)
+1. `event=` 은 위 7종만 사용 (새 이벤트 추가 시 이 문서에 먼저 등록)
 2. 키=값 쌍은 `key=value` 스페이스 구분 (로그 파싱/grep 쉽게)
 3. 로그의 질문 내용은 앞 50자까지 기록한다. 짧은 질문은 전체가 남을 수 있으며, 길이 제한은 민감정보 제거를 보장하지 않는다
 4. **API 키, 비밀번호, 세션 토큰은 어떤 로그에도 출력 금지**
