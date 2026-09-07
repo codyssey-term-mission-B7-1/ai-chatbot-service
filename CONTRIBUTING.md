@@ -38,7 +38,7 @@ hotfix/*      ← main 긴급 수정 (드물게 사용)
 | `docs` | 문서 | `docs: README에 환경변수 설정 방법 추가` |
 | `test` | 테스트 | `test(chat): 타임아웃 통합 테스트 추가` |
 | `refactor` | 동작 unchanged 리팩터링 | `refactor(db): 세션 처리를 의존성 주입으로 변경` |
-| `style` | 포맷/스타일 | `style: black 재적용` |
+| `style` | 포맷/스타일 | `style: ruff format 재적용` |
 | `chore` | 설정, 의존성 | `chore: ruff 설정 추가` |
 
 **규칙**
@@ -57,7 +57,7 @@ hotfix/*      ← main 긴급 수정 (드물게 사용)
 
 | 항목 | 규칙 |
 |------|------|
-| 포매터 | **Black** (라인 100자), 임포트 정렬 **isort**, 린터 **ruff** — 린트 검사: `ruff check app tests` |
+| 포매터 | **Ruff** (린트 + 포맷, 라인 100자) — 커밋 전 `ruff check app tests` 실행 |
 | 타입 힌트 | 공개 함수/라우트 핸들러의 매개변수·반환 타입 필수 |
 | docstring | 공개 함수/클래스에 Google 스타일 한 줄 이상 |
 | 네이밍 | 함수·변수 `snake_case`, 클래스 `PascalCase`, 상수 `UPPER_SNAKE` |
@@ -161,7 +161,7 @@ develop  →  (배포 시점) PR  →  main  →  배포
 ## 📸 스크린샷 (UI 변경 시 필수)
 
 ## ✅ 셀프 체크리스트
-- [ ] ruff/black 통과
+- [ ] ruff 통과
 - [ ] 민감정보 없음 (.env, 키, 토큰 미포함)
 - [ ] 새 로그 이벤트 사용 시 로그 컨벤션 문서에 등록
 - [ ] API 변경 시 API 명세 문서 업데이트
@@ -221,7 +221,7 @@ develop  →  (배포 시점) PR  →  main  →  배포
 | **E2E 스모크** | 배포된 실서버 대상 시나리오 | bash + curl 스크립트 | 배포 후 매일 + 평가 전 |
 
 ```bash
-pip install pytest pytest-asyncio httpx pytest-cov ruff black isort
+pip install pytest pytest-asyncio httpx pytest-cov ruff
 ```
 
 **디렉터리 구조**
