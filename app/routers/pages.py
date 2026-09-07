@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.deps import get_current_user
 from app.models import ChatLog, User
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
@@ -49,11 +48,11 @@ def signup_page(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/logs")
-def logs_page(
-    request: Request,
-    user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
+def logs_page(request: Request, db: Session = Depends(get_db)):
+    # 비로그인 → /login 리다이렉트 (접근 제어 매트릭스와 일치, #10)
+    user = _session_user(request, db)
+    if user is None:
+        return RedirectResponse("/login", status_code=302)
     logs = (
         db.query(ChatLog).filter(ChatLog.user_id == user.id)
         .order_by(ChatLog.id.desc()).limit(100).all()

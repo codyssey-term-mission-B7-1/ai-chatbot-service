@@ -27,3 +27,19 @@ def test_templates_render_conditional_branches(client, fake_ai):
     client.post("/api/chat", json={"question": "실패 질문"})
 
     assert "row-error" in client.get("/logs").text          # status == 'ai_error'
+def test_logs_redirects_to_login_when_logged_out(client):
+    """비로그인 /logs → 302 /login (접근 제어 매트릭스 일치, #10)."""
+    res = client.get("/logs", follow_redirects=False)
+    assert res.status_code == 302
+    assert res.headers["location"] == "/login"
+
+
+def test_logs_shows_my_logs_when_logged_in(client, fake_ai):
+    """로그인 /logs → 200 + 빈 상태 문구, 채팅 후 내 기록 테이블 렌더."""
+    signup_and_login(client)
+    assert "아직 대화 기록이 없어요" in client.get("/logs").text  # 빈 상태
+    client.post("/api/chat", json={"question": "첫 질문"})
+    res = client.get("/logs")
+    assert res.status_code == 200
+    assert "logs-table" in res.text
+    assert "첫 질문" in res.text
