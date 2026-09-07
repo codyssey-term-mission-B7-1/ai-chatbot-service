@@ -14,10 +14,23 @@ input.addEventListener('input', () => {
   counter.textContent = input.value.length;
 });
 
-function addBubble(text, cls) {
+// AI 응답용 최소 렌더러 — escape 먼저, 그 다음 **굵게**·`코드`·줄바꿈만 허용 (#9)
+// 사용자 말풍선·서버 에러 문구는 기존 textContent 유지 (XSS 원천 차단)
+function esc(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+           .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function renderLite(text) {
+  return esc(text)
+    .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+}
+function addBubble(text, cls, rich = false) {
   const div = document.createElement('div');
   div.className = 'bubble ' + cls;
-  div.textContent = text;
+  if (rich) div.innerHTML = renderLite(text);
+  else div.textContent = text;
   window_.appendChild(div);
   window_.scrollTop = window_.scrollHeight;
   return div;
@@ -63,7 +76,7 @@ async function send(e) {
       addBubble(data.detail || '오류가 발생했어요. 다시 시도해 주세요.', 'ai error-bubble');
       return;
     }
-    addBubble(data.answer, 'ai');
+    addBubble(data.answer, 'ai', true);
   } catch (err) {
     loading.remove();
     showError('네트워크 오류예요. 연결을 확인하고 다시 시도해 주세요.');
