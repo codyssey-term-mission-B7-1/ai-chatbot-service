@@ -1,32 +1,32 @@
 {% extends "base.html" %}
-{% block title %}{{ mode == 'signup' ? '회원가입' : '로그인' }}{% endblock %}
+{% block title %}{{ '회원가입' if mode == 'signup' else '로그인' }}{% endblock %}
 
 {% block content %}
 <div class="auth-card">
-  <h1>{{ mode == 'signup' ? '회원가입' : '로그인' }}</h1>
-  <p class="muted">{{ mode == 'signup' ? '서비스를 이용하려면 가입이 필요해요.' : '챗봇은 로그인한 사용자만 이용할 수 있어요.' }}</p>
+  <h1>{{ '회원가입' if mode == 'signup' else '로그인' }}</h1>
+  <p class="muted">{{ '서비스를 이용하려면 가입이 필요해요.' if mode == 'signup' else '챗봇은 로그인한 사용자만 이용할 수 있어요.' }}</p>
 
   <form id="auth-form" onsubmit="return submitForm(event)">
     <label>이메일
       <input type="email" id="email" required placeholder="you@example.com" autocomplete="email">
     </label>
     <label>비밀번호
-      <input type="password" id="password" required minlength="{{ mode == 'signup' ? 8 : 1 }}"
-             placeholder="{{ mode == 'signup' ? '8자 이상' : '비밀번호' }}" autocomplete="current-password">
+      <input type="password" id="password" required minlength="{{ 8 if mode == 'signup' else 1 }}"
+             placeholder="{{ '8자 이상' if mode == 'signup' else '비밀번호' }}" autocomplete="current-password">
     </label>
     {% if mode == 'signup' %}
     <label>닉네임 (선택)
       <input type="text" id="nickname" maxlength="20" placeholder="표시될 이름">
     </label>
     {% endif %}
-    <button type="submit" id="submit-btn">{{ mode == 'signup' ? '가입하기' : '로그인' }}</button>
+    <button type="submit" id="submit-btn">{{ '가입하기' if mode == 'signup' else '로그인' }}</button>
   </form>
 
   <p id="msg" class="msg" hidden></p>
   <p class="muted small">
-    {{ mode == 'signup'
-       ? '이미 계정이 있나요? <a href="/login">로그인</a>'
-       : '계정이 없나요? <a href="/signup">회원가입</a>' }}
+    {{ ('이미 계정이 있나요? <a href="/login">로그인</a>'
+        if mode == 'signup'
+        else '계정이 없나요? <a href="/signup">회원가입</a>') | safe }}
   </p>
 </div>
 {% endblock %}

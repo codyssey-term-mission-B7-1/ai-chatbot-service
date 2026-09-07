@@ -13,7 +13,7 @@
     </thead>
     <tbody>
       {% for log in logs %}
-      <tr class="{{ log.status == 'ai_error' ? 'row-error' : '' }}">
+      <tr class="{{ 'row-error' if log.status == 'ai_error' else '' }}">
         <td>{{ log.id }}</td>
         <td class="nowrap">{{ log.created_at.strftime('%m-%d %H:%M') }}</td>
         <td class="q">{{ log.question }}</td>
