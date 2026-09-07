@@ -153,7 +153,7 @@ db_save_fail      user_id=12 reason=db_exception
 
 **오류 처리**: AI 타임아웃 → 504 `AI_TIMEOUT` 안내 / AI 오류 → 502 `AI_ERROR` / 미처리 예외 → 전역 핸들러가 500 안내 (서버 비정상 종료 없음) — `tests/integration/test_chat_flow.py::test_timeout_returns_504_and_server_survives`로 검증
 
-**입력 검증**: 빈 질문/공백 차단 + 1000자 길이 제한 (Pydantic + 프론트 이중 검증), 비밀번호 8자 이상, 이메일 형식
+**입력 검증**: 빈 질문/공백 차단 + 서버 `MAX_QUESTION_LENGTH` 제한(기본 1000자). 현재 프론트 제한은 별도 1000자이므로 설정 변경 시 양쪽을 함께 확인합니다. 회원가입은 비밀번호 8자 이상·이메일 형식을 검증합니다.
 
 ## 7. 테스트 · CI/CD
 
