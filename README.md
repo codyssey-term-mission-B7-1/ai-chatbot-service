@@ -172,8 +172,7 @@ ruff check app tests                          # 린트
 | 통합 | `tests/integration/test_chat_flow.py` | 파이프라인·타임아웃 생존·문맥·사용자 격리 |
 
 **CI** (`.github/workflows/ci.yml`): PR/develop 푸시 시 → ruff + pytest 자동 실행 (실 AI 키 불필요 — Fake 제공자 사용)
-**CD** (`.github/workflows/cd.yml`): main 병합 시 → 배포 웹훅 + E2E 스모크. 저장소 Secrets에
-`DEPLOY_WEBHOOK_URL`·`DEPLOY_URL` 등록 시 활성화 (미등록 시 스킵 — 카드 12 담당이 설정)
+**CD** (`.github/workflows/cd.yml`): main 병합 시 → 테스트 게이트 → Secrets 동기화 → Railway 배포 → E2E 스모크. 필수 Secrets(`RAILWAY_TOKEN`·`DEPLOY_URL`·`SESSION_SECRET`) 등록 시 활성화 — 상세 [docs/RAILWAY_DEPLOY.md](docs/RAILWAY_DEPLOY.md)
 
 ## 7-1. 목데이터 / 목업 드라이버
 
@@ -196,11 +195,12 @@ curl -b cookies.txt https://SERVER/api/me/chats
 
 실서버 검증은 `scripts/e2e_smoke.sh https://SERVER` (가입→로그인→비로그인 401 확인→채팅→로그 조회 전 과정 자동 점검)
 
-## 9. 배포
+## 9. 배포 (Railway + GitHub Actions)
 
-- 외부 접속 URL 필요 — Cloudtype / Render / Railway / AWS 등에서 `uvicorn app.main:app --host 0.0.0.0` 구동
-- 환경변수는 플랫폼 시크릿 또는 `.env`로 주입 (코드/저장소에 값 없음)
-- 배포 후 `scripts/e2e_smoke.sh`로 매일 점검
+- 파이프라인: `main` 머지 → CI 게이트 → Secrets 동기화 → Railway 배포 → `/health` 폴링 → 스모크
+- 환경변수 source of truth: **GitHub Secrets** (키·엔드포인트 전부, 값은 저장소에 없음)
+- DB 영속화: Railway Volume을 `/data`에 마운트 + `DATABASE_URL=sqlite:////data/app.db` → 재배포해도 초기화 안 됨
+- 상세 절차: [docs/RAILWAY_DEPLOY.md](docs/RAILWAY_DEPLOY.md)
 
 ## 10. 팀 협업
 
