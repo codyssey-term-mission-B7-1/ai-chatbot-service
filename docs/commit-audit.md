@@ -90,25 +90,32 @@ M3 제출 2026-09-28까지 **3주**. 미달자(loader1017)는 **주당 3~4커밋
 
 ```bash
 git log --no-merges --format='%ae' origin/develop | sort | uniq -c   # 이메일 단위
-# giyeop-cody = cody.giyeop@gmail.com(23) + noreply(14) = 37
+# giyeop-cody = cody.giyeop@gmail.com(24) + noreply(14) = 38
 ```
 
 | 팀원 | 작업 커밋 | 머지한 PR | 목표 10회까지 | 상태 |
 |---|---:|---:|---:|---|
-| giyeop-cody | **37** | 12 | — | ✅ |
+| giyeop-cody | **38** | 13 | — | ✅ |
 | Im-Jongseok | **18** | 4 | — | ✅ |
 | loader1017 | **1** | 1 (#43) | **9** | ❌ |
 | ygyg | 0 | 0 | 10 | ❌ (미참여) |
 
-- develop 총 커밋 76 / 머지된 PR 17건 (`merged_at` 기준).
+- develop 총 커밋 79 / 머지된 PR 18건 (`merged_at` 기준). 기준 커밋 `7501fd4`(PR #61 머지 결과).
 - loader1017: 1주차 0건 → PR #43(#6) 머지로 1건. **전 브랜치(25개)를 search 해도 추가 기여가 1건뿐**이라
   남은 9건은 새로 만들어야 한다. 담당 카드 09·10·11 + 이슈 #18을 이번 주 착수 목표으로 지정 (#45).
 - PR #43 머지로 **#29 Enter 전송·IME 가드가 develop에서 소멸**하는 회귀가 발생했다 (JS 테스트가 없어 CI가 못 잡았다)
-  → 복구 PR #61 오픈, 재발 방지 항목을 PR 체크리스트에 추가 (CONTRIBUTING 4절 · #60).
+  → 복구 PR **#61 머지 완료**(`7501fd4`), 재발 방지 항목을 PR 템플릿·CONTRIBUTING 4절에 추가 (#60).
 
 ### 비팀원 작성 커밋 1건 (투명성 기록)
 
-`d374bbb Merge branch 'develop' into docs/#1-todo-sync` (PR #40의 충돌 해결 머지)의 author/committer가
-`Arena Agent <agent@arena.local>` 로 남아 있다. 리뷰·병렬작업을 수행한 어시스턴트 세션의 로컬 git identity가
-그대로 푸시된 것으로, **콘텐츠 변경은 없고 코드 작성자 귀속에는 영향이 없다**(`--no-merges` 집계 제외).
-히스토리 재작성 대신 이 각주로 남긴다. 앞으로 어시스턴트 작업은 팀원 계정으로 커밋하고 각주 처리한다.
+어시스턴트 세션의 로컬 git identity가 남은 커밋이 2건 있다. 둘 다 **콘텐츠 변경 0건**이고
+코드 작성자 귀속에는 영향이 없으나, `--no-merges` 집계·PR 화면에 보이므로 여기에 기록해 둔다.
+
+| 커밋 | 형태 | 유입 경로 | 내용 |
+|---|---|---|---|
+| `d374bbb` `Merge branch 'develop' into docs/#1-todo-sync` | 머지(부모 2) | PR #40 | develop → 브랜치 병합 충돌 해결. `--no-merges` 집계에서 제외됨 |
+| `2e8448e` `placeholder` | **비머지·빈 커밋** | PR #61 | 어시스턴트 PR 생성 스크립트가 `--allow-empty`로 만든 더미 커밋. **diff 0건** |
+
+조치: `placeholder` 커밋은 내용 자체가 없어 되돌릴 게 없다. develop은 룰셋(`non_fast_forward`)으로 보호돼
+force-push 없이 제거할 수 없으므로, **다음 히스토리 정리(D10 이후) 때 `git filter-repo`로 함께 제거**하는 편이 깔끔하다.
+앞으로 어시스턴트 작업은 ① 팀원 계정으로 커밋하고 ② 빈 커밋을 만들지 않으며 ③ 이 문서에 각주한다.
