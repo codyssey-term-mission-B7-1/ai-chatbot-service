@@ -14,10 +14,19 @@ input.addEventListener('input', () => {
   counter.textContent = input.value.length;
 });
 
+// Enter → 전송, Shift+Enter → 줄바꿈
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    send(new Event('submit'));
+  }
+});
+
 function addBubble(text, cls) {
   const div = document.createElement('div');
   div.className = 'bubble ' + cls;
-  div.textContent = text;
+  if (typeof text === 'string') div.textContent = text;
+  else div.appendChild(text); // 노드가 들어올 수 있음
   window_.appendChild(div);
   window_.scrollTop = window_.scrollHeight;
   return div;
@@ -52,17 +61,28 @@ async function send(e) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question }),
     });
-    const data = await res.json();
-    loading.remove();
 
-    if (res.status === 401) {           // 접근 제어: 비로그인 → 로그인 페이지로
+    // 401은 로그인 페이지로(비로그인 진입 차단 요구사항)
+    if (res.status === 401) {
       location.href = '/login';
       return;
     }
-    if (!res.ok) {                       // 타임아웃(504)/AI 오류(502) 등 서버 안내 메시지 표시
-      addBubble(data.detail || '오류가 발생했어요. 다시 시도해 주세요.', 'ai error-bubble');
+
+    // 서버에서 반환한 JSON/에러 메시지 파싱(네트워크 오류로 인해 json 파싱이 실패할 수 있음)
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* ignore */ }
+
+    loading.remove();
+
+    if (!res.ok) { // 타임아웃(504)/AI 오류(502) 등 서버 안내 메시지 표시
+      const detail = data?.detail || (res.status === 504 ? '응답 지연 — AI가 시간이 걸리고 있어요.' : '오류가 발생했어요. 다시 시도해 주세요.');
+      const node = document.createElement('div');
+      node.innerHTML = `<strong>오류:</strong> ${detail}`;
+      addBubble(node, 'ai error-bubble');
       return;
     }
+
+    // 정상 응답
     addBubble(data.answer, 'ai');
   } catch (err) {
     loading.remove();
