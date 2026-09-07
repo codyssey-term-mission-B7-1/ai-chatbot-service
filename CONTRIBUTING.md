@@ -190,7 +190,7 @@ develop  →  (배포 시점) PR  →  main  →  배포
 | 방식 | 사용 여부 | 이유 |
 |------|-----------|------|
 | **Merge commit** | ✅ 기본 사용 | 개별 커밋 전부 보존 + 머지 흔적 남음 |
-| Rebase and merge | ✅ 허용 | 커밋 보존, 히스토리 선형 |
+| Rebase and merge | ❌ 현재 main/develop에서 사용하지 않음 | 저장소 룰셋은 Merge commit만 허용 |
 | **Squash and merge** | ❌ 금지 | 여러 커밋이 1개로 합쳐져 커밋 수 증빙 손해 |
 
 **브랜치 보호 설정** (저장소 Settings → Branches):
