@@ -43,3 +43,37 @@ def test_signup_email_normalized_to_lowercase():
 def test_signup_whitespace_nickname_falls_back_to_prefix():
     body = SignupIn(email="hong@example.com", password="password123", nickname="   ")
     assert body.nickname == "hong"
+
+
+PROBE = """
+from pydantic import ValidationError
+from app.schemas import ChatRequest
+try:
+    ChatRequest(question="가" * 13)
+except ValidationError:
+    print("REJECTED")
+else:
+    print("ACCEPTED")
+"""
+
+
+def _run_probe(max_len: str) -> str:
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    env = {**os.environ, "MAX_QUESTION_LENGTH": max_len,
+           "PYTHONPATH": str(Path(__file__).resolve().parents[2])}
+    out = subprocess.run([sys.executable, "-c", PROBE], capture_output=True, text=True, env=env)
+    assert out.returncode == 0, out.stderr
+    return out.stdout.strip()
+
+
+def test_max_question_length_env_moves_the_boundary():
+    """환경변수로 질문 길이 상한을 변경할 수 있는지 확인한다 (#53).
+
+    상한 12에서는 13자를 거부하고 상한 20에서는 허용해야 한다.
+    """
+    assert _run_probe("12") == "REJECTED"
+    assert _run_probe("20") == "ACCEPTED"
