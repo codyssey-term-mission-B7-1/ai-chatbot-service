@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.logging_config import log_event
+from app.services.security import email_fingerprint
 from app.models import User
 
 logger = logging.getLogger("app.auth")
@@ -25,7 +26,7 @@ def resolve_session_user(request: Request, db: Session) -> User | None:
         user = db.get(User, int(user_id))
     except (TypeError, ValueError):
         user = None
-    if user is None or user.email != request.session.get("email"):
+    if user is None or email_fingerprint(user.email) != request.session.get("email_fp"):
         log_event(logger, "auth_stale_session", user_id=user_id, level=logging.WARNING)
         request.session.clear()
         return None
