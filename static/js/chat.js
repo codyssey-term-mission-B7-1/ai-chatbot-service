@@ -8,6 +8,9 @@ const counter = document.getElementById('count');
 
 const MAX_LEN = 1000;
 
+// 이전 대화 복원 범위 — 서버 CONTEXT_TURNS와 동일 (AI가 기억하는 맥락과 일치)
+const HISTORY_TURNS = parseInt(window_.dataset.contextTurns || '5', 10);
+
 input.addEventListener('input', () => {
   input.style.height = 'auto';
   input.style.height = Math.min(input.scrollHeight, 120) + 'px';
@@ -71,4 +74,41 @@ async function send(e) {
     sendBtn.disabled = false;
     input.focus();
   }
+}
+
+function addDivider(text) {
+  const div = document.createElement('div');
+  div.className = 'history-divider';
+  div.textContent = text;
+  window_.appendChild(div);
+}
+
+// 이전 대화 복원 — 채팅방에 돌아왔을 때 AI 맥락(직전 N개 성공 Q/A)을 말풍선으로 표시
+async function loadHistory() {
+  let logs;
+  try {
+    const res = await fetch('/api/me/chats?limit=50');
+    if (res.status === 401) {  // 세션 만료 → 입력 전에 로그인 페이지로 (입력 유실 방지)
+      location.href = '/login';
+      return;
+    }
+    if (!res.ok) return;       // 조회 실패해도 새 채팅은 가능 → 조용히 스킵
+    logs = await res.json();
+  } catch {
+    return;                    // 네트워크 오류 → 인사말만 표시하고 시작
+  }
+  // API는 최신순 → 성공 건만 N개 추려 오래된 순으로 복원 (AI 컨텍스트와 동일 범위)
+  const recent = logs.filter((log) => log.status === 'success').slice(0, HISTORY_TURNS).reverse();
+  if (recent.length === 0) return;
+  addDivider(`이전 대화 ${recent.length}개`);
+  for (const log of recent) {
+    addBubble(log.question, 'user');
+    addBubble(log.answer, 'ai');
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', loadHistory);
+} else {
+  loadHistory();
 }

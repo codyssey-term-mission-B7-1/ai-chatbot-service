@@ -49,6 +49,8 @@ body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; backgr
              border-bottom-left-radius: 4px; }
 .bubble.loading { color: var(--muted); font-style: italic; }
 .bubble.error-bubble { background: #fdecec; border: 1px solid #f2c5c5; color: var(--danger); }
+.history-divider { align-self: center; font-size: 12px; color: var(--muted); background: var(--bg);
+                   border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px; }
 
 .chat-input { display: flex; gap: 10px; margin-top: 12px; }
 .chat-input textarea { flex: 1; resize: none; border: 1px solid var(--border); border-radius: 12px;
