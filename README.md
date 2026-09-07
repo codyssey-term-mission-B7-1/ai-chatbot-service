@@ -1,7 +1,7 @@
 # 🤖 AI Chatbot Service
 
 웹 기반 AI 챗봇 서비스 — FastAPI + SQLite. 로그인한 사용자의 질문을 AI API로 전달해 응답하고,
-처리한 채팅과 AI 오류에 대해 사용자별 대화 로그 저장을 시도합니다. DB 저장에 실패하면 대화가 기록되지 않을 수 있습니다.
+처리한 채팅과 AI 오류에 대해 사용자별 대화 로그 저장을 시도합니다. DB 저장에 실패하면 대화가 기록되지 않을 수 있습니다. *(코디세이 B7-1 과제)*
 
 [![CI](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/ci.yml/badge.svg)](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/ci.yml)
 [![CD](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/cd.yml/badge.svg)](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/cd.yml)
@@ -232,14 +232,16 @@ curl -b cookies.txt https://SERVER/api/me/chats
 
 ### 팀 구성원 역할 및 개인별 작업 요약
 
+> 역할 담당은 2026-09-08 지정 기준이다. 아래 커밋·PR 수치는 명시된 기준 커밋의 스냅샷이며, 역할 배정으로 과거 커밋의 작성자나 기여 수를 바꾸지 않는다. `ygyg0605-cloud`는 저장소 쓰기 권한이 확인된 협업자다.
+
 > 2026-09-08 기준, `origin/develop`(`dafa1d7`) 실측. 재현: `git shortlog -sne --no-merges origin/develop` (집계 규칙은 [docs/commit-audit.md](docs/commit-audit.md))
 
 | 구성원 | 역할 (담당 카드) | develop 작업 커밋 | 머지한 PR | 대표 작업 |
 |---|---|---:|---:|---|
 | **giyeop-cody** | PM · 서버 코어 — 카드 01·03·04·05 | **38** | 13 | 초기 스켈레톤(#15), 인증 마무리·이메일 정규화(#37), 세션-계정 바인딩(#34), 접근 제어 매트릭스(#19), Railway CD(#36), Enter 전송(#30), AI 타임아웃 45초(#42), 운영 정책 3종(#20) |
-| **Im-Jongseok** | 문서 · QA — 카드 02·07·08 | **18** | 4 | README ERD·`check_logs.sql` 수정(#21), 문맥 유지 실험·시연(#22), 형상관리/커밋 감사 증빙(#23), HTML 500 수정(#24) |
-| **loader1017** | 프론트 — 카드 06·09·10·11 | **1** | 1 | `chat.js` 채팅 UI 개선 + 네이토 연동 시도(#43, 9/8 머지). **10회 요구에 9회 미달** → 역할 카드 09·10·11과 공지 이슈 #18의 작업 후보를 참고해 진행 중 ([#45](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/issues/45)) |
-| ygyg | (미참여) | 0 | 0 | 카드 미배정 · 저장소 초대한정 상태 |
+| **Im-Jongseok** | 형상관리·챗 파이프라인·DB — 카드 02·07·08 | **18** | 4 | README ERD·`check_logs.sql` 수정(#21), 문맥 유지 실험·시연(#22), 형상관리/커밋 감사 증빙(#23), HTML 500 수정(#24) |
+| **loader1017** | AI 연동·UI·로깅 — 카드 06·09·10·11 | **1** | 1 | `chat.js` 채팅 UI 개선 + 네이토 연동 시도(#43, 9/8 머지). **10회 요구에 9회 미달** → 역할 카드 09·10·11과 공지 이슈 #18의 작업 후보를 참고해 진행 중 ([#45](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/issues/45)) |
+| **ygyg0605-cloud** | 배포·운영·문서 — 카드 12·13 | 0 | 0 | 현재 담당 지정·쓰기 권한 확인. 과거 기여 수는 변경하지 않음 |
 
 - **#61 머지 완료**(`dafa1d7`): PR #43으로 소멸했던 Enter 전송·IME 가드를 복구 (#60)
 - PR의 실시간 승인·병합 상태는 GitHub Pull requests 목록을 확인하세요. 위 표는 명시된 기준 커밋의 스냅샷입니다.
