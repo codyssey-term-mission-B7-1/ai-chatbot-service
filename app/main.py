@@ -89,7 +89,7 @@ STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
-@app.get("/health", tags=["ops"])
+@app.get("/health", tags=["ops"], summary="헬스체크")
 def health():
     """헬스체크 — 배포/E2E 스모크에서 서버 생존·버전 확인용."""
     return {
