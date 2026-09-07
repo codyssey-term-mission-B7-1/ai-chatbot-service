@@ -72,3 +72,19 @@ def test_stale_session_after_reseed_returns_401(client, db):
     # stale 쿠키 → 401 + 세션 파기 (admin으로 오인 금지)
     assert client.get("/api/auth/me").status_code == 401
     assert client.get("/", follow_redirects=False).status_code == 302
+
+
+def test_email_case_insensitive_signup_login(client):
+    """대소문자 달라도 동일 계정 — 정규화 후 중복 409 + 교차 로그인 (#4)."""
+    r = client.post("/api/auth/signup",
+                    json={"email": "Case@Test.com", "password": "password123"})
+    assert r.status_code == 201
+    assert r.json()["email"] == "case@test.com"
+
+    r = client.post("/api/auth/signup",
+                    json={"email": "case@test.com", "password": "password123"})
+    assert r.status_code == 409  # 정규화 후 중복
+
+    r = client.post("/api/auth/login",
+                    json={"email": "CASE@TEST.COM", "password": "password123"})
+    assert r.status_code == 200
