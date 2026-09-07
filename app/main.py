@@ -91,5 +91,9 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 @app.get("/health", tags=["ops"])
 def health():
-    """헬스체크 — 배포/E2E 스모크에서 서버 생존 확인용."""
-    return {"status": "ok", "ai_mode": "demo" if settings.ai_api_key is None else "real"}
+    """헬스체크 — 배포/E2E 스모크에서 서버 생존·버전 확인용."""
+    return {
+        "status": "ok",
+        "version": app.version,
+        "ai_mode": "demo" if settings.ai_api_key is None else "real",
+    }
