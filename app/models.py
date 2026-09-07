@@ -29,7 +29,9 @@ class ChatLog(Base):
     __tablename__ = "chat_logs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )  # SQL 레벨 cascade (#51)
     question: Mapped[str] = mapped_column(Text, nullable=False)
     answer: Mapped[str] = mapped_column(Text, default="", nullable=False)
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
