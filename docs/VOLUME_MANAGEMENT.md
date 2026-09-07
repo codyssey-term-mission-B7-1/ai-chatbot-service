@@ -15,6 +15,7 @@
 
 1. **DB 파일은 영구 볼륨에** — 컨테이너/인스턴스 재시작 시 로컬 디스크는 초기화되는 플랫폼이 많음
    - Render: Persistent Disk 마운트 / Cloudtype: 저장소 바인딩 / AWS: EBS
+   - Railway: Volume 생성 → `/data` 마운트 → `DATABASE_URL=sqlite:////data/app.db` (상세: docs/RAILWAY_DEPLOY.md)
    - 환경변수 `DATABASE_URL=sqlite:////mnt/data/app.db` 처럼 **볼륨 경로를 가리키도록** 설정
    - ❌ 기본 `./app.db` 그대로 두면 "배포가 되었는데 회원가입이 매일 사라짐" 사고 발생
 2. **백업 디렉터리도 같은 볼륨** + 주간 로컬 다운로드 (백업 정책 3-2-1 축약판)

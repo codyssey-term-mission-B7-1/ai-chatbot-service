@@ -105,7 +105,7 @@
 ### [카드 12] 배포 & 운영 → 이슈 #12
 - [ ] 배포 플랫폼 선정/계정 생성 (D1)
 - [ ] **뼈대 1차 배포** (D5) — `uvicorn app.main:app --host 0.0.0.0`
-- [ ] 저장소 Secrets에 `DEPLOY_WEBHOOK_URL`/`DEPLOY_URL` 등록 → CD 워크플로 활성화
+- [ ] 저장소 Secrets 등록(`RAILWAY_TOKEN`·`DEPLOY_URL`·`SESSION_SECRET` + 선택 7종) → CD 워크플로 활성화 (docs/RAILWAY_DEPLOY.md)
 - [ ] 배포 후 매일 `scripts/e2e_smoke.sh` 통과 확인
 - [ ] README 배포 섹션 완성 (플랫폼별 스크린샷)
 - 완료 조건: 외부 URL에서 스모크 통과 + CD 파이프라인 동작
