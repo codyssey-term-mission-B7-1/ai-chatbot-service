@@ -28,7 +28,7 @@ def home(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse("/login", status_code=302)
     return templates.TemplateResponse(request, "chat.html", {
         "nickname": user.nickname,
-        "demo_mode": settings.ai_api_key is None,
+        "demo_mode": not settings.ai_api_key,  # provider 선택과 동일 조건
         "context_turns": settings.context_turns,
     })
 
