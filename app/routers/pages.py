@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_current_user, resolve_session_user
 from app.models import ChatLog, User
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
@@ -18,8 +18,7 @@ router = APIRouter(include_in_schema=False)
 
 
 def _session_user(request: Request, db: Session) -> User | None:
-    user_id = request.session.get("user_id")
-    return db.get(User, int(user_id)) if user_id else None
+    return resolve_session_user(request, db)
 
 
 @router.get("/")
