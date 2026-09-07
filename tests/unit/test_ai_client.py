@@ -78,3 +78,25 @@ def test_http_error_maps_to_ai_error(monkeypatch):
     monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
     with pytest.raises(AIError):
         asyncio.run(_client().generate([{"role": "user", "content": "hi"}]))
+
+
+def test_retry_then_success_returns_content(monkeypatch):
+    calls = []
+
+    class _Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"choices": [{"message": {"content": "재시도 성공"}}]}}
+
+    async def flaky_post(self, *args, **kwargs):
+        calls.append(1)
+        if len(calls) == 1:
+            raise httpx.ConnectError("flaky")
+        return _Resp()
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", flaky_post)
+    client = _client(timeout_sec=5, max_retries=1)
+    assert asyncio.run(client.generate([{"role": "user", "content": "hi"}])) == "재시도 성공"
+    assert len(calls) == 2
