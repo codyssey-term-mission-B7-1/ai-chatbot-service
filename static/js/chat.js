@@ -14,14 +14,6 @@ input.addEventListener('input', () => {
   counter.textContent = input.value.length;
 });
 
-// Enter → 전송, Shift+Enter → 줄바꿈
-input.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    send(new Event('submit'));
-  }
-});
-
 function addBubble(text, cls) {
   const div = document.createElement('div');
   div.className = 'bubble ' + cls;
