@@ -14,6 +14,14 @@ input.addEventListener('input', () => {
   counter.textContent = input.value.length;
 });
 
+input.addEventListener('keydown', (e) => {
+  // Enter 전송 / Shift+Enter 줄바꿈 — IME 조합 중 Enter 오발송 방지 (#29)
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    if (!sendBtn.disabled) form.requestSubmit();  // 전송 중 중복 발송 방지
+  }
+});
+
 function addBubble(text, cls) {
   const div = document.createElement('div');
   div.className = 'bubble ' + cls;
