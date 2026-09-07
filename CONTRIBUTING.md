@@ -94,7 +94,7 @@ GET  /health              헬스체크 (인증 불필요)
 ```
 AI_API_KEY=          # AI 제공사 API 키
 AI_MODEL=            # 모델명
-AI_TIMEOUT_SEC=10    # AI 호출 타임아웃(초)
+AI_TIMEOUT_SEC=45    # AI 호출 타임아웃(초)
 AI_MAX_RETRIES=1     # 재시도 횟수
 CONTEXT_TURNS=5      # 컨텍스트로 넘길 직전 Q/A 개수
 SESSION_SECRET=      # 세션/JWT 서명 키
