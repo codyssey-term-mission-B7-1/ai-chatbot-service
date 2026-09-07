@@ -72,3 +72,14 @@ def test_my_chats_isolated_per_user(client, fake_ai):
 
     logs = client.get("/api/me/chats").json()
     assert [log["question"] for log in logs] == ["2번 사용자 질문"]  # 마지막 로그인 사용자 것만
+
+def test_my_chats_negative_limit_does_not_bypass_cap(client):
+    """음수 limit 은 SQLite 에서 '무제한' 으로 해석되어 상한을 우회한다 — 1건으로 수렴해야 한다."""
+    from tests.conftest import signup_and_login
+
+    signup_and_login(client)
+    for i in range(3):
+        client.post("/api/chat", json={"question": f"질문 {i}"})
+    assert len(client.get("/api/me/chats").json()) == 3
+    assert len(client.get("/api/me/chats?limit=-1").json()) == 1
+    assert len(client.get("/api/me/chats?limit=0").json()) == 1

@@ -124,6 +124,6 @@ def my_chats(
         db.query(ChatLog)
         .filter(ChatLog.user_id == user.id)
         .order_by(ChatLog.id.desc())
-        .limit(min(limit, 200))
+        .limit(max(1, min(limit, 200)))
         .all()
     )

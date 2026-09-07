@@ -52,7 +52,25 @@ app = FastAPI(
 )
 
 # (주의) 아래 커스텀 미들웨어보다 나중에 추가 → Session이 바깥에서 실행됨
-app.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
+# https_only: 개발(TestClient/http)에서는 허용, 운영에서는 Secure 쿠키 강제
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.session_secret,
+    # Starlette 기본값은 14일 — 7일로 단축 (#12)
+    max_age=60 * 60 * 24 * 7,
+    # 운영(https 배포)에서만 Secure 강제. http TestClient/로컬 개발은 제외 (#12·#55)
+    https_only=not settings.debug,
+)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """MIME 스니핑·클릭재킹 방어 — 응답에 항상 최소 보안 헤더를 붙인다."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    return response
 
 
 @app.middleware("http")
@@ -95,5 +113,6 @@ def health():
     return {
         "status": "ok",
         "version": app.version,
-        "ai_mode": "demo" if settings.ai_api_key is None else "real",
+        # 빈 문자열(.env.example 기본값)도 demo 로 본다 — provider 선택과 동일 조건
+        "ai_mode": "demo" if not settings.ai_api_key else "real",
     }

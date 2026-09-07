@@ -88,3 +88,29 @@ def test_email_case_insensitive_signup_login(client):
     r = client.post("/api/auth/login",
                     json={"email": "CASE@TEST.COM", "password": "password123"})
     assert r.status_code == 200
+
+
+def test_session_cookie_carries_no_plaintext_email(client):
+    """쿠키는 base64 인코딩일 뿐 암호화가 아니다 — 페이로드에 email이 남으면 안 된다 (#59)."""
+    import base64
+    import json
+
+    from tests.conftest import signup_and_login
+
+    signup_and_login(client, email="noleak@example.com")
+    signed = client.cookies.get("session")
+    payload = json.loads(base64.b64decode(signed.split(".")[0] + "=="))
+    assert "email" not in payload, payload
+    assert "email_fp" in payload, payload
+    assert "noleak@example.com" not in base64.b64decode(signed.split(".")[0] + "==").decode()
+
+
+def test_session_cookie_expiry_is_seven_days(client):
+    """Starlette 기본 14일이 아니라 7일로 명시 설정됐어야 한다 (#12·#55)."""
+    from tests.conftest import signup_and_login
+
+    signup_and_login(client, email="exp@example.com")
+    # 재로그인 없이 직접 확인: 세션 저장 시 쿠키 헤더를 살펴본다
+    r = client.post("/api/auth/login", json={"email": "exp@example.com", "password": "Test1234!"})
+    cookie = r.headers.get_list("set-cookie")[0]
+    assert "Max-Age=604800" in cookie, cookie
