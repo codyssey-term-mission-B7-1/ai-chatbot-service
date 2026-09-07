@@ -103,7 +103,7 @@ DATABASE_URL=sqlite:///./app.db
 
 ## 1.5 로그 컨벤션
 
-> 범위 확인: 아래는 문서에 등록된 표준 이벤트 목록이다. 코드에서 사용하지만 아직 이 목록에 없는 이름은 `ai_retry`, `request_finished`, `user_login`, `user_signup`이다. 표준 목록에 포함할지 여부는 팀 확인이 필요하며, 여기서는 정책을 임의로 변경하지 않는다.
+> 범위 확인: 아래는 문서에 등록된 표준 이벤트 목록이다. 코드에서 사용하지만 아직 이 목록에 없는 이름은 `ai_retry`이다. 표준 목록에 포함할지 여부는 팀 확인이 필요하며, 여기서는 정책을 임의로 변경하지 않는다.
 
 표준 이벤트 이름은 **고정된 snake_case 세트**를 사용한다 (채점 증빙 자료).
 
@@ -116,10 +116,13 @@ INFO  event=db_save_success user_id=12 chat_id=987
 ERROR event=db_save_fail user_id=12 reason=<exception 요약>
 ERROR event=unhandled_error path=/api/chat error=ValueError   ← 전역 핸들러(예상 못한 예외)
 WARNING event=auth_stale_session user_id=4   ← stale 세션 파기 (DB 재생성 후 id 재할당 방어)
+INFO  event=request_finished method=POST path=/api/chat status=200 latency_ms=1310  ← 요청 종료 (#48)
+INFO  event=user_signup user_id=7 email_domain=example.com                           ← 회원가입 (#48)
+INFO  event=user_login user_id=7                                                       ← 로그인 (#48)
 ```
 
 규칙:
-1. `event=` 은 위 8종만 사용 (새 이벤트 추가 시 이 문서에 먼저 등록)
+1. `event=` 는 **위 11종만** 사용 (새 이벤트 추가 시 이 문서에 먼저 등록 — #48에서 3종 소급 등록)
 2. 키=값 쌍은 `key=value` 스페이스 구분 (로그 파싱/grep 쉽게)
 3. 로그의 질문 내용은 앞 50자까지 기록한다. 짧은 질문은 전체가 남을 수 있으며, 길이 제한은 민감정보 제거를 보장하지 않는다
 4. **API 키, 비밀번호, 세션 토큰은 어떤 로그에도 출력 금지**
@@ -162,7 +165,8 @@ develop  →  (배포 시점) PR  →  main  →  배포
 ## 📸 스크린샷 (UI 변경 시 필수)
 
 ## ✅ 셀프 체크리스트
-- [ ] ruff/black 통과
+- [ ] `ruff check app tests` 통과 (black은 저장소 기저 미적용 — 신규 파일만 맞출 것)
+- [ ] **`git merge develop` 후 의도하지 않은 삭제·기능 회귀가 없는지 diff로 확인** — 의도한 삭제는 이유와 검증 결과를 적는다 (#43·#60)
 - [ ] 민감정보 없음 (.env, 키, 토큰 미포함)
 - [ ] 새 로그 이벤트 사용 시 로그 컨벤션 문서에 등록
 - [ ] API 변경 시 API 명세 문서 업데이트
