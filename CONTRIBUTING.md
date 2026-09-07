@@ -114,10 +114,13 @@ INFO  event=db_save_success user_id=12 chat_id=987
 ERROR event=db_save_fail user_id=12 reason=<exception 요약>
 ERROR event=unhandled_error path=/api/chat error=ValueError   ← 전역 핸들러(예상 못한 예외)
 WARNING event=auth_stale_session user_id=4   ← stale 세션 파기 (DB 재생성 후 id 재할당 방어)
+INFO  event=request_finished method=POST path=/api/chat status=200 latency_ms=1310  ← 요청 종료 (#48)
+INFO  event=user_signup user_id=7 email_domain=example.com                           ← 회원가입 (#48)
+INFO  event=user_login user_id=7                                                       ← 로그인 (#48)
 ```
 
 규칙:
-1. `event=` 은 위 8종만 사용 (새 이벤트 추가 시 이 문서에 먼저 등록)
+1. `event=` 는 **위 11종만** 사용 (새 이벤트 추가 시 이 문서에 먼저 등록 — #48에서 3종 소급 등록)
 2. 키=값 쌍은 `key=value` 스페이스 구분 (로그 파싱/grep 쉽게)
 3. 사용자 질문 전문은 로그에 남기지 않음(최대 50자) — 개인정보·비용 고려
 4. **API 키, 비밀번호, 세션 토큰은 어떤 로그에도 출력 금지**
@@ -160,7 +163,9 @@ develop  →  (배포 시점) PR  →  main  →  배포
 ## 📸 스크린샷 (UI 변경 시 필수)
 
 ## ✅ 셀프 체크리스트
-- [ ] ruff/black 통과
+- [ ] `ruff check app tests` 통과 (black은 저장소 기저 미적용 — 신규 파일만 맞출 것)
+- [ ] **`git merge develop` 후 삭제된 라인이 없는지 diff로 확인** — 같은 파일을 만나는 PR이
+      먼저 들어오면 3-way가 덮어쓴다 (#43이 #29 Enter 가드를 지운 사고, #60)
 - [ ] 민감정보 없음 (.env, 키, 토큰 미포함)
 - [ ] 새 로그 이벤트 사용 시 로그 컨벤션 문서에 등록
 - [ ] API 변경 시 API 명세 문서 업데이트
