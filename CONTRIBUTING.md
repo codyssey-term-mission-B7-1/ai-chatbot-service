@@ -83,7 +83,7 @@ chat_logs(id, user_id FK, question, answer, latency_ms, status, created_at)
 POST /api/auth/signup     회원가입
 POST /api/auth/login      로그인
 POST /api/auth/logout     로그아웃
-GET  /api/me             내 정보 (인증 필요)
+GET  /api/auth/me        내 정보 (인증 필요)
 POST /api/chat            질문 → AI 응답 (인증 필요)
 GET  /api/me/chats        내 대화 로그 조회 (인증 필요)
 GET  /health              헬스체크 (인증 불필요)

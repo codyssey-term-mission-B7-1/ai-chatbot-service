@@ -4,7 +4,7 @@
 .mode column
 .headers on
 
-PRINT '── 최근 대화 로그 20건 ──';
+.print '── 최근 대화 로그 20건 ──'
 SELECT id,
        user_id,
        status,
@@ -16,7 +16,7 @@ FROM chat_logs
 ORDER BY id DESC
 LIMIT 20;
 
-PRINT '── 사용자별 대화 통계 ──';
+.print '── 사용자별 대화 통계 ──'
 SELECT u.id,
        u.email,
        u.nickname,
@@ -27,7 +27,7 @@ LEFT JOIN chat_logs c ON c.user_id = u.id
 GROUP BY u.id
 ORDER BY total_chats DESC;
 
-PRINT '── 특정 사용자 추적 예시 (user_id=1) ──';
+.print '── 특정 사용자 추적 예시 (user_id=1) ──'
 SELECT id, question, answer, created_at
 FROM chat_logs
 WHERE user_id = 1
