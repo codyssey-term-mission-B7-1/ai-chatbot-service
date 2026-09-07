@@ -83,7 +83,7 @@ chat_logs(id, user_id FK, question, answer, latency_ms, status, created_at)
 POST /api/auth/signup     회원가입
 POST /api/auth/login      로그인
 POST /api/auth/logout     로그아웃
-GET  /api/me             내 정보 (인증 필요)
+GET  /api/auth/me        내 정보 (인증 필요)
 POST /api/chat            질문 → AI 응답 (인증 필요)
 GET  /api/me/chats        내 대화 로그 조회 (인증 필요)
 GET  /health              헬스체크 (인증 불필요)
@@ -94,7 +94,7 @@ GET  /health              헬스체크 (인증 불필요)
 ```
 AI_API_KEY=          # AI 제공사 API 키
 AI_MODEL=            # 모델명
-AI_TIMEOUT_SEC=10    # AI 호출 타임아웃(초)
+AI_TIMEOUT_SEC=45    # AI 호출 타임아웃(초)
 AI_MAX_RETRIES=1     # 재시도 횟수
 CONTEXT_TURNS=5      # 컨텍스트로 넘길 직전 Q/A 개수
 SESSION_SECRET=      # 세션/JWT 서명 키
@@ -102,6 +102,8 @@ DATABASE_URL=sqlite:///./app.db
 ```
 
 ## 1.5 로그 컨벤션
+
+> 범위 확인: 아래는 문서에 등록된 표준 이벤트 목록이다. 코드에서 사용하지만 아직 이 목록에 없는 이름은 `ai_retry`, `request_finished`, `user_login`, `user_signup`이다. 표준 목록에 포함할지 여부는 팀 확인이 필요하며, 여기서는 정책을 임의로 변경하지 않는다.
 
 표준 이벤트 이름은 **고정된 snake_case 세트**를 사용한다 (채점 증빙 자료).
 
@@ -112,10 +114,12 @@ INFO  event=ai_call_success request_id=abc123 latency_ms=1240
 ERROR event=ai_call_fail request_id=abc123 reason=timeout latency_ms=10000
 INFO  event=db_save_success user_id=12 chat_id=987
 ERROR event=db_save_fail user_id=12 reason=<exception 요약>
+ERROR event=unhandled_error path=/api/chat error=ValueError   ← 전역 핸들러(예상 못한 예외)
+WARNING event=auth_stale_session user_id=4   ← stale 세션 파기 (DB 재생성 후 id 재할당 방어)
 ```
 
 규칙:
-1. `event=` 은 위 6종만 사용 (새 이벤트 추가 시 이 문서에 먼저 등록)
+1. `event=` 은 위 8종만 사용 (새 이벤트 추가 시 이 문서에 먼저 등록)
 2. 키=값 쌍은 `key=value` 스페이스 구분 (로그 파싱/grep 쉽게)
 3. 로그의 질문 내용은 앞 50자까지 기록한다. 짧은 질문은 전체가 남을 수 있으며, 길이 제한은 민감정보 제거를 보장하지 않는다
 4. **API 키, 비밀번호, 세션 토큰은 어떤 로그에도 출력 금지**
@@ -187,7 +191,7 @@ develop  →  (배포 시점) PR  →  main  →  배포
 | 방식 | 사용 여부 | 이유 |
 |------|-----------|------|
 | **Merge commit** | ✅ 기본 사용 | 개별 커밋 전부 보존 + 머지 흔적 남음 |
-| Rebase and merge | ✅ 허용 | 커밋 보존, 히스토리 선형 |
+| Rebase and merge | ❌ 현재 main/develop에서 사용하지 않음 | 저장소 룰셋은 Merge commit만 허용 |
 | **Squash and merge** | ❌ 금지 | 여러 커밋이 1개로 합쳐져 커밋 수 증빙 손해 |
 
 **브랜치 보호 설정** (저장소 Settings → Branches):
@@ -376,8 +380,8 @@ from app.services.context import build_context
 def test_context_returns_only_last_n_pairs():
     history = [(f"q{i}", f"a{i}") for i in range(1, 11)]  # 10개
     ctx = build_context(history, n=3)
-    assert len(ctx) == 3
-    assert ctx[0] == ("q8", "a8")   # 최신 3개만, 오래된 순서 유지
+    assert len(ctx) == 6  # 질문·응답 3쌍 = 과거 문맥 메시지 6개
+    assert ctx[0] == {"role": "user", "content": "q8"}  # 최신 3쌍, 오래된 순서 유지
 
 
 def test_context_with_empty_history_returns_empty():
