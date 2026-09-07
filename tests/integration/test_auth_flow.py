@@ -54,3 +54,21 @@ def test_signup_validation_short_password_422(client):
 
 def test_me_requires_login(client):
     assert client.get("/api/auth/me").status_code == 401
+
+
+def test_stale_session_after_reseed_returns_401(client, db):
+    """DB 재생성 후 stale 쿠키가 다른 계정으로 해석되지 않음 (#33)."""
+    from app.models import User
+    from app.services.security import hash_password
+
+    signup_and_login(client, email="test@test.com")
+    assert client.get("/api/auth/me").json()["email"] == "test@test.com"
+
+    # DB 재생성: 전부 삭제 후 admin이 test의 옛 id(1)를 차지
+    db.query(User).delete()
+    db.add(User(email="admin@demo.com", password_hash=hash_password("x"), nickname="운영자"))
+    db.commit()
+
+    # stale 쿠키 → 401 + 세션 파기 (admin으로 오인 금지)
+    assert client.get("/api/auth/me").status_code == 401
+    assert client.get("/", follow_redirects=False).status_code == 302
