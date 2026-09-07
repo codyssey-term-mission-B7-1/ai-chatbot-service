@@ -72,3 +72,45 @@ def test_my_chats_isolated_per_user(client, fake_ai):
 
     logs = client.get("/api/me/chats").json()
     assert [log["question"] for log in logs] == ["2번 사용자 질문"]  # 마지막 로그인 사용자 것만
+
+
+def test_context_drops_oldest_beyond_limit(client, fake_ai):
+    """컨텍스트 초과 시 오래된 턴부터 제거 — 직전 5개만 전달 (#7)."""
+    signup_and_login(client)
+    for i in range(1, 8):
+        client.post("/api/chat", json={"question": f"ctx-q{i}"})
+    sent = [m["content"] for m in fake_ai.last_messages]
+    assert "ctx-q1" not in sent  # 7번째 호출의 컨텍스트(Q2..Q6)에서 탈락
+    assert "ctx-q6" in sent
+    assert "ctx-q7" in sent  # 현재 질문
+
+
+def test_ai_error_returns_502_and_logs_failure(client, fake_ai):
+    """AI 실패 매핑 — 502 + AI_ERROR + 실패 로그 + 서버 생존 (#7)."""
+    from app.services.ai_client import AIError
+
+    fake_ai.error = AIError("boom")
+    signup_and_login(client)
+
+    r = client.post("/api/chat", json={"question": "실패 질문"})
+    assert r.status_code == 502
+    assert "AI_ERROR" in r.json()["detail"]
+
+    logs = client.get("/api/me/chats").json()
+    assert len(logs) == 1 and logs[0]["status"] == "ai_error"
+    assert client.get("/health").status_code == 200
+
+
+def test_db_save_failure_still_returns_answer(client, fake_ai, monkeypatch):
+    """DB 저장 실패해도 응답은 반환 — chat_id=-1 폴백 (#7)."""
+    import sqlalchemy.orm.session as sa_session
+
+    signup_and_login(client)
+
+    def _boom(self):
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(sa_session.Session, "commit", _boom)
+    r = client.post("/api/chat", json={"question": "저장 실패해도 응답?"})
+    assert r.status_code == 200
+    assert r.json()["chat_id"] == -1
