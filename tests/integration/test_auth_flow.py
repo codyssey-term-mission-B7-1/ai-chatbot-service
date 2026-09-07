@@ -1,4 +1,17 @@
 """통합 테스트 — 회원가입/로그인/접근 제어."""
+from tests.conftest import signup_and_login
+
+
+def test_session_loss_blocks_protected_api(client):
+    """세션 쿠키 소실/만료 시 보호 API 접근 차단 — 접근 제어 회귀 방지."""
+    signup_and_login(client)
+    assert client.get("/api/auth/me").status_code == 200
+
+    client.cookies.clear()  # 세션 끊김(만료·브라우저 초기화) 시뮬레이션
+
+    assert client.get("/api/auth/me").status_code == 401
+    assert client.post("/api/chat", json={"question": "안녕"}).status_code == 401
+    assert client.get("/api/me/chats").status_code == 401
 
 
 def test_signup_login_me_logout_flow(client):
