@@ -20,6 +20,11 @@ class SignupIn(BaseModel):
         ]
     }}
 
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, v):
+        return v.strip().lower() if isinstance(v, str) else v
+
     @field_validator("nickname")
     @classmethod
     def default_nickname(cls, v: str, info) -> str:
@@ -29,6 +34,11 @@ class SignupIn(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, v):
+        return v.strip().lower() if isinstance(v, str) else v
 
 
 class UserOut(BaseModel):
