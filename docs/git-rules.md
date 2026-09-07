@@ -60,6 +60,23 @@ $ gh api repos/codyssey-term-mission-B7-1/ai-chatbot-service \
 - 필요 권한: `admin` (현재 담당자 이종석은 `maintain`)
 - **@giyeop-cody 에게 요청** — Settings → General → Pull Requests → `Allow squash merging` 해제
 
+## 3-1. 작업 브랜치 보존 정책 (증빙 보조)
+
+머지된 `feature/*` 브랜치를 **삭제하지 않고 남긴다.** 저장소 설정도 이미 자동 삭제가 꺼져 있다.
+
+```bash
+$ gh api repos/codyssey-term-mission-B7-1/ai-chatbot-service --jq '.delete_branch_on_merge'
+false
+```
+
+기능 단위 작업 브랜치의 흔적(PDF 7절 요구사항)이 그대로 남고,
+머지 방식에 문제가 생기더라도 각 브랜치에 원본 커밋이 보존된다.
+
+> **단, 이것이 커밋 수 증빙을 대체하지는 않는다.**
+> `git shortlog origin/develop`과 GitHub Contributors 통계는 기본 브랜치 기준으로 집계하므로,
+> 커밋이 합쳐지면 브랜치가 남아 있어도 수치에는 잡히지 않는다.
+> 커밋 수 요구사항은 **Squash 금지(위 3절) + 주간 감사(`docs/commit-audit.md`)** 로 관리한다.
+
 ## 4. 민감정보 차단 검증
 
 ```bash
