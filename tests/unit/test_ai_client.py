@@ -88,7 +88,7 @@ def test_retry_then_success_returns_content(monkeypatch):
             pass
 
         def json(self):
-            return {"choices": [{"message": {"content": "재시도 성공"}}]}}
+            return {"choices": [{"message": {"content": "재시도 성공"}}]}
 
     async def flaky_post(self, *args, **kwargs):
         calls.append(1)
