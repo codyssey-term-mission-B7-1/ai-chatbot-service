@@ -47,6 +47,7 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않아요.")
 
     request.session["user_id"] = user.id  # 세션 쿠키 발급
+    request.session["email"] = user.email  # 세션-계정 바인딩 (stale 쿠키 오인 방지, #33)
     log_event(logger, "user_login", user_id=user.id)
     return UserOut(email=user.email, nickname=user.nickname)
 
