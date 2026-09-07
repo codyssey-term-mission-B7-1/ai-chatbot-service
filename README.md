@@ -152,7 +152,7 @@ AI_MODEL=(네이토 모델명)
 
 ## 6. 운영 — 로그 이벤트 / 오류 처리 / 입력 검증
 
-**로그 6종** (`event=` 으로 grep):
+**로그 이벤트 11종 중 핵심 6종** (`event=` 으로 grep) — 전체 목록과 규칙은 [CONTRIBUTING §1.5](CONTRIBUTING.md#15-로그-컨벤션)
 ```
 request_received  user_id=12 path=/api/chat        # 요청 수신 (미들웨어)
 ai_call_start     user_id=12 request_id=abc123     # AI 호출 시작
@@ -161,6 +161,12 @@ ai_call_fail      request_id=abc123 reason=timeout # 타임아웃/실패 (ERROR 
 db_save_success   user_id=12 chat_id=987           # DB 저장 성공/실패
 db_save_fail      user_id=12 reason=db_exception
 ```
+
+> **나머지 5종**: `request_finished`(요청 종료) · `unhandled_error`(전역 예외 핸들러가 `logger.exception`으로 남김) ·
+> `auth_stale_session`(stale 세션 파기) · `user_signup` · `user_login` — 등록 규칙과 출력 금지 항목은 CONTRIBUTING §1.5
+>
+> 실측 재현: `git grep -hoE 'log_event\([a-z_]+, *"[a-z_]+"' app | sed 's/.*"\(.*\)"/\1/' | sort -u` → 10종,
+> 여기에 `unhandled_error`(main.py 전역 핸들러) 1종을 더해 **총 11종**
 
 **오류 처리**: AI 타임아웃 → 504 `AI_TIMEOUT` 안내 / AI 오류 → 502 `AI_ERROR` / 미처리 예외 → 전역 핸들러가 500 안내 (서버 비정상 종료 없음) — `tests/integration/test_chat_flow.py::test_timeout_returns_504_and_server_survives`로 검증
 
