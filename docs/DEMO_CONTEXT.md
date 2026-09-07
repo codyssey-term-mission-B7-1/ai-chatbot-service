@@ -14,6 +14,8 @@
 
 ## 2. 재현 방법
 
+> 현재 코드로 재현할 때는 README §5의 로컬 설정을 먼저 적용하세요(.env.example 복사, DEBUG=true). 아래 실행일·출력·실험 설정값은 당시 기록입니다.
+
 ```bash
 # 1) 목업 AI 서버 (실제 키 없이 검증 — 네이토 OpenAI 호환 시뮬레이터)
 python scripts/mock_openai_server.py          # :8001
