@@ -81,7 +81,8 @@ curl -b cj.txt $DEPLOY_URL/api/me/chats | grep -o "영속화_probe"
 | 증상 | 원인 → 조치 |
 |---|---|
 | `unable to open database file` | 볼륨 미마운트 → `/data` 마운트 + `DATABASE_URL` 확인 |
-| 배포마다 데이터 초기화 | Volume 없이 배포 중 → 2-1手順 3번 확인 (ephemeral disk) |
+| 배포마다 데이터 초기화 | Volume 없이 배포 중 → 2-1 절차 3번 확인 (ephemeral disk) |
+| 로그인 후에도 계속 비로그인 상태 | 배포 URL이 `http://` 면 `Secure` 쿠키가 전송되지 않음 → `https://` 도메인만 사용 (임시 우회 `.env`의 `DEBUG=true`, 운영 금지 · #55) |
 | CD가 Secrets 검증에서 실패 | 필수 3종(RAILWAY_TOKEN·DEPLOY_URL·SESSION_SECRET) 등록 여부 확인 |
 | 헬스체크 5분 실패 | 빌드 로그(railway.json startCommand·`$PORT`) 확인 |
 | 데모 응답만 반환 | `AI_API_KEY` 미설정 → Secrets 등록 후 재배포 (변수만 바뀌면 Actions 수동 실행) |
