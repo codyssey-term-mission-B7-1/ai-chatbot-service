@@ -1,7 +1,7 @@
 # 🤖 AI Chatbot Service
 
 웹 기반 AI 챗봇 서비스 — FastAPI + SQLite. 로그인한 사용자의 질문을 AI API로 전달해 응답하고,
-모든 대화를 DB에 저장해 사용자별로 추적할 수 있습니다.
+모든 대화를 DB에 저장해 사용자별로 추적할 수 있습니다. *(코디세이 B7-1 과제)*
 
 [![CI](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/ci.yml/badge.svg)](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/ci.yml)
 [![CD](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/cd.yml/badge.svg)](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/cd.yml)
