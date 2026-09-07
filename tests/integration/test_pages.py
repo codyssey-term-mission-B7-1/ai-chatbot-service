@@ -27,3 +27,14 @@ def test_templates_render_conditional_branches(client, fake_ai):
     client.post("/api/chat", json={"question": "실패 질문"})
 
     assert "row-error" in client.get("/logs").text          # status == 'ai_error'
+
+
+def test_empty_ai_api_key_is_reported_as_demo_mode(client, monkeypatch):
+    """`AI_API_KEY=`(빈 문자열)는 .env.example 기본값 — Fake 응답인데 '실연결'로 보이면 안 된다."""
+    from app.config import settings
+    from tests.conftest import signup_and_login
+
+    monkeypatch.setattr(settings, "ai_api_key", "")
+    assert client.get("/health").json()["ai_mode"] == "demo"
+    signup_and_login(client)
+    assert "데모 모드" in client.get("/").text
