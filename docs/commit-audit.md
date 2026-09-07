@@ -90,18 +90,18 @@ M3 제출 2026-09-28까지 **3주**. 미달자(loader1017)는 **주당 3~4커밋
 
 ```bash
 git log --no-merges --format='%ae' origin/develop | sort | uniq -c   # 이메일 단위
-# giyeop-cody = cody.giyeop@gmail.com(23) + noreply(14) = 37
+# giyeop-cody = cody.giyeop@gmail.com(24) + noreply(14) = 38
 ```
 
 | 팀원 | 작업 커밋 | 머지한 PR | 목표 10회까지 | 상태 |
 |---|---:|---:|---:|---|
-| giyeop-cody | **37** | 12 | — | ✅ |
+| giyeop-cody | **38** | 13 | — | ✅ |
 | Im-Jongseok | **18** | 4 | — | ✅ |
 | loader1017 | **1** | 1 (#43) | **9** | ❌ |
 | ygyg | 0 | 0 | 10 | ❌ (미참여) |
 
-- develop 총 커밋 76 / 머지된 PR 17건 (`merged_at` 기준).
+- develop 총 커밋 79 / 머지된 PR 18건 (`merged_at` 기준). 기준 커밋 `dafa1d7`(PR #61 머지 결과).
 - loader1017: 1주차 0건 → PR #43(#6) 머지로 1건. **전 브랜치(25개)를 search 해도 추가 기여가 1건뿐**이라
   남은 9건은 새로 만들어야 한다. 담당 카드 09·10·11 + 이슈 #18을 이번 주 착수 목표로 지정 (#45).
 - PR #43 머지로 **#29 Enter 전송·IME 가드가 develop에서 소멸**하는 회귀가 발생했다 (JS 테스트가 없어 CI가 못 잡았다)
-  → 복구 PR #61 오픈, 재발 방지 항목을 PR 체크리스트에 추가 (CONTRIBUTING §2.2 · #60).
+  → 복구 PR **#61 머지 완료**(`dafa1d7`), 재발 방지 항목을 PR 템플릿·CONTRIBUTING §2.2에 추가 (#60).

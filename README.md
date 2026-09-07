@@ -226,14 +226,15 @@ curl -b cookies.txt https://SERVER/api/me/chats
 
 ### 팀 구성원 역할 및 개인별 작업 요약
 
-> 2026-09-08 기준, `origin/develop`(`4bb7189`) 실측. 재현: `git shortlog -sne --no-merges origin/develop` (집계 규칙은 [docs/commit-audit.md](docs/commit-audit.md))
+> 2026-09-08 기준, `origin/develop`(`dafa1d7`) 실측. 재현: `git shortlog -sne --no-merges origin/develop` (집계 규칙은 [docs/commit-audit.md](docs/commit-audit.md))
 
 | 구성원 | 역할 (담당 카드) | develop 작업 커밋 | 머지한 PR | 대표 작업 |
 |---|---|---:|---:|---|
-| **giyeop-cody** | PM · 서버 코어 — 카드 01·03·04·05 | **37** | 12 | 초기 스켈레톤(#15), 인증 마무리·이메일 정규화(#37), 세션-계정 바인딩(#34), 접근 제어 매트릭스(#19), Railway CD(#36), Enter 전송(#30), AI 타임아웃 45초(#42), 운영 정책 3종(#20) |
+| **giyeop-cody** | PM · 서버 코어 — 카드 01·03·04·05 | **38** | 13 | 초기 스켈레톤(#15), 인증 마무리·이메일 정규화(#37), 세션-계정 바인딩(#34), 접근 제어 매트릭스(#19), Railway CD(#36), Enter 전송(#30), AI 타임아웃 45초(#42), 운영 정책 3종(#20) |
 | **Im-Jongseok** | 문서 · QA — 카드 02·07·08 | **18** | 4 | README ERD·`check_logs.sql` 수정(#21), 문맥 유지 실험·시연(#22), 형상관리/커밋 감사 증빙(#23), HTML 500 수정(#24) |
 | **loader1017** | 프론트 — 카드 06·09·10·11 | **1** | 1 | `chat.js` 채팅 UI 개선 + 네이토 연동 시도(#43, 9/8 머지). **10회 요구에 9회 미달** → 역할 카드 09·10·11과 공지 이슈 #18의 작업 후보를 참고해 진행 중 ([#45](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/issues/45)) |
 | ygyg | (미참여) | 0 | 0 | 카드 미배정 · 저장소 초대한정 상태 |
 
+- **#61 머지 완료**(`dafa1d7`): PR #43으로 소멸했던 Enter 전송·IME 가드를 복구 (#60)
 - PR의 실시간 승인·병합 상태는 GitHub Pull requests 목록을 확인하세요. 위 표는 명시된 기준 커밋의 스냅샷입니다.
 - 위 숫자는 문서가 아니라 Git에서 계산됩니다. 제출 직전 `docs/commit-audit.md`의 최신 주차 표를 보세요.
