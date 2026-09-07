@@ -73,8 +73,28 @@ curl -X POST https://SERVER/api/chat -H 'Content-Type: application/json' \
 
 ## 4. DB 구조 (ERD)
 
-```
-users 1 ──── N chat_logs
+```mermaid
+erDiagram
+    users ||--o{ chat_logs : "1 : N"
+
+    users {
+        int      id PK
+        string   email UK "로그인 ID"
+        string   password_hash "bcrypt 해시"
+        string   nickname
+        datetime created_at "UTC"
+    }
+
+    chat_logs {
+        int      id PK
+        int      user_id FK "누가 질문했는지"
+        text     question "사용자 질문"
+        text     answer "AI 응답 (실패 시 빈 문자열)"
+        int      latency_ms "AI 응답 소요 시간"
+        string   status "success | ai_error"
+        string   request_id "로그 이벤트 추적 키"
+        datetime created_at "UTC · 언제 질문했는지"
+    }
 ```
 
 | 테이블 | 필드 | 설명 |
@@ -82,7 +102,10 @@ users 1 ──── N chat_logs
 | `users` | id (PK), email (UNIQUE), password_hash, nickname, created_at | 계정 |
 | `chat_logs` | id (PK), **user_id (FK)**, question, answer, latency_ms, status, request_id, **created_at** | 대화 로그 — 최소 추적 필드(사용자 식별/시각/질문/응답) 포함 |
 
-`status`: `success` | `ai_error` (타임아웃 등 실패도 추적 대상으로 기록)
+- `status`: `success` | `ai_error` (타임아웃 등 실패도 추적 대상으로 기록)
+- 시각 필드는 모두 **UTC** (`created_at`)
+- 인덱스: `chat_logs.user_id`, `chat_logs.created_at` — 사용자별 조회(`GET /api/me/chats`)와 시각순 정렬용
+- 사용자 삭제 시 대화 로그도 함께 삭제 (`cascade="all, delete-orphan"`)
 
 ## 5. 실행 방법
 
