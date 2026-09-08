@@ -83,6 +83,8 @@ Cookie: session=<실제 요청에서만 사용, 증빙에서는 마스킹>
 - 키 없음 → Fake 데모 선택. 실 AI 실패를 Fake 성공으로 바꾸는 폴백은 없다.
 - `status=success`는 AI 응답 성공만 의미한다. DB 실패는 `chat_id=-1`이며 기록이 남지 않을 수 있다.
 
+사용자별로 `CHAT_RATE_PER_MIN`회(기본 10)/분을 초과하면 429 + `Retry-After`로 거부되며 이때 AI 호출·DB 저장은 일어나지 않는다. `CHAT_RATE_PER_MIN=0`이면 제한이 비활성화된다.
+
 ## 본인 기록
 
 `GET /api/me/chats?limit=50&status=success&before_id=100`

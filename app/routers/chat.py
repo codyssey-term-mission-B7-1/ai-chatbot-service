@@ -17,6 +17,7 @@ from app.repositories import chat_logs
 from app.schemas import ChatOut, ChatRequest
 from app.services.ai_client import AIError, AIProvider, AITimeoutError, get_ai_provider
 from app.services.context import SYSTEM_PROMPT, build_context
+from app.services.rate_limit import chat_limiter
 
 logger = logging.getLogger("app.chat")
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -74,6 +75,7 @@ def _save_log(
     responses={
         401: {"description": "로그인 필요"},
         422: {"description": "공백 또는 설정된 질문 길이 상한 초과"},
+        429: {"description": "사용자별 분당 요청 상한 초과. Retry-After 헤더 참고"},
         502: {"description": "AI_ERROR: AI 호출/응답 형식 오류"},
         504: {"description": "AI_TIMEOUT: AI 호출 전체 시간 예산 초과"},
     },
@@ -86,9 +88,28 @@ async def chat(
     ai: AIProvider = Depends(get_ai_provider),
 ):
     request_id = request.state.request_id
+    # 비용 남용 방어(#73): 사용자별 분당 상한 — 제한되면 AI를 호출하지 않고 429로 안내한다.
+    retry_after = chat_limiter.try_acquire(f"user:{user.id}")
+    if retry_after > 0:
+        log_event(
+            logger,
+            "chat_rate_limited",
+            user_id=user.id,
+            retry_after_sec=retry_after,
+            level=logging.WARNING,
+        )
+        raise HTTPException(
+            status_code=429,
+            detail="요청이 너무 잦아요. 잠시 후 다시 시도해 주세요. (error: RATE_LIMITED)",
+            headers={"Retry-After": str(retry_after)},
+        )
     history = chat_logs.successful_context(db, user.id, settings.context_turns)
+    context_pairs = [(row.question, row.answer) for row in history]
+    # 문맥 조회 트랜잭션을 여기서 닫아 AI 호출(최대 AI_TIMEOUT_SEC) 동안 커넥션을 풀에
+    # 반납한다(#73). 조회 결과는 이미 메모리로 뽑았고 저장은 별도 커밋으로 수행한다.
+    db.commit()
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    messages += build_context([(h.question, h.answer) for h in history], settings.context_turns)
+    messages += build_context(context_pairs, settings.context_turns)
     messages.append({"role": "user", "content": body.question})
     log_event(
         logger,
