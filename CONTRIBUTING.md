@@ -1,528 +1,76 @@
-# 팀 워킹 규칙 — 컨벤션 · PR 규정 · 테스트 전략
+# 팀 개발·PR·검증 규칙
 
-> 웹 기반 AI 챗봇 서비스 (FastAPI + SQLite, 4인 팀) 공통 규칙
-> 이 문서는 저장소에 `CONTRIBUTING.md`로 넣고, 위반 시 PR 리뷰에서 반려하는 기준으로 사용한다.
+현재 구현과 일치하는 명령·파일을 사용한다. 개념 예제만으로 구현/운영이 완료됐다고 주장하지 않는다.
 
----
+## 역할과 기여
 
-# 1. 컨벤션
+역할 배정은 README의 현재 표와 이슈 assignee, CODEOWNERS를 기준으로 한다. 실제 작성자·커미터는 사실대로 기록한다. 공용 Git 설정 오류의 정정은 SHA별 실제 작업자 확인이 필요하다.
 
-## 1.1 브랜치 네이밍
+과제의 개인별 유의미한 커밋/PR 요구는 실제 작업과 검증으로 확인한다. 이름 재배정·의미 없는 커밋 분할·가짜 리뷰로 대체하지 않는다. 현재 역할 수 4/3/4/2가 “각자 3개” 기준을 충족하는지는 팀/원문 요구 확인이 필요하며 자동 재배정하지 않는다.
 
-```
-main          ← 배포용. 직접 push 금지 (PR로만 병합)
-develop       ← 통합 브랜치. 기능 완성 PR은 여기로
-feature/*     ← 기능 개발
-fix/*         ← 버그 수정
-docs/*        ← 문서 작업
-chore/*       ← 환경설정, 의존성 등
-hotfix/*      ← main 긴급 수정 (드물게 사용)
-```
+## 브랜치·커밋
 
-**브랜치 이름 규칙**: `종류/#이슈번호-짧은설명` (kebab-case)
+- `main ← develop ← feature/#이슈번호-설명`
+- `feature/`, `fix/`, `docs/`, `chore/`를 목적에 맞게 사용한다.
+- 예: `fix/#27-history-context`, `docs/#13-evidence-index`
+- 커밋: `type(scope): 설명 (#이슈번호)`. 실제로 무엇을 왜 바꿨는지 적는다.
+- 작업 한 단위씩 커밋한다. 서로 다른 기능을 점수용으로 섞거나 임의로 분할하지 않는다.
+- 비밀번호·API 키·쿠키·.env 실제 값을 커밋/PR/로그에 넣지 않는다.
 
-| 좋은 예 | 나쁜 예 |
-|---|---|
-| `feature/#4-signup-api` | `feature` (내용 없음) |
-| `fix/ai-timeout-504` | `jimin-work` (사람 이름) |
-| `docs/api-specs` | `test123` |
+## PR·병합
 
-## 1.2 커밋 컨벤션 (Conventional Commits)
+- 통상 `develop` 대상 PR → 작성자 외 리뷰어 확인 → 병합. 배포는 develop→main PR.
+- Merge commit을 사용한다. 현재 main/develop 룰셋은 Merge commit만 허용한다. Squash/Rebase 허용으로 문서화하지 않는다.
+- 본문에 작업·테스트·영향 범위·환경·화면 증빙을 적는다. 400줄 내외가 권장이나 통합 수정이 크면 논리별 커밋과 검토 순서를 명시한다.
+- 리뷰가 없다고 임의로 승인한 것으로 처리하지 않는다. 대체 리뷰어 지정/긴급 예외는 담당자가 명시적으로 승인하고 기록한다.
+- 관리자 예외가 필요한 긴급 복구·이력 정리는 사전 승인·원본 백업·정확한 SHA 검증·즉시 보호 복구가 필요하다. 무흔적 변경을 보장하지 않는다.
+- `Closes #N`은 기본 브랜치 대상 병합 등 GitHub 조건을 만족할 때 자동 종료된다. develop PR에서 종료를 추정하지 않는다.
+- 이슈는 완료 조건을 실제로 검증한 후 닫는다. 운영/실 AI/개인 기여가 남아 있으면 구현 완료 부분과 외부 차단 사유를 구분한다.
 
-**형식**: `type(scope): 제목 (#이슈번호)`
-
-| type | 용도 | 예시 |
-|------|------|------|
-| `feat` | 기능 추가 | `feat(auth): 회원가입 API 추가 (#4)` |
-| `fix` | 버그 수정 | `fix(ai): 타임아웃 시 504 대신 500 나오던 버그 수정` |
-| `docs` | 문서 | `docs: README에 환경변수 설정 방법 추가` |
-| `test` | 테스트 | `test(chat): 타임아웃 통합 테스트 추가` |
-| `refactor` | 동작 unchanged 리팩터링 | `refactor(db): 세션 처리를 의존성 주입으로 변경` |
-| `style` | 포맷/스타일 | `style: black 재적용` |
-| `chore` | 설정, 의존성 | `chore: ruff 설정 추가` |
-
-**규칙**
-1. 제목은 50자 이내, 마침표 없음, 현재형 동사로 끝냄 (추가/수정/삭제)
-2. **1 커밋 = 1 논리 단위** — 회원가입 API와 CSS 수정을 한 커밋에 섞지 않는다
-3. 커밋 메시지에 **API 키, 비밀번호, .env 내용 절대 금지**
-4. 본문 필요 시 제목 한 줄 띄우고 상세 설명 (무엇을/왜)
-5. 과제 채점 기준이 "팀원별 유의미한 커밋 10회+"이므로, **하루 작업을 2~3개 논리 단위로 쪼개 커밋**한다 (`작업 끝날 때 한 방 커밋` 금지)
-
-```
-나쁜 예: ㅇㅋ / 수정 / final / update2
-좋은 예: feat(chat): 문맥 유지 위해 직전 5개 Q/A를 프롬프트에 포함 (#7)
-```
-
-## 1.3 코드 스타일 (Python)
-
-| 항목 | 규칙 |
-|------|------|
-| 포매터 | **Black** (라인 100자), 임포트 정렬 **isort**, 린터 **ruff** — 린트 검사: `ruff check app tests` |
-| 타입 힌트 | 공개 함수/라우트 핸들러의 매개변수·반환 타입 필수 |
-| docstring | 공개 함수/클래스에 Google 스타일 한 줄 이상 |
-| 네이밍 | 함수·변수 `snake_case`, 클래스 `PascalCase`, 상수 `UPPER_SNAKE` |
-| 비동기 | AI API 호출이 있는 라우트는 `async def` + `httpx.AsyncClient` (동기 호출로 스레드 막힘 방지) |
-| 매직 넘버 금지 | 타임아웃, 컨텍스트 개수 등은 `app/config.py` 상수 or 환경변수로 |
-| 함수 길이 | 가이드 40줄 이내, 깊이 3단계 이내 (절대 기준 아님) |
-| 민감정보 | 코드에 키/비번 직접 작성 금지 — 반드시 `os.environ` / pydantic-settings |
-
-**프론트(HTML/JS/CSS)**: 파일명 kebab-case(`chat-page.js`), JS 변수 `camelCase`, 인덴트 2공백, `fetch` 호출은 `static/js/`로 분리(인라인 스크립트 최소화).
-
-## 1.4 네이밍 — DB / API / 환경변수
-
-**DB** — 테이블 복수형 snake_case, PK `id`, FK `테이블단수_id`, 시각 필드 `created_at`/`updated_at` (UTC)
-
-```sql
-users(id, email UNIQUE, password_hash, nickname, created_at)
-chat_logs(id, user_id FK, question, answer, latency_ms, status, created_at)
-```
-
-**API** — 리소스 기반 REST, 동사는 URL에 쓰지 않음
-
-```
-POST /api/auth/signup     회원가입
-POST /api/auth/login      로그인
-POST /api/auth/logout     로그아웃
-GET  /api/auth/me        내 정보 (인증 필요)
-POST /api/chat            질문 → AI 응답 (인증 필요)
-GET  /api/me/chats        내 대화 로그 조회 (인증 필요)
-GET  /health              헬스체크 (인증 불필요)
-```
-
-**환경변수** — UPPER_SNAKE, `.env.example`에는 이름·설명·안전한 기본값·자리표시자만 (실제 비밀값은 개인 `.env` 또는 환경변수)
-
-```
-AI_API_KEY=          # AI 제공사 API 키
-AI_MODEL=            # 모델명
-AI_TIMEOUT_SEC=45    # AI 호출 타임아웃(초)
-AI_MAX_RETRIES=1     # 재시도 횟수
-CONTEXT_TURNS=5      # 컨텍스트로 넘길 직전 Q/A 개수
-SESSION_SECRET=      # 세션/JWT 서명 키
-DATABASE_URL=sqlite:///./app.db
-```
-
-## 1.5 로그 컨벤션
-
-> 범위 확인: 아래는 문서에 등록된 표준 이벤트 목록이다. 코드에서 사용하지만 아직 이 목록에 없는 이름은 `ai_retry`이다. 표준 목록에 포함할지 여부는 팀 확인이 필요하며, 여기서는 정책을 임의로 변경하지 않는다.
-
-표준 이벤트 이름은 **고정된 snake_case 세트**를 사용한다 (채점 증빙 자료).
-
-```
-INFO  event=request_received user_id=12 path=/api/chat
-INFO  event=ai_call_start user_id=12 request_id=abc123
-INFO  event=ai_call_success request_id=abc123 latency_ms=1240
-ERROR event=ai_call_fail request_id=abc123 reason=timeout latency_ms=10000
-INFO  event=db_save_success user_id=12 chat_id=987
-ERROR event=db_save_fail user_id=12 reason=<exception 요약>
-ERROR event=unhandled_error path=/api/chat error=ValueError   ← 전역 핸들러(예상 못한 예외)
-WARNING event=auth_stale_session user_id=4   ← stale 세션 파기 (DB 재생성 후 id 재할당 방어)
-INFO  event=request_finished method=POST path=/api/chat status=200 latency_ms=1310  ← 요청 종료 (#48)
-INFO  event=user_signup user_id=7 email_domain=example.com                           ← 회원가입 (#48)
-INFO  event=user_login user_id=7                                                       ← 로그인 (#48)
-```
-
-규칙:
-1. `event=` 는 **위 11종만** 사용 (새 이벤트 추가 시 이 문서에 먼저 등록 — #48에서 3종 소급 등록)
-2. 키=값 쌍은 `key=value` 스페이스 구분 (로그 파싱/grep 쉽게)
-3. 로그의 질문 내용은 앞 50자까지 기록한다. 짧은 질문은 전체가 남을 수 있으며, 길이 제한은 민감정보 제거를 보장하지 않는다
-4. **API 키, 비밀번호, 세션 토큰은 어떤 로그에도 출력 금지**
-5. 에러는 `logger.exception()` 사용해 스택트레이스 확보
-
----
-
-# 2. PR 규정
-
-## 2.1 기본 흐름
-
-```
-feature/#N-xxx  →  PR  →  리뷰어 1명 승인  →  develop 에 merge
-develop  →  (배포 시점) PR  →  main  →  배포
-```
-
-- PR 크기 가이드: **변경 400줄 이내**. 넘치면 기능을 쪼개 여러 PR로
-- 1 PR = 1 이슈. PR 본문에 `Closes #N` 작성 (기본 브랜치 대상 PR 병합 시 자동 종료; develop 대상 PR은 별도 확인)
-- 모든 PR에는 작성자 외 **리뷰어 1명 필수** (같은 영역 아닌 사람 우선 → 교차 학습)
-- 리뷰 SLA: **다음 작업일 이내** 반영. 24시간 방치 시 DM 1회 후 임의 승인 가능
-
-## 2.2 PR 제목 & 템플릿
-
-**제목**: 커밋 컨벤션과 동일하게 `type(scope): 제목 (#이슈번호)`
-
-`.github/pull_request_template.md` (복사해서 사용):
-
-```markdown
-## 📌 작업 내용
-- (이슈 #N) 무엇을 왜 했는지 1~3줄
-
-## 🔍 변경 요약
-- 변경한 파일/함수 요약
-
-## 🧪 테스트 결과
-- [ ] 유닛 테스트 추가 & 통과 (`pytest tests/unit -k 관련키워드`)
-- [ ] 통합 테스트 통과 (`pytest tests/integration`)
-- [ ] 수동 확인 (방법 + 결과 요약)
-
-## 📸 스크린샷 (UI 변경 시 필수)
-
-## ✅ 셀프 체크리스트
-- [ ] `ruff check app tests` 통과 (black은 저장소 기저 미적용 — 신규 파일만 맞출 것)
-- [ ] **`git merge develop` 후 의도하지 않은 삭제·기능 회귀가 없는지 diff로 확인** — 의도한 삭제는 이유와 검증 결과를 적는다 (#43·#60)
-- [ ] 민감정보 없음 (.env, 키, 토큰 미포함)
-- [ ] 새 로그 이벤트 사용 시 로그 컨벤션 문서에 등록
-- [ ] API 변경 시 API 명세 문서 업데이트
-```
-
-## 2.3 리뷰 규칙
-
-**리뷰 코멘트 접두어** (리뷰이가 우선순위를 파악하게):
-
-| 접두어 | 의미 | 반영 |
-|--------|------|------|
-| `[MUST]` | 반드시 수정 (버그, 보안, 컨벤션 위반) | 머지 전 필수 |
-| `[SUG]` | 제안 (더 나은 방법) | 논의 후 선택 |
-| `[Q]` | 질문 | 답변 필수 |
-| `[NIT]` | 사소한 지적 (오타 등) | 선택 |
-
-- 리뷰어는 "코드가 틀렸다"가 아니라 **"이렇게 하면 어떤 상황에서 문제"** 로 이유를 적는다
-- `[MUST]` 반영 후 작성자가 `push` → 리뷰어 재확인 후 Approve
-- 컨플릭트는 **PR 작성자가** 해결
-- Approve 조건(리뷰어 체크): 요구사항 충족 / 테스트 있음 / 민감정보 없음 / 로그·네이밍 컨벤션 준수
-
-## 2.4 머지 전략 — ⚠️ Squash 금지
-
-> **과제 채점 기준이 "팀원별 커밋 10회 이상"이므로 커밋 히스토리를 반드시 보존해야 한다.**
-
-| 방식 | 사용 여부 | 이유 |
-|------|-----------|------|
-| **Merge commit** | ✅ 기본 사용 | 개별 커밋 전부 보존 + 머지 흔적 남음 |
-| Rebase and merge | ❌ 현재 main/develop에서 사용하지 않음 | 저장소 룰셋은 Merge commit만 허용 |
-| **Squash and merge** | ❌ 금지 | 여러 커밋이 1개로 합쳐져 커밋 수 증빙 손해 |
-
-**브랜치 보호 설정** (저장소 Settings → Branches):
-- `main`, `develop` 모두: ✅ "Require a pull request before merging" + "Require 1 approval" — 직접 push 차단
-- "Require status checks" (CI 도입 후): ruff + pytest 통과 시에만 머지
-
-## 2.5 라벨 & 역할 태그
-
-| 라벨 | 의미 |
-|------|------|
-| `be` / `fe` | 백엔드 / 프론트엔드 |
-| `auth` `ai` `db` `ui` `deploy` `docs` | 담당 영역 |
-| `bug` `enhancement` | 버그 / 개선 |
-| `blocked` | 막힘 — 즉시 스탠드업 공유 |
-
-주 1회(마일스톤 날) 각자 PR/커밋 수를 확인: **목표 = 인당 PR 1~2개/주, 커밋 2~3개/주.**
-
----
-
-# 3. 테스트 전략 — 유닛 테스트 & 풀(통합·E2E) 테스트
-
-## 3.1 3단계 구조와 도구
-
-| 레벨 | 대상 | 도구 | 시기 |
-|------|------|------|------|
-| **유닛** | 함수/클래스 단위 (검증, 해싱, 컨텍스트, AI 클라이언트) | pytest | 기능 구현과 동시에 |
-| **통합(풀)** | API 전체 흐름 (회원가입→로그인→채팅→로그조회, 접근제어, 타임아웃) | pytest + FastAPI TestClient + httpx | D7~D9 |
-| **E2E 스모크** | 배포된 실서버 대상 시나리오 | bash + curl 스크립트 | 배포 후 매일 + 평가 전 |
+## 코드 스타일·실제 검사 명령
 
 ```bash
-pip install pytest pytest-asyncio httpx pytest-cov ruff black isort
+pip install -r requirements-dev.txt
+ruff check app tests
+black --check app tests
+isort --check-only app tests
+pytest --cov=app --cov-report=term-missing
 ```
 
-**디렉터리 구조**
+- Black/isort의 프로필·100자 기준은 `pyproject.toml`, ruff는 `ruff.toml`을 따른다.
+- 필요한 경우 `black app tests`, `isort app tests`로 포맷한 뒤 위 검사를 다시 실행한다.
+- 라우트, 서비스, repositories, 모델, 스키마의 책임을 구분한다.
+- 외부 AI는 async HTTPX, DB 작업은 SQLAlchemy Session을 사용한다.
+- 프론트 fetch/검증 로직은 `static/js/`로 분리하고 사용자/AI 문자열은 textContent/Jinja 자동 이스케이프로 표시한다.
+- 새로운 설정·정책은 환경변수의 기본값·단위·허용 범위를 함께 명시한다.
 
-```
-tests/
-├── conftest.py            # 공용 fixture (DB, 클라이언트, Fake AI)
-├── unit/
-│   ├── test_schemas.py        # 입력 검증
-│   ├── test_auth.py           # 해싱, 토큰
-│   ├── test_ai_client.py      # 타임아웃/에러 매핑
-│   └── test_context.py        # 컨텍스트 빌더
-└── integration/
-    ├── test_auth_flow.py      # 가입/로그인/접근제어
-    └── test_chat_flow.py      # 채팅 파이프라인, 타임아웃, 로그 저장
-scripts/
-└── e2e_smoke.sh               # 실서버 풀 테스트
-```
+## 테스트 구조
 
-## 3.2 유닛 테스트
+- `tests/unit/`: 스키마·AI 정책·설정·문맥·로깅·백업·프론트 순수 함수
+- `tests/integration/`: 가입/로그인, 접근 제어, 대화/저장/조회, 관리자 권한, HTTP 시간 예산, HTML
+- 실제 테스트 파일 이름을 참고한다. 존재하지 않는 test_auth.py나 개념용 fixture를 복사해 쓰지 않는다.
+- 테스트 DB는 메모리/임시 파일만 사용한다. 외부 AI 키/운영 DB를 사용하지 않는다.
+- 타임아웃은 임의로 시간이 오래 걸렸다는 추측 대신, 제어된 루프백 서버와 실제 HTTPX로 검사한다.
+- 로컬 합성 테스트 결과를 운영 배포·실 AI 성공으로 제출하지 않는다.
 
-> 아래 코드는 설계 설명용 예시이며 현재 구현과 다를 수 있습니다. 그대로 복사해 실행하지 말고 `tests/conftest.py`와 `tests/unit/`의 실제 테스트를 기준으로 사용하세요.
+## 입력·로그·민감정보
 
-**원칙**
-1. **AI API 실호출 금지** — 의존성 주입으로 `FakeAIProvider` 갈아끼우거나 httpx mock 사용 (비용·속도·안정성)
-2. 테스트명: `test_{대상}_{조건}_{기대결과}` — 실패 시 무엇이 잘못됐는지 이름만으로 알 수 있게
-3. AAA 패턴 (Arrange 준비 → Act 실행 → Assert 확인)
-4. 해피케이스 + **실패 케이스 최소 1개**를 세트로 작성
-5. DB는 인메모리 SQLite로 격리, 테스트 간 영향 없게 fixture에서 생성/삭제
+- 문자 수=Unicode 코드 포인트. 비밀번호는 bcrypt 72 UTF-8 바이트 제약을 별도 적용한다.
+- 기본 질문 길이 1000은 설정으로 바꿀 수 있으나 프론트에도 같은 값을 전달한다.
+- 오류 응답은 `docs/API.md`의 상태/형식을 따른다. 검증 오류에 비밀번호·질문 원문을 되돌려 넣지 않는다.
+- 표준 로그는 `docs/LOGGING.md`의 13종. 새 이벤트를 추가할 때 등록·목적·필드·테스트를 함께 갱신한다.
+- 표준 이벤트는 stderr, 값은 필요한 경우 JSON 인용/이스케이프. 요청 원문 대신 길이·상태를 기록한다.
+- HTTP 수신 이벤트는 1회. 검증 전 session_user_id와 검증된 user_id를 구분한다.
+- DB/입력 값을 포함할 수 있는 예외 원문/SQL 파라미터는 공개 로그에 남기지 않는다.
 
-**필수 유닛 테스트 목록 (채점 대응)**
-
-| 모듈 | 테스트 | 대응 요구사항 |
-|------|--------|---------------|
-| schemas | 빈 질문/공백만 → ValidationError | 입력 검증 |
-| schemas | 1000자 초과 질문 → ValidationError | 입력 검증(길이 제한) |
-| auth | 비밀번호 해싱 후 검증 성공/실패 | 회원 인증 |
-| ai_client | TimeoutException → AI_TIMEOUT 에러 매핑 | 타임아웃 처리 |
-| ai_client | 4xx/5xx 응답 → AI_ERROR 매핑 | 예외 처리 |
-| context | 히스토리 10개 중 최근 N개만 선택 | 컨텍스트 전략 |
-| context | 히스토리 0개일 때도 정상 동작 | 컨텍스트 전략 |
-| db | chat_log 저장 성공 시 id 반환 | 로그 저장 |
-
-**예시 코드**
-
-```python
-# tests/conftest.py
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.main import app
-from app.database import Base, get_db
-from app.services.ai import get_ai_provider
-
-engine = create_engine(
-    "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-)
-TestingSession = sessionmaker(bind=engine)
-
-
-@pytest.fixture()
-def db():
-    Base.metadata.create_all(bind=engine)
-    session = TestingSession()
-    try:
-        yield session
-    finally:
-        session.close()
-        Base.metadata.drop_all(bind=engine)
-
-
-@pytest.fixture()
-def client(db):
-    app.dependency_overrides[get_db] = lambda: db
-    with TestClient(app) as c:
-        yield c
-    app.dependency_overrides.clear()
-
-
-class FakeAIProvider:
-    """AI API를 흉내내는 페이크 — 테스트에서 실호출을 대체"""
-    def __init__(self, reply="테스트 응답입니다."):
-        self.reply = reply
-        self.error = None
-
-    async def generate(self, messages, timeout):
-        if self.error:
-            raise self.error
-        return self.reply
-
-
-@pytest.fixture()
-def fake_ai():
-    provider = FakeAIProvider()
-    app.dependency_overrides[get_ai_provider] = lambda: provider
-    yield provider
-    app.dependency_overrides.pop(get_ai_provider, None)
-```
-
-```python
-# tests/unit/test_schemas.py
-import pytest
-from pydantic import ValidationError
-from app.schemas import ChatRequest
-
-
-def test_chat_request_empty_question_rejected():
-    # 빈 입력/공백만 있는 질문은 거부되어야 한다
-    with pytest.raises(ValidationError):
-        ChatRequest(question="   ")
-
-
-def test_chat_request_over_1000_chars_rejected():
-    with pytest.raises(ValidationError):
-        ChatRequest(question="가" * 1001)
-
-
-def test_chat_request_valid_question_accepted():
-    req = ChatRequest(question="배포 방법 알려줘")
-    assert req.question == "배포 방법 알려줘"
-```
-
-```python
-# tests/unit/test_ai_client.py
-import asyncio
-
-import httpx
-import pytest
-
-from app.services.ai_client import AIClient, AITimeoutError
-
-
-def test_ai_client_timeout_maps_to_custom_error(monkeypatch):
-    # httpx가 TimeoutException을 던지면 AITimeoutError로 변환되어야 한다
-    def raise_timeout(*args, **kwargs):
-        raise httpx.TimeoutException("timeout")
-
-    monkeypatch.setattr(httpx.AsyncClient, "post", raise_timeout)
-    client = AIClient(api_key="test-key", timeout_sec=0.001)
-
-    with pytest.raises(AITimeoutError):
-        asyncio.run(client.generate([{"role": "user", "content": "hi"}]))
-```
-
-> 위 예시는 서비스 코드가 `AIClient.generate()`에서 httpx 예외를 커스텀 예외(`AITimeoutError`)로 변환한다는 구조를 가정한 것. 실제 구현에 맞게 조정하되, 핵심은 **"AI API가 죽어도 예외가 라우트 밖으로 새어나가 서버가 죽지 않고, 504 + AI_TIMEOUT 응답으로 변환된다"** 를 테스트하는 것.
-
-```python
-# tests/unit/test_context.py
-from app.services.context import build_context
-
-
-def test_context_returns_only_last_n_pairs():
-    history = [(f"q{i}", f"a{i}") for i in range(1, 11)]  # 10개
-    ctx = build_context(history, n=3)
-    assert len(ctx) == 6  # 질문·응답 3쌍 = 과거 문맥 메시지 6개
-    assert ctx[0] == {"role": "user", "content": "q8"}  # 최신 3쌍, 오래된 순서 유지
-
-
-def test_context_with_empty_history_returns_empty():
-    assert build_context([], n=5) == []
-```
-
-## 3.3 풀 테스트 — 통합(API) 테스트
-
-API를 실제로 묶은 상태에서 **요구사항 시나리오 그대로** 검증한다. 이 테스트가 곧 평가 증빙자료가 된다.
-
-```python
-# tests/integration/test_chat_flow.py
-import httpx
-
-
-def signup_and_login(client, email="tester@example.com", password="Test1234!"):
-    client.post("/api/auth/signup", json={"email": email, "password": password})
-    client.post("/api/auth/login", json={"email": email, "password": password})
-
-
-def test_chat_blocked_without_login(client):
-    # 비로그인 사용자는 채팅 불가 (접근 제어)
-    r = client.post("/api/chat", json={"question": "안녕"})
-    assert r.status_code == 401
-
-
-def test_full_chat_pipeline_saves_log(client, fake_ai, db):
-    # 가입 → 로그인 → 질문 → AI 응답 → DB 저장 → 내 로그 조회 전체 흐름
-    signup_and_login(client)
-
-    r = client.post("/api/chat", json={"question": "배포 방법 알려줘"})
-    assert r.status_code == 200
-    assert r.json()["answer"] == "테스트 응답입니다."
-
-    logs = client.get("/api/me/chats").json()
-    assert len(logs) == 1
-    assert logs[0]["question"] == "배포 방법 알려줘"
-    assert logs[0]["answer"] == "테스트 응답입니다."
-    assert "created_at" in logs[0]          # 최소 추적 필드: 시각
-
-
-def test_ai_timeout_returns_504_and_server_survives(client, fake_ai):
-    # 타임아웃 강제 유발 → 안내 응답 + 서버 비정상 종료 없음
-    fake_ai.error = httpx.TimeoutException("timeout")
-    signup_and_login(client)
-
-    r = client.post("/api/chat", json={"question": "긴 글 요약해줘"})
-    assert r.status_code == 504
-    assert "AI_TIMEOUT" in r.json()["detail"]
-
-    assert client.get("/health").status_code == 200   # 서버 생존 확인
-
-
-def test_context_carried_over_conversation(client, fake_ai):
-    # 문맥 유지: 직전 질문이 다음 요청 컨텍스트에 포함되는지 (요청 기록으로 검증)
-    signup_and_login(client)
-    client.post("/api/chat", json={"question": "오늘 날씨 어때?"})
-    client.post("/api/chat", json={"question": "내가 방금 뭘 물어봤지?"})
-    assert fake_ai.last_messages[0]["content"].find("오늘 날씨") != -1
-```
-
-## 3.4 풀 테스트 — E2E 스모크 (배포 서버 대상)
-
-`scripts/e2e_smoke.sh` — 배포 후 매일 + **평가 직전** 실행. 통과 로그를 캡처해 증빙으로 제출.
+## UI·재평가 증빙
 
 ```bash
-#!/usr/bin/env bash
-# 사용법: ./scripts/e2e_smoke.sh https://배포URL
-set -e
-BASE=${1:?Usage: e2e_smoke.sh <BASE_URL>}
-EMAIL="smoke_$(date +%s)@test.local"
-
-echo "① 헬스체크";   curl -sf "$BASE/health" > /dev/null && echo "  OK"
-echo "② 회원가입";   curl -sf -X POST "$BASE/api/auth/signup" \
-  -H 'Content-Type: application/json' \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"Test1234!\"}" > /dev/null && echo "  OK"
-echo "③ 로그인";     curl -sf -c /tmp/cj -X POST "$BASE/api/auth/login" \
-  -H 'Content-Type: application/json' \
-  -d "{\"email\":\"$EMAIL\",\"password\":\"Test1234!\"}" > /dev/null && echo "  OK"
-echo "④ 미로그인 채팅 차단 확인"; \
-  test "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/chat" \
-  -H 'Content-Type: application/json' -d '{"question":"hi"}')" = "401" && echo "  OK (401)"
-echo "⑤ 채팅(실 AI 호출)"; curl -sf -b /tmp/cj -X POST "$BASE/api/chat" \
-  -H 'Content-Type: application/json' -d '{"question":"안녕, 한 줄로 자기소개해줘"}' && echo ""
-echo "⑥ 내 대화 로그 조회"; curl -sf -b /tmp/cj "$BASE/api/me/chats" | python3 -c 'import sys; sys.stdout.buffer.write(sys.stdin.buffer.read().decode("utf-8")[:300].encode("utf-8"))' && echo ""
-echo "✅ E2E 스모크 통과"
+pip install -r requirements-evidence.txt
+python -m playwright install --with-deps chromium
+python scripts/capture_local_evidence.py --output artifacts/local-ui
 ```
 
-**타임아웃 실서버 검증 방법 (평가 시연 대비)**: 서버 env의 `AI_TIMEOUT_SEC=0.001`로 잠시 변경 후 재시작 → 채팅 요청 → 504 + `AI_TIMEOUT` 안내 확인 → 서버 살아있는지 `/health` 확인 → 원복. 과정을 화면 녹화/캡처해 문서에 첨부.
+이 검증은 임시 로컬 DB·Fake AI와 실제 Chromium을 사용한다. 오류 UI는 모의 504로 검사한다. 실제 HTTPX 타임아웃은 별도 통합 테스트에서 검증한다. 운영 실기기/실 AI 검증은 환경과 결과를 따로 명시한다.
 
-## 3.5 커버리지 & CI
-
-- 커버리지 목표: **전체 60% 이상, 핵심 모듈(auth, ai, chat, db) 80% 권장** — 숫자 자체보다 "핵심 경로가 테스트됐다"가 중요
-- 명령: `pytest --cov=app --cov-report=term-missing`
-
-**GitHub Actions** (`.github/workflows/ci.yml`) — PR마다 자동 실행, 통과 시에만 머지:
-
-```yaml
-name: CI
-on:
-  pull_request:
-    branches: [develop, main]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
-      - run: pip install -r requirements.txt -r requirements-dev.txt
-      - run: ruff check app tests
-      - run: pytest --cov=app --cov-report=term-missing
-```
-
-> CI에 필요한 환경변수는 GitHub 저장소 Secrets에 등록 (테스트는 Fake을 쓰므로 실제 API 키 불필요하게 설계).
-
-## 3.6 역할별 테스트 담당 & 일정 연계
-
-| 담당 | 작성할 테스트 | 시기 |
-|------|---------------|------|
-| 🔧 A (서버 코어) | `test_auth.py`(해싱/토큰), `test_auth_flow.py`(가입/로그인/401 접근제어) | D4~D5, D7 |
-| 🤖 B (AI·데이터) | `test_ai_client.py`(타임아웃 매핑), `test_context.py`, DB 저장 테스트 | D7~D8 |
-| 🎨 C (프론트) | UI 수동 체크리스트(빈 입력 차단, 로딩/에러 표시) — 문서화 + 스크린샷 | D7~D8 |
-| 🛠 D (운영·품질) | `test_chat_flow.py`(통합 파이프라인, 타임아웃 504), `e2e_smoke.sh`, CI 구축 | D8~D11 |
-
-**Definition of Done (PR 머지 조건)**: 기능 동작 + 테스트 작성·통과 + 관련 문서 업데이트 — 셋 중 하나라도 빠지면 머지하지 않는다.
-
----
-
-## 부록: 요구사항 ↔ 테스트 매핑 (평가 증빙용)
-
-| 과제 요구사항 | 증빙 테스트 |
-|---------------|-------------|
-| 빈 입력 차단 등 입력 검증 | `test_chat_request_empty_question_rejected` |
-| 로그인한 사용자만 채팅 가능 | `test_chat_blocked_without_login` |
-| 질문→AI→응답→저장 파이프라인 | `test_full_chat_pipeline_saves_log` |
-| 사용자 기준 로그 조회 | `GET /api/me/chats` 검증 (위 테스트에 포함) |
-| 타임아웃 시 서버 생존 + 오류 안내 | `test_ai_timeout_returns_504_and_server_survives` + 실서버 캡처 |
-| 문맥 유지 | `test_context_*` 2종 + 데모 시연 |
-| 외부 접속 배포 | `e2e_smoke.sh` 통과 로그 |
+31개 항목의 현재 코드 근거와 남은 외부 작업은 `docs/EVALUATION_CHECKLIST.md`, 발견 사항의 수정 연결은 `docs/VERIFICATION.md`를 기준으로 한다. 평가 대상 SHA와 **실제 코드 파일 전체**를 포함하고, 링크만 적으면 평가기가 따라 읽는다고 가정하지 않는다.

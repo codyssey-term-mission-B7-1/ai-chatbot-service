@@ -1,4 +1,5 @@
 """유닛 테스트 — 입력 검증 (빈 입력 차단, 길이 제한)."""
+
 import pytest
 from pydantic import ValidationError
 
@@ -63,8 +64,11 @@ def _run_probe(max_len: str) -> str:
     import sys
     from pathlib import Path
 
-    env = {**os.environ, "MAX_QUESTION_LENGTH": max_len,
-           "PYTHONPATH": str(Path(__file__).resolve().parents[2])}
+    env = {
+        **os.environ,
+        "MAX_QUESTION_LENGTH": max_len,
+        "PYTHONPATH": str(Path(__file__).resolve().parents[2]),
+    }
     out = subprocess.run([sys.executable, "-c", PROBE], capture_output=True, text=True, env=env)
     assert out.returncode == 0, out.stderr
     return out.stdout.strip()

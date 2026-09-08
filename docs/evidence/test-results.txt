@@ -1,0 +1,44 @@
+........................................................................ [ 60%]
+...............................................                          [100%]
+=============================== warnings summary ===============================
+../.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /home/user/resolution-work/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+../.venv/lib/python3.13/site-packages/starlette/testclient.py:53
+  /home/user/resolution-work/.venv/lib/python3.13/site-packages/starlette/testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.13.14-final-0 _______________
+
+Name                            Stmts   Miss  Cover   Missing
+-------------------------------------------------------------
+app/__init__.py                     0      0   100%
+app/config.py                      37      0   100%
+app/database.py                    29      4    86%   49-53
+app/deps.py                        32      0   100%
+app/logging_config.py              33      2    94%   70, 79
+app/main.py                        83      3    96%   101-103
+app/models.py                      30      0   100%
+app/policies.py                     8      0   100%
+app/repositories/__init__.py        0      0   100%
+app/repositories/chat_logs.py      25      0   100%
+app/repositories/users.py          19      1    95%   28
+app/routers/__init__.py             0      0   100%
+app/routers/admin.py               18      0   100%
+app/routers/auth.py                39      0   100%
+app/routers/chat.py                51      0   100%
+app/routers/logs.py                11      0   100%
+app/routers/pages.py               57      2    96%   56, 63
+app/schemas.py                     81      1    99%   46
+app/services/__init__.py            0      0   100%
+app/services/admin.py              30      3    90%   27, 35, 38
+app/services/ai_client.py          94     15    84%   38, 40, 73, 121, 128, 131-136, 147-159, 165
+app/services/context.py             8      0   100%
+app/services/security.py           17      3    82%   15, 22-23
+-------------------------------------------------------------
+TOTAL                             702     34    95%
+Required test coverage of 85% reached. Total coverage: 95.16%
+119 passed, 2 warnings in 25.62s
