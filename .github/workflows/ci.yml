@@ -6,24 +6,56 @@ on:
   push:
     branches: [develop]
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
-
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: 의존성 설치
         run: pip install -r requirements-dev.txt
-
-      - name: 린트 (ruff)
-        run: ruff check app tests
-
-      - name: 테스트 (pytest + 커버리지)
-        run: pytest --cov=app --cov-report=term-missing
+      - name: 린트와 포맷
+        run: |
+          ruff check app tests
+          black --check app tests
+          isort --check-only app tests
+      - name: 테스트와 커버리지
+        run: pytest --cov=app --cov-report=term-missing --cov-fail-under=85 --junitxml=artifacts/junit.xml
         env:
           DATABASE_URL: "sqlite://"
+          DEBUG: "true"
+          AI_API_KEY: ""
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-integration-results
+          path: artifacts/junit.xml
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: 로컬 브라우저 검증 의존성
+        run: |
+          pip install -r requirements-evidence.txt
+          python -m playwright install --with-deps chromium
+      - name: 실제 로컬 앱의 브라우저 검증 (운영·실 AI 아님)
+        run: python scripts/capture_local_evidence.py --output artifacts/local-ui
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-ui-evidence
+          path: artifacts/local-ui

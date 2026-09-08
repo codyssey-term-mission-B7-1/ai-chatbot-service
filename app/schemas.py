@@ -1,35 +1,54 @@
-"""Pydantic 스키마 — 요청/응답 모델 + 입력 검증."""
-from datetime import datetime
+"""Pydantic 요청/응답 계약. 문자 수=Unicode 코드 포인트, 응답 시각=UTC."""
+
+from datetime import datetime, timezone
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
 from app.config import settings
+from app.policies import MAX_NICKNAME_CHARS, MAX_PASSWORD_BYTES, MAX_PASSWORD_CHARS
 
-
-# ── 인증 ──────────────────────────────────────────────
 
 class SignupIn(BaseModel):
-    """회원가입 요청 — 이메일 형식/비밀번호 정책(8자+) 검증."""
+    """8~64 코드 포인트와 bcrypt의 UTF-8 72바이트 한계를 모두 검증한다."""
 
     email: EmailStr
-    password: str = Field(min_length=8, max_length=64)
-    nickname: str = Field(default="", max_length=20, validate_default=True)
-
-    model_config = {"json_schema_extra": {
-        "examples": [
-            {"email": "hong@example.com", "password": "password123", "nickname": "홍길동"},
-            {"email": "kim@example.com", "password": "password123"},
-        ]
-    }}
+    password: str = Field(min_length=8, max_length=MAX_PASSWORD_CHARS)
+    nickname: str = Field(default="", max_length=MAX_NICKNAME_CHARS, validate_default=True)
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {"email": "hong@example.com", "password": "password123", "nickname": "홍길동"},
+                {"email": "kim@example.com", "password": "password123"},
+            ]
+        },
+    }
 
     @field_validator("email", mode="before")
     @classmethod
-    def normalize_email(cls, v):
-        return v.strip().lower() if isinstance(v, str) else v
+    def normalize_email(cls, value):
+        return value.strip().lower() if isinstance(value, str) else value
+
+    @field_validator("password")
+    @classmethod
+    def password_byte_limit(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > MAX_PASSWORD_BYTES:
+            raise ValueError("비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
+        return value
+
+    @field_validator("nickname", mode="before")
+    @classmethod
+    def nickname_text(cls, value):
+        if isinstance(value, str):
+            value.encode("utf-8")
+            return value.strip()
+        return value
 
     @field_validator("nickname")
     @classmethod
-    def default_nickname(cls, v: str, info) -> str:
-        return v.strip() or info.data.get("email", "user").split("@")[0]
+    def default_nickname(cls, value: str, info) -> str:
+        return (value.strip() or info.data.get("email", "user").split("@")[0])[:MAX_NICKNAME_CHARS]
 
 
 class LoginIn(BaseModel):
@@ -38,34 +57,39 @@ class LoginIn(BaseModel):
 
     @field_validator("email", mode="before")
     @classmethod
-    def normalize_email(cls, v):
-        return v.strip().lower() if isinstance(v, str) else v
+    def normalize_email(cls, value):
+        return value.strip().lower() if isinstance(value, str) else value
 
 
 class UserOut(BaseModel):
     email: str
     nickname: str
+    is_admin: bool = False
 
-
-# ── 채팅 ──────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
-    """채팅 요청 — 빈 질문/공백 차단, 상한은 MAX_QUESTION_LENGTH 설정값(기본 1000자)."""
+    """공백 질문 거부, 상한은 MAX_QUESTION_LENGTH(기본 1000 코드 포인트)."""
 
     question: str = Field(min_length=1, max_length=settings.max_question_length)
+    model_config = {
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {"question": "FastAPI 배포 방법 알려줘"},
+                {"question": "내가 방금 뭘 물어봤지?"},
+            ]
+        },
+    }
 
-    model_config = {"json_schema_extra": {
-        "examples": [{"question": "FastAPI 배포 방법 알려줘"},
-                     {"question": "내가 방금 뭘 물어봤지?"}]
-    }}
-
-    @field_validator("question")
+    @field_validator("question", mode="before")
     @classmethod
-    def not_blank(cls, v: str) -> str:
-        v = v.strip()
-        if not v:
-            raise ValueError("질문을 입력해 주세요.")  # 빈 입력/공백만 있는 입력 차단
-        return v
+    def not_blank(cls, value):
+        if isinstance(value, str):
+            value.encode("utf-8")
+            value = value.strip()
+            if not value:
+                raise ValueError("질문을 입력해 주세요.")
+        return value
 
 
 class ChatOut(BaseModel):
@@ -73,11 +97,18 @@ class ChatOut(BaseModel):
     latency_ms: int
     chat_id: int
     status: str = "success"
-
-    model_config = {"json_schema_extra": {
-        "examples": [{"answer": "직전에 'FastAPI 배포 방법'을 물어보셨고, ...",
-                      "latency_ms": 1240, "chat_id": 987, "status": "success"}]
-    }}
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "answer": "직전에 'FastAPI 배포 방법'을 물어보셨어요.",
+                    "latency_ms": 1240,
+                    "chat_id": 987,
+                    "status": "success",
+                },
+            ]
+        }
+    }
 
 
 class ChatLogOut(BaseModel):
@@ -86,14 +117,27 @@ class ChatLogOut(BaseModel):
     answer: str
     latency_ms: int
     status: str
+    request_id: str = ""
     created_at: datetime
+    model_config = {"from_attributes": True}
 
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [{"id": 987, "question": "내가 방금 뭘 물어봤지?",
-                          "answer": "직전에 'FastAPI 배포 방법'을 물어보셨고, ...",
-                          "latency_ms": 1240, "status": "success",
-                          "created_at": "2026-09-01T10:30:00Z"}]
-        },
-    }
+    @field_validator("created_at")
+    @classmethod
+    def utc_timestamp(cls, value: datetime) -> datetime:
+        # 앱이 UTC로 저장한 SQLite datetime은 조회 시 tzinfo가 사라진다.
+        # 외부 DB/수동 이관 값도 UTC라는 계약은 별도로 지켜야 한다.
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+
+class AdminChatLogOut(ChatLogOut):
+    user_id: int
+
+
+class AdminLogPage(BaseModel):
+    items: list[AdminChatLogOut]
+    next_before_id: int | None = None
+
+
+LogStatus = Literal["success", "ai_error"]

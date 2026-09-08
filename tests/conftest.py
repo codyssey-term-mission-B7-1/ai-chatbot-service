@@ -1,4 +1,5 @@
 """테스트 공용 fixture — 인메모리 DB + Fake AI (실 API 호출 금지)."""
+
 import os
 
 os.environ.setdefault("DATABASE_URL", "sqlite://")  # 테스트 중 파일 DB 생성 방지
@@ -6,7 +7,7 @@ os.environ.setdefault("DEBUG", "1")  # 테스트는 개발 컨텍스트 — http
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
-from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy import create_engine, event  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
@@ -15,6 +16,13 @@ from app.main import app  # noqa: E402
 from app.services.ai_client import get_ai_provider  # noqa: E402
 
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+
+
+@event.listens_for(engine, "connect")
+def _test_fk_connection(connection, _record):
+    connection.execute("PRAGMA foreign_keys=ON")
+
+
 TestingSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 

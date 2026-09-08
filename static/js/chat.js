@@ -6,7 +6,7 @@ const sendBtn = document.getElementById('send-btn');
 const errorBox = document.getElementById('chat-error');
 const counter = document.getElementById('count');
 
-const MAX_LEN = 1000;
+const MAX_LEN = parseInt(window_.dataset.maxQuestionLength || '1000', 10);
 
 // 이전 대화 복원 범위 — 서버 CONTEXT_TURNS와 동일 (AI가 기억하는 맥락과 일치)
 const HISTORY_TURNS = parseInt(window_.dataset.contextTurns || '5', 10);
@@ -14,7 +14,7 @@ const HISTORY_TURNS = parseInt(window_.dataset.contextTurns || '5', 10);
 input.addEventListener('input', () => {
   input.style.height = 'auto';
   input.style.height = Math.min(input.scrollHeight, 120) + 'px';
-  counter.textContent = input.value.length;
+  counter.textContent = FormUtils.codepointLength(input.value);
 });
 
 input.addEventListener('keydown', (e) => {
@@ -41,10 +41,7 @@ function errorText(data, status) {
   const d = data?.detail;
   if (typeof d === 'string' && d) return `오류: ${d}`;
   if (Array.isArray(d) && d.length) {
-    const first = d[0];
-    const where = Array.isArray(first?.loc) ? first.loc.filter((x) => typeof x === 'string').join('.') : '';
-    const msg = typeof first?.msg === 'string' ? first.msg : '';
-    if (msg) return `오류: ${where ? where + ' — ' : ''}${msg}`;
+    return '오류: ' + FormUtils.validationText(data);
   }
   if (status === 504) return '응답 지연 — AI가 시간이 걸리고 있어요.';
   return '오류가 발생했어요. 다시 시도해 주세요.';
@@ -58,11 +55,12 @@ function showError(text) {
 
 async function send(e) {
   e.preventDefault();
+  if (sendBtn.disabled) return;
   const question = input.value.trim();
 
   // 클라이언트 측 입력 검증 — 빈 입력 차단 + 길이 제한
   if (!question) return showError('질문을 입력해 주세요. (빈 입력은 전송되지 않아요)');
-  if (question.length > MAX_LEN) return showError(`질문이 너무 길어요. ${MAX_LEN}자 이하로 줄여주세요.`);
+  if (FormUtils.codepointLength(question) > MAX_LEN) return showError(`질문이 너무 길어요. ${MAX_LEN}자 이하로 줄여주세요.`);
 
   errorBox.hidden = true;
   addBubble(question, 'user');
@@ -98,6 +96,10 @@ async function send(e) {
     }
 
     // 정상 응답
+    if (typeof data?.answer !== 'string') {
+      addBubble('응답 형식을 확인할 수 없어요. 잠시 후 다시 시도해 주세요.', 'ai error-bubble');
+      return;
+    }
     addBubble(data.answer, 'ai');
   } catch (err) {
     loading.remove();
@@ -117,9 +119,10 @@ function addDivider(text) {
 
 // 이전 대화 복원 — 채팅방에 돌아왔을 때 AI 맥락(직전 N개 성공 Q/A)을 말풍선으로 표시
 async function loadHistory() {
+  if (HISTORY_TURNS <= 0) return;
   let logs;
   try {
-    const res = await fetch('/api/me/chats?limit=50');
+    const res = await fetch(`/api/me/chats?status=success&limit=${HISTORY_TURNS}`);
     if (res.status === 401) {  // 세션 만료 → 입력 전에 로그인 페이지로 (입력 유실 방지)
       location.href = '/login';
       return;
@@ -129,7 +132,7 @@ async function loadHistory() {
   } catch {
     return;                    // 네트워크 오류 → 인사말만 표시하고 시작
   }
-  // API는 최신순 → 성공 건만 N개 추려 오래된 순으로 복원 (AI 컨텍스트와 동일 범위)
+  // API가 사용자·성공 조건을 먼저 적용한 후 N개 제한 → AI와 동일한 범위
   const recent = logs.filter((log) => log.status === 'success').slice(0, HISTORY_TURNS).reverse();
   if (recent.length === 0) return;
   addDivider(`이전 대화 ${recent.length}개`);
