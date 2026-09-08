@@ -18,6 +18,7 @@ EVENTS = frozenset(
         "ai_call_start",
         "ai_call_success",
         "ai_call_fail",
+        "chat_rate_limited",
         "ai_retry",
         "db_save_success",
         "db_save_fail",

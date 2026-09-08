@@ -15,7 +15,7 @@
 uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 ```
 
-## 등록된 이벤트 15종
+## 등록된 이벤트 16종
 
 | 이벤트 | 목적 | 주요 필드 / 집계 주의 |
 |---|---|---|
@@ -25,6 +25,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 | ai_call_success | 응답 성공·시간 | user_id, request_id, latency_ms |
 | ai_call_fail | 장애 진단 | user_id, request_id, reason, latency_ms |
 | ai_retry | 추가 시도 집계 | attempt, previous_error, delay_ms. 실제 추가 시도를 시작할 때만 기록 |
+| chat_rate_limited | 사용자별 요청 상한 초과 | user_id, retry_after_sec, request_id. AI 호출 없이 429로 종료 |
 | db_save_success | 저장 추적 | user_id, chat_id, status, request_id |
 | db_save_fail | 저장 장애 | user_id, reason(예외 타입), request_id. 원문/SQL 파라미터 제외 |
 | unhandled_error | 예상 밖 서버 오류 | path, error(예외 타입), request_id |

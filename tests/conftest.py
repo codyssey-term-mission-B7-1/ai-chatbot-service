@@ -24,20 +24,29 @@ def _test_fk_connection(connection, _record):
 
 
 @pytest.fixture(autouse=True)
-def _isolated_login_limiter():
-    """로그인 실패 제한기를 테스트마다 초기화하고 여유 한도로 완화한다.
+def _isolated_rate_limiters():
+    """rate limit기를 테스트마다 초기화하고 여유 한도로 완화한다.
 
-    잠금 전용 테스트는 낮은 한도를 직접 지정해 확인한다. 기본 5회 그대로면
-    우연히 겹치는 이메일을 쓰는 다른 테스트가 서로 오염시킬 수 있다.
+    잠금/제한 전용 테스트는 낮은 한도를 직접 지정해 확인한다. 기본값 그대로면
+    우연히 겹치는 키를 쓰는 다른 테스트가 서로 오염시킬 수 있다.
     """
-    from app.services.rate_limit import login_limiter
+    from app.services.rate_limit import chat_limiter, login_limiter
 
-    saved = (login_limiter.max_events, login_limiter.window_seconds)
+    saved = (
+        (login_limiter.max_events, login_limiter.window_seconds),
+        (chat_limiter.max_events, chat_limiter.window_seconds),
+    )
     login_limiter.max_events = 10_000
+    chat_limiter.max_events = 10_000
     login_limiter.reset()
+    chat_limiter.reset()
     yield
-    login_limiter.max_events, login_limiter.window_seconds = saved
+    (
+        (login_limiter.max_events, login_limiter.window_seconds),
+        (chat_limiter.max_events, chat_limiter.window_seconds),
+    ) = saved
     login_limiter.reset()
+    chat_limiter.reset()
 
 
 TestingSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
