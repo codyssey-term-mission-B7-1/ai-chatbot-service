@@ -1,250 +1,170 @@
-# 🤖 AI Chatbot Service
+# AI Chatbot Service
 
-웹 기반 AI 챗봇 서비스 — FastAPI + SQLite. 로그인한 사용자의 질문을 AI API로 전달해 응답하고,
-처리한 채팅과 AI 오류에 대해 사용자별 대화 로그 저장을 시도합니다. DB 저장에 실패하면 대화가 기록되지 않을 수 있습니다. *(코디세이 B7-1 과제)*
+FastAPI + SQLite 기반의 로그인형 AI 챗봇입니다. **현재 소스에는 실제 앱·UI·테스트가 포함되어 있습니다.** 대화별 저장·개인 문맥·관리자 조회를 제공하며, 실제 외부 AI와 배포 성공은 별도로 검증해야 합니다.
 
 [![CI](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/ci.yml/badge.svg)](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/ci.yml)
 [![CD](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/cd.yml/badge.svg)](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/cd.yml)
 
-## 0. 문서 맵
+> **운영 URL: 아직 검증된 실 URL이 없습니다.** 이전 CD는 필수 Secrets 검증에서 실패했습니다. 로컬/Fake/모의 HTTP 테스트와 운영 배포·실 AI 성공을 혼동하지 않습니다.
 
-| 문서 | 내용 |
-|------|------|
-| **[docs/API.md](docs/API.md)** | API 명세 — 요청/응답 예시, 오류 코드, curl 시나리오 |
-| **[docs/TODO.md](docs/TODO.md)** | 역할별 TODO 리스트 (카드 01~13 ↔ 이슈 #1~#13) |
-| **[docs/ACCESS_CONTROL.md](docs/ACCESS_CONTROL.md)** | 접근 제어 매트릭스 (경로 × 인증 상태) |
-| **[docs/BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md)** | DB 백업·복원 정책 (RPO/RTO, `scripts/backup_db.sh`) |
-| **[docs/OBFUSCATION.md](docs/OBFUSCATION.md)** | 난독화·코드 보호 정책 (미적용 결정 + 대체 전략) |
-| **[docs/VOLUME_MANAGEMENT.md](docs/VOLUME_MANAGEMENT.md)** | 볼륨·디스크 관리 정책 (배포 시 영구 볼륨 필수) |
-| **[docs/git-rules.md](docs/git-rules.md)** | Git 형상관리 규칙 적용 증빙 (룰셋·Squash 금지·민감정보 차단) |
-| **[docs/commit-audit.md](docs/commit-audit.md)** | 주간 커밋/PR 감사 — 팀원별 커밋 10회+ 요구사항 추적 |
-| **[docs/DEMO_CONTEXT.md](docs/DEMO_CONTEXT.md)** | 문맥 유지 시연 증빙 + `CONTEXT_TURNS` 값 실험 결과 |
-| **CONTRIBUTING.md** | 컨벤션 — 브랜치/커밋/PR/리뷰/로그 규칙 |
-| **Swagger UI** | 서버 실행 후 `/docs` (대화형 API 문서) · `/redoc` |
-
-## 1. 프로젝트 개요
+## 1. 문제·사용자·시나리오
 
 | 항목 | 내용 |
-|------|------|
-| 문제 정의 | 흩어진 기술(리눅스/웹/DB/AI API)을 하나의 서비스로 통합한 경험 부족 |
-| 타겟 사용자 | 회원가입 후 개인 질의응답을 주고받으며 자신의 대화 기록을 추적하고 싶은 사용자 |
-| 핵심 시나리오 | ① 회원가입/로그인 → ② 질문 입력 → ③ AI 응답 즉시 표시 → ④ "내가 방금 뭘 물어봤지?"에 직전 대화를 인용한 문맥 응답 → ⑤ 내 기록 페이지에서 대화 로그 확인 |
+|---|---|
+| 문제 | 질문·답변이 흩어지면 이전 대화의 맥락과 개인 기록을 다시 확인하기 어렵다. |
+| 대상 | 계정별 질의응답·자신의 대화 기록을 추적하려는 사용자 |
+| 핵심 흐름 | 가입 → 로그인 → 질문 → AI 응답 → 성공 대화 문맥 유지 → 본인 기록 조회 |
+| 운영자 흐름 | 명시적 앱 관리자 권한을 부여받은 계정만 전체 기록 조회·필터 가능 |
+| 한계 | 실제 AI 키가 없으면 Fake 데모. 계정별 rate limit·요금 상한·중앙 세션 폐기는 별도 미구현 |
 
-## 2. 시스템 구조
+## 2. 구조와 실제 파일
 
+```mermaid
+flowchart LR
+  UI[HTML · JS] --> AUTH[auth 라우터 · 세션 검증]
+  UI --> CHAT[chat 라우터]
+  UI --> LOGS[logs 라우터]
+  UI --> ADMIN[admin 라우터 · 별도 권한 검사]
+  CHAT --> AI[AIProvider · 전체 시간 예산]
+  CHAT --> REPO[repositories 계층]
+  LOGS --> REPO
+  ADMIN --> REPO
+  REPO --> DB[(SQLite)]
 ```
-브라우저 (Jinja2 템플릿 + Vanilla JS fetch)
-   │  JSON (세션 쿠키)
-   ▼
-FastAPI (app/main.py)
-   ├─ routers/auth.py    회원가입·로그인·로그아웃 (bcrypt + 세션 쿠키)
-   ├─ routers/chat.py    질문 수신 → AI 응답 수신 → 로그 저장 시도 → 사용자에게 응답 반환  ★핵심 파이프라인
-   ├─ routers/pages.py   HTML 페이지 (/, /login, /signup, /logs)
-   ├─ deps.py            get_current_user — 비로그인 401 접근 제어
-   ├─ services/ai_client.py  AI API 호출 (타임아웃·재시도·에러 매핑, 키는 서버의 .env/환경변수에서만)
-   ├─ services/context.py    문맥 유지 — 직전 N개 Q/A를 프롬프트에 포함
-   └─ logging_config.py  로그 유틸리티 — 표준 등록 목록은 CONTRIBUTING §1.5, 실제 호출 위치는 라우트·AI 클라이언트 참조
-   ▼
-SQLite (SQLAlchemy) — users, chat_logs
-```
 
-## 3. API 명세
+| 책임 | 파일 |
+|---|---|
+| 앱·미들웨어·오류 헤더 | `app/main.py` |
+| 인증·관리자 의존성 | `app/deps.py`, `app/services/security.py`, `app/services/admin.py` |
+| 목적별 라우트 | `app/routers/auth.py`, `chat.py`, `logs.py`, `admin.py`, `pages.py` |
+| DB·모델·CRUD | `app/database.py`, `app/models.py`, `app/repositories/` |
+| 입력·응답 계약 | `app/schemas.py`, `app/policies.py` |
+| 서버 AI 호출·문맥 | `app/services/ai_client.py`, `context.py` |
+| 회원가입/로그인 UI | `/signup`, `/login` → `templates/login.html`, `static/js/auth.js` |
+| 채팅/기록/관리자 UI | `templates/chat.html`, `logs.html`, `admin-logs.html`, `static/js/chat.js` |
 
-| 메서드 | 경로 | 인증 | 설명 |
-|--------|------|:---:|------|
-| POST | `/api/auth/signup` | ✕ | 회원가입 (201 / 409 중복 / 422 검증실패) |
-| POST | `/api/auth/login` | ✕ | 로그인 — 세션 쿠키 발급 (200 / 401) |
-| POST | `/api/auth/logout` | ✕ | 로그아웃 |
-| GET | `/api/auth/me` | ○ | 내 정보 |
-| POST | `/api/chat` | ○ | 질문 → AI 응답 (200 / 401 / 422 / 502 / 504) |
-| GET | `/api/me/chats?limit=50` | ○ | 내 대화 로그 조회 |
-| GET | `/health` | ✕ | 헬스체크 |
+처리 순서는 **입력 검증 → 같은 사용자의 성공 Q/A → AI 응답 수신 → DB 저장 시도 → HTTP 응답**입니다. DB 저장 실패 시 `status=success`라도 `chat_id=-1`일 수 있습니다.
 
-**요청/응답 예시**
+## 3. 로컬 실행
 
 ```bash
-# 채팅 (로그인 상태에서)
-curl -X POST https://SERVER/api/chat -H 'Content-Type: application/json' \
-     -b cookies.txt -d '{"question": "내가 방금 뭘 물어봤지?"}'
-
-# → 200
-{"answer":"직전에 '배포 방법'을 물어보셨고…","latency_ms":1240,"chat_id":987,"status":"success"}
-
-# 타임아웃 발생 시
-# → 504 {"detail":"현재 응답이 지연되고 있어요. 잠시 후 다시 시도해 주세요. (error: AI_TIMEOUT)"}
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-## 4. DB 구조 (ERD)
+접속: `http://localhost:8000`. `.env.example`의 `DEBUG=true`는 로컬 전용입니다. 실제 AI 키가 없어도 데모는 동작하지만 실 AI 연결 성공을 뜻하지 않습니다. 환경변수를 변경하면 앱 프로세스를 재시작해야 합니다.
+
+운영에서는 `DEBUG=false`와 새로 생성한 32자 이상 무작위 `SESSION_SECRET`이 필요합니다. 값은 GitHub/배포 플랫폼의 비밀변수로 관리하고 저장소에 넣지 않습니다.
+
+## 4. API·인증
+
+상세 요청/응답: **[docs/API.md](docs/API.md)**. 실행 중 `/docs`, `/redoc`, `/openapi.json`에서 대화형 명세를 확인할 수 있습니다.
+
+| 메서드 | 경로 | 접근 |
+|---|---|---|
+| POST | `/api/auth/signup` | 공개, 201 / 중복 409 / 검증 422 |
+| POST | `/api/auth/login` | 성공 200 + 서명된 세션 쿠키 |
+| POST | `/api/auth/logout` | 비로그인도 200, 현재 쿠키 비움 |
+| GET | `/api/auth/me` | 로그인 필요 |
+| POST | `/api/chat` | 로그인 필요, 200 / 422 / 502 / 504 |
+| GET | `/api/me/chats` | 본인 기록만, 성공 필터·커서 지원 |
+| GET | `/api/admin/chats` | 명시적 앱 관리자만 |
+| GET | `/health` | 기동/버전/제공자 선택 모드; AI 연결 검증 아님 |
+
+JWT가 아니라 `SessionMiddleware`의 서명 쿠키입니다. 내용은 `user_id`와 `email_fp`이며 쿠키 서명은 암호화가 아닙니다. HttpOnly·SameSite=Lax·7일 Max-Age, 운영 Secure를 사용합니다. [접근 제어](docs/ACCESS_CONTROL.md)
+
+관리자 권한은 기본적으로 없고 GitHub 역할이나 닉네임으로 생기지 않습니다. 전용 계정을 만든 뒤 **신뢰된 서버 운영자**가 `scripts/manage_admin.py`로 부여합니다. [관리자 운영](docs/ADMIN.md)
+
+## 5. 입력·문맥·오류 계약
+
+- 문자 수는 Unicode **코드 포인트** 기준. 질문 상한은 서버 설정 `MAX_QUESTION_LENGTH`를 화면에도 전달합니다(기본 1000).
+- 가입 비밀번호: 8~64 코드 포인트이면서 UTF-8 72바이트 이하. 초과 시 422이며 조용히 잘라 해싱하지 않습니다.
+- 닉네임은 최대 20자. 생략하면 이메일 접두어의 앞 20자를 사용합니다.
+- 문맥은 같은 사용자의 직전 성공 Q/A `CONTEXT_TURNS`쌍. 0이면 비활성화, 최대 200.
+- UI는 `status=success&limit=N`을 사용해 AI와 같은 범위를 복원합니다. 실패 로그 50건 뒤에도 성공 문맥을 잃지 않습니다.
+- `AI_TIMEOUT_SEC`(기본 45초)은 **AI 호출 전체 예산**: 연결·읽기·추가 시도·대기 포함, DB/전체 HTTP 시간은 제외.
+- 타임아웃은 재시도하지 않습니다. 전송 오류·429·5xx만 최대 `AI_MAX_RETRIES`(기본 1)만큼 추가 시도합니다. 다른 4xx와 잘못된 응답 형식은 즉시 AI_ERROR/502입니다.
+- API 비로그인은 401, HTML 보호 화면은 로그인으로 302. 관리자 권한 부족은 403.
+
+## 6. DB와 추적
 
 ```mermaid
 erDiagram
-    users ||--o{ chat_logs : "1 : N"
-
-    users {
-        int      id PK
-        string   email UK "로그인 ID"
-        string   password_hash "bcrypt 해시"
-        string   nickname
-        datetime created_at "UTC"
-    }
-
-    chat_logs {
-        int      id PK
-        int      user_id FK "누가 질문했는지"
-        text     question "사용자 질문"
-        text     answer "AI 응답 (실패 시 빈 문자열)"
-        int      latency_ms "AI 응답 소요 시간"
-        string   status "success | ai_error"
-        string   request_id "로그 이벤트 추적 키"
-        datetime created_at "UTC · 언제 질문했는지"
-    }
+  users ||--o{ chat_logs : owns
+  users ||--o| admin_grants : explicitly_granted
+  users { int id PK
+    string email UK
+    string password_hash
+    string nickname
+    datetime created_at }
+  chat_logs { int id PK
+    int user_id FK
+    text question
+    text answer
+    string status
+    int latency_ms
+    string request_id
+    datetime created_at }
+  admin_grants { int user_id PK,FK
+    string granted_email
+    datetime created_at }
 ```
 
-| 테이블 | 필드 | 설명 |
-|--------|------|------|
-| `users` | id (PK), email (UNIQUE), password_hash, nickname, created_at | 계정 |
-| `chat_logs` | id (PK), **user_id (FK)**, question, answer, latency_ms, status, request_id, **created_at** | 대화 로그 — 최소 추적 필드(사용자 식별/시각/질문/응답) 포함 |
+`chat_logs.user_id/created_at`는 인덱스 대상입니다. 시간은 UTC로 저장하고 API는 `Z`를 포함합니다. `latency_ms`는 AI 논리 호출 시간이며 저장 성공을 보장하지 않습니다. `X-Request-ID`와 DB/이벤트의 `request_id`로 연결합니다.
 
-- `status`: `success` | `ai_error` (타임아웃 등 실패도 추적 대상으로 기록)
-- 시각 필드는 모두 **UTC** (`created_at`)
-- 인덱스: `chat_logs.user_id`, `chat_logs.created_at` — 사용자별 조회(`GET /api/me/chats`)와 시각순 정렬용
-- 사용자 삭제 시 대화 로그도 함께 삭제 — ORM 경유(`cascade="all, delete-orphan"`)와 **SQL 레벨**(`ON DELETE CASCADE` + `PRAGMA foreign_keys=ON`) 양쪽 모두 성립 (#51)
-  ※ 단 SQLite는 `ALTER TABLE`로 FK를 바꿀 수 없어 **새로 생성된 DB**에만 적용됩니다. 기존 배포 DB는 별도의 외래키 마이그레이션 절차가 필요합니다. 시딩은 스키마 변경을 대신하지 않습니다. 데이터 보존 방침과 백업·복구 검증 후 절차를 결정해야 합니다.
-
-## 4-1. 서비스 접속
-
-| 경로 | 주소 |
-|---|---|
-| **배포 URL (평가 시점)** | `https://REPLACE-WITH-RAILWAY-DOMAIN.up.railway.app` — **§9의 Secrets 등록 후 실값으로 교체** (#44) |
-| 데모 계정 | `demo@demo.com` / `Test1234!` (시드: `python scripts/seed_mock_data.py`) |
-| 배포 없이 확인 | 아래 §5 그대로 → `http://localhost:8000` (`.env.example`을 복사하고 로컬용 `DEBUG=true`를 사용하면 AI 키 없이 데모 모드로 기동) |
-
-## 5. 실행 방법
+앱 시작의 `create_all`은 없는 테이블만 추가합니다. 기존 열/FK의 마이그레이션이나 데이터 삭제를 하지 않습니다. 새 `admin_grants` 테이블은 기본 비어 있습니다. 오래된 FK 스키마를 바꿀 때는 데이터 보존 계획과 별도 마이그레이션이 필요합니다.
 
 ```bash
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-cp .env.example .env        # 값을 채워넣기 (AI_API_KEY 없으면 데모 모드)
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-# → http://localhost:8000
+sqlite3 app.db < scripts/check_logs.sql
+# Railway 실제 DB가 /data/app.db인 경우
+./scripts/backup_db.sh /data/app.db
 ```
 
-### 환경변수 (실제 비밀값은 개인 .env 또는 프로세스 환경변수로 주입)
-`AI_API_KEY` · `AI_BASE_URL` · `AI_MODEL` · `AI_TIMEOUT_SEC` · `AI_MAX_RETRIES` · `CONTEXT_TURNS` · `MAX_QUESTION_LENGTH` · `DATABASE_URL` · `SESSION_SECRET` · `DEBUG` · `APP_NAME` — 상세 설명은 `.env.example` 참고
+기본 백업은 **DB 디렉터리의 backups/**입니다. 7세대 보관, 고유 이름, 온라인 백업, 무결성·해시 검증을 제공합니다. [백업/복원](docs/BACKUP_RESTORE.md)
 
-> `DEBUG=true`는 **로컬 개발 전용**입니다. 켜면 약한 `SESSION_SECRET`을 임시 키로 대체하고 http 쿠키를 허용합니다. 운영(Railway)에서는 `DEBUG=false`와 32자 이상의 무작위 `SESSION_SECRET`을 사용하세요. 운영 설정에서 약한 시크릿을 사용하면 `RuntimeError`로 기동을 차단합니다 (#54·#55).
-
-### AI 제공사 교체하기 (코디세이 '네이토' 등 OpenAI 호환)
-
-이 서비스의 AI 호출부는 **OpenAI 호환 chat completions 표준**으로 구현돼 있어서
-코디세이 네이토처럼 OpenAI 형식을 따르는 API라면 **코드 수정 없이 .env 3줄**로 연결됩니다:
-
-```env
-AI_API_KEY=코디세이에서발급받은키
-AI_BASE_URL=https://(코디세이-호스트)/v1     # 전체 URL 또는 /v1까지 (/chat/completions는 자동 추가)
-AI_MODEL=(네이토 모델명)
-```
-
-- **연결 확인**: `python scripts/ai_check.py` — 설정 출력 + 실제 호출 1회 (성공/타임아웃/실패 원인 안내)
-- **키 받기 전 로컬 검증**: `python scripts/mock_openai_server.py` 로 목업(8001)을 띄우고
-  `AI_API_KEY=mock-key`, `AI_BASE_URL=http://127.0.0.1:8001/v1`, `AI_TIMEOUT_SEC=1`로 로컬 테스트 — 질문에 "천천히"를 포함하면 목업의 30초 지연보다 먼저 타임아웃(504)이 발생합니다. 테스트 후 설정을 원복하세요.
-
-## 6. 운영 — 로그 이벤트 / 오류 처리 / 입력 검증
-
-**문서에 등록된 로그 11종 중 핵심 예시 6종** (`event=` 으로 grep) — 전체 목록과 규칙은 [CONTRIBUTING §1.5](CONTRIBUTING.md#15-로그-컨벤션)
-```
-request_received  user_id=12 path=/api/chat        # 요청 수신 (미들웨어)
-ai_call_start     user_id=12 request_id=abc123     # AI 호출 시작
-ai_call_success   request_id=abc123 latency_ms=1240
-ai_call_fail      request_id=abc123 reason=timeout # 타임아웃/실패 (ERROR 레벨)
-db_save_success   user_id=12 chat_id=987           # DB 저장 성공/실패
-db_save_fail      user_id=12 reason=db_exception
-```
-
-> **나머지 5종**: `request_finished`(요청 종료) · `unhandled_error`(전역 예외 핸들러가 `logger.exception`으로 남김) ·
-> `auth_stale_session`(stale 세션 파기) · `user_signup` · `user_login` — 등록 규칙과 출력 금지 항목은 CONTRIBUTING §1.5
->
-> 실측 재현: `git grep -hoE 'log_event\([a-z_]+, *"[a-z_]+"' app | sed 's/.*"\(.*\)"/\1/' | sort -u` → 10종,
-> 여기에 `unhandled_error`(main.py 전역 핸들러) 1종을 더해 **총 11종**
-
-**오류 처리**: AI 타임아웃 → 504 `AI_TIMEOUT` 안내 / AI 오류 → 502 `AI_ERROR` / 미처리 예외 → 전역 핸들러가 500 안내 (서버 비정상 종료 없음) — `tests/integration/test_chat_flow.py::test_timeout_returns_504_and_server_survives`로 검증
-
-**입력 검증**: 빈 질문/공백 차단 + 서버 `MAX_QUESTION_LENGTH` 제한(기본 1000자). 현재 프론트 제한은 별도 1000자이므로 설정 변경 시 양쪽을 함께 확인합니다. 회원가입은 비밀번호 8자 이상·이메일 형식을 검증합니다.
-
-## 7. 테스트 · CI/CD
+## 7. 테스트와 검증 자료
 
 ```bash
 pip install -r requirements-dev.txt
-pytest --cov=app --cov-report=term-missing   # 유닛 + 통합 전체
-ruff check app tests                          # 린트
+ruff check app tests
+black --check app tests
+isort --check-only app tests
+pytest --cov=app --cov-report=term-missing
+
+# 선택: 실제 로컬 브라우저 검증
+pip install -r requirements-evidence.txt
+python -m playwright install --with-deps chromium
+python scripts/capture_local_evidence.py --output artifacts/local-ui
 ```
 
-| 분류 | 파일 | 커버 요구사항 |
-|------|------|----------------|
-| 유닛 | `tests/unit/test_schemas.py` | 입력 검증 |
-| 유닛 | `tests/unit/test_context.py` | 컨텍스트 전략 |
-| 유닛 | `tests/unit/test_ai_client.py` | 엔드포인트 정규화·타임아웃/에러 매핑 |
-| 통합 | `tests/integration/test_auth_flow.py` | 인증 + 접근 제어 |
-| 통합 | `tests/integration/test_chat_flow.py` | 파이프라인·타임아웃 생존·문맥·사용자 격리 |
+- [D01~D19 수정·테스트 연결](docs/VERIFICATION.md)
+- [사전평가 31개 항목 증빙](docs/EVALUATION_CHECKLIST.md)
+- [브라우저·실행 증빙](docs/evidence/LOCAL_VERIFICATION.md)
+- [문맥 실험](docs/DEMO_CONTEXT.md): 실제 12번째 요청의 프롬프트 문자량 측정. 요금·실 AI 품질 실험 아님
+- [로그 목적·필드 13종](docs/LOGGING.md): 표준 이벤트 stderr, 원문/시크릿 제외, 값 이스케이프
 
-**CI** (`.github/workflows/ci.yml`): PR/develop 푸시 시 → ruff + pytest 자동 실행 (실 AI 키 불필요 — Fake 제공자 사용)
-**CD** (`.github/workflows/cd.yml`): main 병합 시 → 테스트 게이트 → Secrets 동기화 → Railway 배포 → E2E 스모크. 필수 Secrets(`RAILWAY_TOKEN`·`DEPLOY_URL`·`SESSION_SECRET`) 등록 시 활성화 — 상세 [docs/RAILWAY_DEPLOY.md](docs/RAILWAY_DEPLOY.md)
+실 AI 확인은 `python scripts/ai_check.py --require-real`로 별도 수행합니다. 키가 없으면 종료 2이며 **연결 성공으로 처리하지 않습니다**. 모의 OpenAI 서버는 `scripts/mock_openai_server.py`이며 로컬 테스트용입니다.
 
-## 7-1. 목데이터 / 목업 드라이버
+## 8. 배포 상태와 필요한 외부 작업
 
-| 도구 | 용도 | 사용법 |
-|------|------|--------|
-| `scripts/seed_mock_data.py` | 평가/데모용 계정+대화 로그 생성 | `python scripts/seed_mock_data.py` (계정: `demo@demo.com` / `Test1234!`) |
-| `scripts/mock_openai_server.py` | 네이토(OpenAI 호환) 목업 서버 — 실제 키 없이 E2E 검증 | 실행 후 로컬 `.env`에 `AI_API_KEY=mock-key`, `AI_BASE_URL=http://127.0.0.1:8001/v1` 설정 |
-| `app/services/ai_client.py` 내 `FakeAIProvider` | 테스트용 목 드라이버 (AI_API_KEY 미설정 시 자동 적용) | 별도 설정 불필요 |
-| 질문에 "천천히" 포함 | 목업 30초 지연 → `AI_API_KEY=mock-key` 및 `AI_TIMEOUT_SEC=1` 등 30초보다 짧은 제한을 설정한 로컬 테스트에서 504 재현 | `{"question": "천천히 답해줘"}` |
+기존 Railway CD는 main push 또는 수동 실행에서 테스트 → Secrets 검증 → 변수 동기화 → 배포 → 헬스 → 스모크 순입니다. **필수 Secrets가 없으면 실패로 중단**하며 성공으로 표시하지 않습니다.
 
-## 8. DB 확인 가이드
+필수: `RAILWAY_TOKEN`, `DEPLOY_URL`, `SESSION_SECRET`. 실제 AI용 `AI_API_KEY`는 별도입니다. GitHub PAT는 Railway 토큰이나 AI 키가 아닙니다.
 
-```bash
-# 방법 1) 확인용 SQL 스크립트 (로컬 기본: app.db / Railway: /data/app.db)
-sqlite3 app.db < scripts/check_logs.sql
-sqlite3 /data/app.db < scripts/check_logs.sql   # 배포 환경
+관리하는 선택 변수의 미설정은 **명시적 기본값/빈 값 적용**입니다. 예전 Railway 값을 조용히 유지하지 않습니다. `AI_API_KEY`가 비면 원격 값도 비우고, `DEBUG=false`를 고정하며 질문 상한도 동기화합니다. 운영 설정에 미치는 영향을 확인한 후 배포하세요. [배포 런북](docs/RAILWAY_DEPLOY.md)
 
-# 방법 1-대안) sqlite3 CLI가 없을 때 (Python 표준 lib으로 동일 조회)
-python3 -c "import sqlite3;print(sqlite3.connect('app.db').execute(
-  'SELECT id,user_id,status,substr(question,1,40) FROM chat_logs ORDER BY id DESC LIMIT 5').fetchall())"
+## 9. 역할과 실제 기여
 
-# 방법 2) 로그 조회 API (내 로그)
-curl -b cookies.txt https://SERVER/api/me/chats
-```
+| 계정 | 역할 카드 | 현재 책임 |
+|---|---|---|
+| giyeop-cody | 01·03·04·05 | PM·서버·인증·접근 제어 |
+| Im-Jongseok | 02·07·08 | 형상관리·문맥·DB |
+| loader1017 | 06·09·10·11 | AI 연동·UI·로깅·입력 검증 |
+| ygyg0605-cloud | 12·13 | 배포·운영·기술 문서·검증 패키지 |
 
-실서버 검증은 `scripts/e2e_smoke.sh https://SERVER` (가입→로그인→비로그인 401 확인→채팅→로그 조회 전 과정 자동 점검)
+역할표와 CODEOWNERS는 **현재 책임/리뷰 요청 기준**이지 과거 작성자 증명이 아닙니다. 실제 개인별 커밋·PR·리뷰와 M1/M2/M3·회고 기록은 별도로 확인합니다. 기존 기록은 [커밋 감사](docs/commit-audit.md)에 보존하며, 실제 기여가 확인되지 않은 계정으로 과거 Author/Committer를 재배정하지 않습니다.
 
-## 9. 배포 (Railway + GitHub Actions)
-
-- 파이프라인: `main` 머지 → CI 게이트 → Secrets 동기화 → Railway 배포 → `/health` 폴링 → 스모크
-- 환경변수 source of truth: **GitHub Secrets** (키·엔드포인트 전부, 값은 저장소에 없음)
-- DB 영속화: Railway Volume을 `/data`에 마운트 + `DATABASE_URL=sqlite:////data/app.db` → 재배포해도 초기화 안 됨
-- 상세 절차: [docs/RAILWAY_DEPLOY.md](docs/RAILWAY_DEPLOY.md)
-
-## 10. 팀 협업
-
-- 브랜치: `main ← develop ← feature/#이슈번호-설명` · PR 리뷰어 1명 승인 후 머지 (Squash 금지)
-- 커밋: `type(scope): 제목 (#이슈번호)` — 상세 규칙은 팀 문서(CONTRIBUTING.md) 참고
-- 역할 카드 13장은 GitHub Issues에서 관리 — 각자 3개 셀프어사인
-
-### 팀 구성원 역할 및 개인별 작업 요약
-
-> 역할 담당은 2026-09-08 지정 기준이다. 아래 커밋·PR 수치는 명시된 기준 커밋의 스냅샷이며, 역할 배정으로 과거 커밋의 작성자나 기여 수를 바꾸지 않는다. `ygyg0605-cloud`는 저장소 쓰기 권한이 확인된 협업자다.
-
-> 2026-09-08 07:19 (KST) 기준, `origin/develop`(`08453fe`) 실측. 재현: `git shortlog -sne --no-merges origin/develop` (집계 규칙은 [docs/commit-audit.md](docs/commit-audit.md))
-
-| 구성원 | 역할 (담당 카드) | develop 작업 커밋 | 머지한 PR | 대표 작업 |
-|---|---|---:|---:|---|
-| **giyeop-cody** | PM · 서버 코어 — 카드 01·03·04·05 | **47** | 19 | 초기 스켈레톤(#15), 인증 마무리·이메일 정규화(#37), 세션-계정 바인딩(#34), 접근 제어 매트릭스(#19), Railway CD(#36), Enter 전송(#30), AI 타임아웃 45초(#42), 운영 정책 3종(#20) · 세션 보안 강화(#62), FK/설정 위생(#63), 문서 정합(#64·#67), 릴리스(#66·#68) |
-| **Im-Jongseok** | 형상관리·챗 파이프라인·DB — 카드 02·07·08 | **18** | 4 | README ERD·`check_logs.sql` 수정(#21), 문맥 유지 실험·시연(#22), 형상관리/커밋 감사 증빙(#23), HTML 500 수정(#24) |
-| **loader1017** | AI 연동·UI·로깅 — 카드 06·09·10·11 | **1** | 1 | `chat.js` 채팅 UI 개선 + 네이토 연동 시도(#43, 9/8 머지). **10회 요구에 9회 미달** → 역할 카드 09·10·11과 공지 이슈 #18의 작업 후보를 참고해 진행 중 ([#45](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/issues/45)) |
-| **ygyg0605-cloud** | 배포·운영·문서 — 카드 12·13 | 0 | 0 | 현재 담당 지정·쓰기 권한 확인. 과거 기여 수는 변경하지 않음 |
-
-- **#61 머지 완료**(`dafa1d7`): PR #43으로 소멸했던 Enter 전송·IME 가드를 복구 (#60)
-- **#62 세션·쿠키 보안**(54–59) · **#63 FK·설정 위생**(51–53) · **#64 문서 정합**(47–50) · **#67 로그 종수 라벨**(48) → develop `08453fe`
-- **#66 릴리스**: develop → `main`(`982f441`) 머지 완료로 기본 브랜치에 앱 코드가 실재. **#68**로 `main` 고유의 README 문구를 develop에 역싱크 (→ #46) · `main`에는 #67/#68가 아직 없으므로 다음 릴리스 PR로 흡수
-- 오픈 PR: **없음** — 위 표의 수치 갱신 PR(#69)을 제외하고 #61~#68는 전부 머지 완료. 남은 이슈는 배포(#44)와 개인 기여(#45) 두 건
-- 위 숫자는 문서가 아니라 Git에서 계산됩니다. 제출 직전 `docs/commit-audit.md`의 최신 주차 표를 보세요.
+[열린 작업과 완료 조건](docs/TODO.md) · [팀 컨벤션](CONTRIBUTING.md)
