@@ -1,4 +1,5 @@
 """통합 테스트 — 회원가입/로그인/접근 제어."""
+
 from tests.conftest import signup_and_login
 
 
@@ -16,8 +17,10 @@ def test_session_loss_blocks_protected_api(client):
 
 def test_signup_login_me_logout_flow(client):
     # 회원가입
-    r = client.post("/api/auth/signup",
-                    json={"email": "a@test.com", "password": "password123", "nickname": "홍"})
+    r = client.post(
+        "/api/auth/signup",
+        json={"email": "a@test.com", "password": "password123", "nickname": "홍"},
+    )
     assert r.status_code == 201
     assert r.json()["nickname"] == "홍"
 
@@ -76,17 +79,14 @@ def test_stale_session_after_reseed_returns_401(client, db):
 
 def test_email_case_insensitive_signup_login(client):
     """대소문자 달라도 동일 계정 — 정규화 후 중복 409 + 교차 로그인 (#4)."""
-    r = client.post("/api/auth/signup",
-                    json={"email": "Case@Test.com", "password": "password123"})
+    r = client.post("/api/auth/signup", json={"email": "Case@Test.com", "password": "password123"})
     assert r.status_code == 201
     assert r.json()["email"] == "case@test.com"
 
-    r = client.post("/api/auth/signup",
-                    json={"email": "case@test.com", "password": "password123"})
+    r = client.post("/api/auth/signup", json={"email": "case@test.com", "password": "password123"})
     assert r.status_code == 409  # 정규화 후 중복
 
-    r = client.post("/api/auth/login",
-                    json={"email": "CASE@TEST.COM", "password": "password123"})
+    r = client.post("/api/auth/login", json={"email": "CASE@TEST.COM", "password": "password123"})
     assert r.status_code == 200
 
 
