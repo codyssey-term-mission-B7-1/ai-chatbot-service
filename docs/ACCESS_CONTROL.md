@@ -34,6 +34,12 @@
 2. **비용:** 익명 사용자의 직접 AI 호출을 막는다. 로그인은 이메일별 실패 누적 잠금(`LOGIN_MAX_FAILS`/`LOGIN_LOCKOUT_SEC`, 프로세스 메모리·단일 워커 전제)으로 무차별 대입을 늦춘다. 채팅은 사용자별 분당 상한(`CHAT_RATE_PER_MIN`, 기본 10, 0=비활성, 429)으로 비용 남용을 제한한다. 다만 로그인과 상한만으로 계정 생성을 통한 우회까지 막는 것은 아니다.
 3. **개인화:** 같은 사용자의 성공 Q/A만 문맥에 넣고 본인 기록을 복원한다.
 
+## 문서 노출과 심층 방어(#75)
+
+- 모든 응답에 `Content-Security-Policy`(script-src 'self' 등)·nosniff·DENY·Referrer-Policy 헤더를 붙인다. UI는 인라인 스크립트/핸들러를 쓰지 않는다.
+- 상태 변경 메서드는 교차 출처 `Origin`을 403으로 차단한다(SameSite=Lax·JSON 전용 외의 2차 방어).
+- `/docs`·`/redoc`·`/openapi.json`은 `DOCS_ENABLED=false`면 404(운영 CD 기본 false, 로컬 기본 true).
+
 ## 관리자
 
 기본 관리자 계정은 **없다**. `admin@demo.com` 같은 이름이나 닉네임으로 권한이 생기지 않는다. 운영자가 기존 전용 계정에 명시적으로 권한을 부여해야 한다. [관리자 운영](ADMIN.md)을 참고한다.
