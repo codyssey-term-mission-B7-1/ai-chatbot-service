@@ -1,0 +1,43 @@
+2026-09-08 10:56:45,065 INFO uvicorn.error Started server process [4116]
+2026-09-08 10:56:45,065 INFO uvicorn.error Waiting for application startup.
+2026-09-08 10:56:45,068 INFO uvicorn.error Application startup complete.
+2026-09-08 10:56:45,773 INFO app event=request_received method=POST path=/api/auth/signup session_user_id=- request_id=14f53bcf439845638be0
+2026-09-08 10:56:46,033 INFO app.auth event=user_signup request_id=14f53bcf439845638be0 user_id=1 email_domain=example.com
+2026-09-08 10:56:46,033 INFO app event=request_finished method=POST path=/api/auth/signup user_id=- status=201 request_id=14f53bcf439845638be0 latency_ms=260
+2026-09-08 10:56:46,157 INFO app event=request_received method=POST path=/api/auth/login session_user_id=- request_id=52a71e9ce1394b01af20
+2026-09-08 10:56:46,412 INFO app.auth event=user_login request_id=52a71e9ce1394b01af20 user_id=1
+2026-09-08 10:56:46,414 INFO app event=request_finished method=POST path=/api/auth/login user_id=1 status=200 request_id=52a71e9ce1394b01af20 latency_ms=257
+2026-09-08 10:56:46,438 INFO app event=request_received method=GET path=/api/me/chats session_user_id=1 request_id=459df891acef45b3b17a
+2026-09-08 10:56:46,444 INFO app event=request_finished method=GET path=/api/me/chats user_id=1 status=200 request_id=459df891acef45b3b17a latency_ms=5
+2026-09-08 10:56:48,130 INFO app event=request_received method=POST path=/api/chat session_user_id=1 request_id=61c620df710d4f1183e5
+2026-09-08 10:56:48,135 INFO app.chat event=ai_call_start user_id=1 question_chars=30 context_pairs=0 request_id=61c620df710d4f1183e5
+2026-09-08 10:56:48,186 INFO app.chat event=ai_call_success user_id=1 request_id=61c620df710d4f1183e5 latency_ms=50
+2026-09-08 10:56:48,187 INFO app.chat event=db_save_success user_id=1 chat_id=1 status=success request_id=61c620df710d4f1183e5
+2026-09-08 10:56:48,188 INFO app event=request_finished method=POST path=/api/chat user_id=1 status=200 request_id=61c620df710d4f1183e5 latency_ms=57
+2026-09-08 10:56:48,523 INFO app event=request_received method=POST path=/api/chat session_user_id=1 request_id=08cb1b4634cd41439b9f
+2026-09-08 10:56:48,527 INFO app.chat event=ai_call_start user_id=1 question_chars=13 context_pairs=1 request_id=08cb1b4634cd41439b9f
+2026-09-08 10:56:48,577 INFO app.chat event=ai_call_success user_id=1 request_id=08cb1b4634cd41439b9f latency_ms=50
+2026-09-08 10:56:48,578 INFO app.chat event=db_save_success user_id=1 chat_id=2 status=success request_id=08cb1b4634cd41439b9f
+2026-09-08 10:56:48,579 INFO app event=request_finished method=POST path=/api/chat user_id=1 status=200 request_id=08cb1b4634cd41439b9f latency_ms=55
+2026-09-08 10:56:48,684 INFO app event=request_received method=GET path=/api/me/chats session_user_id=1 request_id=58c78362873f4f6caa4e
+2026-09-08 10:56:48,687 INFO app event=request_finished method=GET path=/api/me/chats user_id=1 status=200 request_id=58c78362873f4f6caa4e latency_ms=2
+2026-09-08 10:56:48,862 INFO app event=request_received method=POST path=/api/auth/signup session_user_id=- request_id=700376850dc844398cb1
+2026-09-08 10:56:49,107 INFO app.auth event=user_signup request_id=700376850dc844398cb1 user_id=2 email_domain=example.com
+2026-09-08 10:56:49,108 INFO app event=request_finished method=POST path=/api/auth/signup user_id=- status=201 request_id=700376850dc844398cb1 latency_ms=245
+2026-09-08 10:56:49,113 INFO app event=request_received method=POST path=/api/auth/login session_user_id=- request_id=f2c03092e2634f40afdc
+2026-09-08 10:56:49,359 INFO app.auth event=user_login request_id=f2c03092e2634f40afdc user_id=2
+2026-09-08 10:56:49,360 INFO app event=request_finished method=POST path=/api/auth/login user_id=2 status=200 request_id=f2c03092e2634f40afdc latency_ms=247
+2026-09-08 10:56:49,363 INFO app event=request_received method=POST path=/api/chat session_user_id=2 request_id=dca570218b2d4abfb1b1
+2026-09-08 10:56:49,366 INFO app.chat event=ai_call_start user_id=2 question_chars=14 context_pairs=0 request_id=dca570218b2d4abfb1b1
+2026-09-08 10:56:49,416 INFO app.chat event=ai_call_success user_id=2 request_id=dca570218b2d4abfb1b1 latency_ms=50
+2026-09-08 10:56:49,417 INFO app.chat event=db_save_success user_id=2 chat_id=3 status=success request_id=dca570218b2d4abfb1b1
+2026-09-08 10:56:49,417 INFO app event=request_finished method=POST path=/api/chat user_id=2 status=200 request_id=dca570218b2d4abfb1b1 latency_ms=54
+2026-09-08 10:56:49,520 INFO app.admin event=admin_logs_viewed request_id=49dbe472e55a4f09aa9d user_id=1 filter_user_id=- result_count=3 before_id=-
+2026-09-08 10:56:49,616 INFO app event=request_received method=GET path=/api/me/chats session_user_id=1 request_id=c9b897033783407aa119
+2026-09-08 10:56:49,620 INFO app event=request_finished method=GET path=/api/me/chats user_id=1 status=200 request_id=c9b897033783407aa119 latency_ms=3
+2026-09-08 10:56:49,721 INFO app event=request_received method=POST path=/api/auth/logout session_user_id=1 request_id=7d3fda29bd52434da6c6
+2026-09-08 10:56:49,721 INFO app event=request_finished method=POST path=/api/auth/logout user_id=- status=200 request_id=7d3fda29bd52434da6c6 latency_ms=0
+2026-09-08 10:56:49,906 INFO uvicorn.error Shutting down
+2026-09-08 10:56:50,006 INFO uvicorn.error Waiting for application shutdown.
+2026-09-08 10:56:50,006 INFO uvicorn.error Application shutdown complete.
+2026-09-08 10:56:50,006 INFO uvicorn.error Finished server process [4116]

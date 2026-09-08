@@ -83,6 +83,7 @@ jobs:
           AI_TIMEOUT_SEC: ${{ secrets.AI_TIMEOUT_SEC }}
           AI_MAX_RETRIES: ${{ secrets.AI_MAX_RETRIES }}
           CONTEXT_TURNS: ${{ secrets.CONTEXT_TURNS }}
+          MAX_QUESTION_LENGTH: ${{ secrets.MAX_QUESTION_LENGTH }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SERVICE: ${{ vars.RAILWAY_SERVICE_NAME }}
@@ -90,20 +91,21 @@ jobs:
         run: |
           SERVICE="${SERVICE:-ai-chatbot-service}"
           RAIL_ENV="${RAIL_ENV:-production}"
-          set_var() { # set_var <변수명> <secret 값> <기본값> — 셋 다 비면 스킵
-            if [ -z "$2" ] && [ -z "$3" ]; then echo "  · $1: 스킵 (코드 기본값)"; return 0; fi
+          set_var() { # 미설정은 명시적 기본값/빈 값으로 동기화(이전 값 유지 아님)
             railway variable set "$1=${2:-$3}" --service "$SERVICE" \
               --environment "$RAIL_ENV" --skip-deploys
             echo "  · $1: 동기화 완료"
           }
           echo "🔄 GitHub Secrets → Railway 변수 (source of truth: Secrets)"
           set_var AI_API_KEY "$AI_API_KEY" ""
-          [ -n "$AI_API_KEY" ] || echo "  ⚠️ AI_API_KEY 없음 → 데모 모드로 배포됩니다"
-          set_var AI_BASE_URL "$AI_BASE_URL" ""
-          set_var AI_MODEL "$AI_MODEL" ""
-          set_var AI_TIMEOUT_SEC "$AI_TIMEOUT_SEC" ""
-          set_var AI_MAX_RETRIES "$AI_MAX_RETRIES" ""
-          set_var CONTEXT_TURNS "$CONTEXT_TURNS" ""
+          [ -n "$AI_API_KEY" ] || echo "  ⚠️ AI_API_KEY 없음 → 빈 값으로 동기화하며 데모 모드로 배포합니다"
+          set_var AI_BASE_URL "$AI_BASE_URL" "https://api.openai.com/v1/chat/completions"
+          set_var AI_MODEL "$AI_MODEL" "gpt-4o-mini"
+          set_var AI_TIMEOUT_SEC "$AI_TIMEOUT_SEC" "45"
+          set_var AI_MAX_RETRIES "$AI_MAX_RETRIES" "1"
+          set_var CONTEXT_TURNS "$CONTEXT_TURNS" "5"
+          set_var MAX_QUESTION_LENGTH "$MAX_QUESTION_LENGTH" "1000"
+          set_var DEBUG "false" "false"
           set_var SESSION_SECRET "$SESSION_SECRET" ""
           set_var DATABASE_URL "$DATABASE_URL" "sqlite:////data/app.db"
 

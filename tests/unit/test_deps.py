@@ -1,4 +1,5 @@
 """유닛 테스트 — 세션→사용자 해석 + 계정 바인딩 검증 (#33)."""
+
 from types import SimpleNamespace
 
 from app.deps import resolve_session_user
