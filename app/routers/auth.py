@@ -1,6 +1,7 @@
 """회원 인증 API. 세션 쿠키 발급과 앱 관리자 권한은 별개다."""
 
 import logging
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -96,6 +97,7 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
     request.session.clear()
     request.session["user_id"] = user.id
     request.session["email_fp"] = email_fingerprint(user.email)
+    request.session["iat"] = int(time.time())  # 서버 측 폐기(#74) 기준이 되는 발급 시각
     request.state.authenticated_user_id = user.id
     log_event(logger, "user_login", user_id=user.id)
     return UserOut(email=user.email, nickname=user.nickname, is_admin=is_admin(db, user))
