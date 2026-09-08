@@ -86,3 +86,6 @@ class SlidingWindowLimiter:
 
 # 로그인 실패 임금(lockout) — 이메일별 실패 누적(#72). 프로세스 메모리 기준.
 login_limiter = SlidingWindowLimiter(settings.login_max_fails, settings.login_lockout_sec)
+
+# 채팅 사용자별 분당 요청 상한(#73) — AI 비용 남용 방어. 0이면 비활성화.
+chat_limiter = SlidingWindowLimiter(settings.chat_rate_per_min, 60.0)
