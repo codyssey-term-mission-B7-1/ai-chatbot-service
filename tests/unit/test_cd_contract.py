@@ -56,4 +56,9 @@ with open(os.environ['TEST_RECORD'], 'a') as out:
     assert values["MAX_QUESTION_LENGTH"] == "1000"
     assert values["CONTEXT_TURNS"] == "5"
     assert values["DATABASE_URL"] == "sqlite:////data/app.db"
+    assert values["CHAT_RATE_PER_MIN"] == "10"
+    assert values["LOGIN_MAX_FAILS"] == "5"
+    assert values["LOGIN_LOCKOUT_SEC"] == "900"
+    assert values["SESSION_MAX_AGE_HOURS"] == "24"
+    assert values["DOCS_ENABLED"] == "false"
     assert all("--skip-deploys" in command for command in commands)
