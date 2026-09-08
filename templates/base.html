@@ -14,7 +14,7 @@
         <span class="user-chip">{{ nickname }}님</span>
         <a class="nav-link" href="/logs">내 기록</a>
         {% if is_admin %}<a class="nav-link" href="/admin/logs">관리자 조회</a>{% endif %}
-        <button class="nav-link linklike" onclick="logout()">로그아웃</button>
+        <button class="nav-link linklike" id="logout-btn" type="button">로그아웃</button>
       {% else %}
         <a class="nav-link" href="/login">로그인</a>
         <a class="nav-link primary" href="/signup">회원가입</a>
@@ -25,12 +25,7 @@
     {% block content %}{% endblock %}
   </main>
   <script src="/static/js/form-utils.js"></script>
-  <script>
-    async function logout() {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      location.href = '/login';
-    }
-  </script>
+  <script src="/static/js/logout.js"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
