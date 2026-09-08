@@ -1,4 +1,5 @@
 """유닛 테스트 — sqlite 부모 디렉터리 보장 (볼륨 경로 방어)."""
+
 from app.database import ensure_sqlite_dir
 
 
@@ -54,16 +55,21 @@ def test_raw_sql_user_delete_removes_logs(tmp_path):
     Base.metadata.create_all(eng)
     with eng.begin() as conn:
         conn.execute(
-            text("INSERT INTO users(id,email,password_hash,nickname,created_at)"
-                 " VALUES (901,'c@d.e','h','c','2026-01-01')")
+            text(
+                "INSERT INTO users(id,email,password_hash,nickname,created_at)"
+                " VALUES (901,'c@d.e','h','c','2026-01-01')"
+            )
         )
         conn.execute(
-            text("INSERT INTO chat_logs(user_id,question,answer,latency_ms,status,request_id,"
-                 "created_at) VALUES (901,'q','a',1,'success','r','2026-01-01')")
+            text(
+                "INSERT INTO chat_logs(user_id,question,answer,latency_ms,status,request_id,"
+                "created_at) VALUES (901,'q','a',1,'success','r','2026-01-01')"
+            )
         )
         conn.execute(text("DELETE FROM users WHERE id=901"))
         left = conn.execute(text("SELECT COUNT(*) FROM chat_logs WHERE user_id=901")).scalar()
     assert left == 0
+    eng.dispose()
 
 
 def test_fk_rejects_orphan_log(tmp_path):
@@ -89,6 +95,9 @@ def test_fk_rejects_orphan_log(tmp_path):
     Base.metadata.create_all(eng)
     with pytest.raises(IntegrityError), eng.begin() as conn:
         conn.execute(
-            text("INSERT INTO chat_logs(user_id,question,answer,latency_ms,status,request_id,"
-                 "created_at) VALUES (4242,'q','a',1,'success','r','2026-01-01')")
+            text(
+                "INSERT INTO chat_logs(user_id,question,answer,latency_ms,status,request_id,"
+                "created_at) VALUES (4242,'q','a',1,'success','r','2026-01-01')"
+            )
         )
+    eng.dispose()
