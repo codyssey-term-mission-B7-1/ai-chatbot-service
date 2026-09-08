@@ -3,12 +3,12 @@
 
 사용법 (프로젝트 루트에서):
     python scripts/seed_mock_data.py            # DATABASE_URL의 DB에 생성 (기본 app.db)
-    python scripts/seed_mock_data.py --fresh    # 주의: 모든 사용자의 대화 로그와 데모 계정 삭제 후 재생성. 운영 DB에서 실행 금지
+    python scripts/seed_mock_data.py --fresh    # 데모 계정과 해당 대화만 삭제 후 재생성. 일반 사용자 기록은 유지
 
 생성되는 계정 (비밀번호 전부 Test1234!):
     demo@demo.com   (데모유저)  — 문맥 시연용 Q/A 3건
     tester@demo.com (테스터)    — 일반 대화 2건 + AI 타임아웃 실패 1건(status=ai_error)
-    admin@demo.com  (운영자)    — 빈 계정 (로그인/권한 테스트용)
+    admin@demo.com  (데모계정)  — 이름과 달리 앱 관리자 권한 없음
 """
 import argparse
 import sys
@@ -25,7 +25,7 @@ MOCK_PASSWORD = "Test1234!"
 MOCK_USERS = [
     {"email": "demo@demo.com", "nickname": "데모유저"},
     {"email": "tester@demo.com", "nickname": "테스터"},
-    {"email": "admin@demo.com", "nickname": "운영자"},
+    {"email": "admin@demo.com", "nickname": "데모계정(권한 없음)"},
 ]
 
 MOCK_CHATS = {
@@ -62,11 +62,14 @@ def seed(fresh: bool) -> None:
     db = SessionLocal()
     try:
         if fresh:
-            deleted = db.query(ChatLog).delete()
+            demo_ids = [row.id for row in db.query(User).filter(
+                User.email.in_([u["email"] for u in MOCK_USERS])).all()]
+            deleted = db.query(ChatLog).filter(ChatLog.user_id.in_(demo_ids)).delete(
+                synchronize_session=False)
             users_deleted = db.query(User).filter(
                 User.email.in_([u["email"] for u in MOCK_USERS])).delete(synchronize_session=False)
             db.commit()
-            print(f"🧹 전체 사용자 대화 로그 삭제: 채팅 {deleted}건 / 사용자 {users_deleted}명")
+            print(f"🧹 데모 계정 관련 데이터만 삭제: 채팅 {deleted}건 / 사용자 {users_deleted}명")
 
         for info in MOCK_USERS:
             existing = db.query(User).filter(User.email == info["email"]).first()
@@ -102,6 +105,6 @@ def seed(fresh: bool) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--fresh", action="store_true", help="주의: 모든 사용자의 대화 로그와 데모 계정 삭제 후 재생성. 운영 DB에서 실행 금지")
+    parser.add_argument("--fresh", action="store_true", help="데모 계정과 해당 대화만 삭제 후 재생성. 일반 사용자 기록은 유지")
     args = parser.parse_args()
     seed(args.fresh)

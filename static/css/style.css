@@ -71,3 +71,32 @@ body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; backgr
 .logs-table .a { color: var(--muted); max-width: 320px; }
 .logs-table .nowrap { white-space: nowrap; }
 .row-error { background: #fff7f7; }
+
+/* 접근성·작은 화면 및 관리자 읽기 전용 조회 */
+[hidden] { display: none !important; }
+.table-scroll { overflow-x: auto; }
+.logs-table { min-width: 600px; }
+.logs-table td { overflow-wrap: anywhere; }
+.admin-filter { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 18px 0; }
+.admin-filter input { padding: 8px; border: 1px solid var(--border); border-radius: 6px; }
+.admin-filter button, .next-page { padding: 8px 14px; background: var(--brand); color: white;
+  border: 0; border-radius: 6px; text-decoration: none; cursor: pointer; }
+.next-page { display: inline-block; margin-top: 16px; }
+@media (max-width: 600px) {
+  .nav { padding: 12px 16px; flex-wrap: wrap; gap: 10px; }
+  .nav-right { flex-wrap: wrap; gap: 10px; }
+  .brand { font-size: 16px; }
+  .container { padding: 16px 12px; }
+  .auth-card { margin: 20px auto; padding: 24px; }
+  .chat-wrap { min-height: 360px; height: calc(100dvh - 180px); }
+  .bubble { max-width: 92%; }
+  .logs-wrap { padding: 16px; }
+}
+
+.bubble.welcome { white-space: normal; }
+.counter { display: flex; justify-content: space-between; gap: 8px; }
+.input-hint { text-align: left; }
+.container:has(.admin-panel) { max-width: 1200px; }
+.admin-panel .logs-table { min-width: 1000px; }
+.status-cell, .request-id { white-space: nowrap; }
+.request-id { font-family: ui-monospace, monospace; font-size: 12px; }
