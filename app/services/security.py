@@ -1,14 +1,19 @@
-"""비밀번호 해싱(bcrypt)·세션 바인딩용 지문 — 평문 저장/전송 금지."""
+"""비밀번호 해싱(bcrypt)·세션 바인딩용 지문 — 평문 저장 금지, 운영 전송에는 HTTPS 사용."""
+
 import hashlib
 import hmac
 
 import bcrypt
 
 from app.config import settings
+from app.policies import MAX_PASSWORD_BYTES
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    encoded = password.encode("utf-8")
+    if len(encoded) > MAX_PASSWORD_BYTES:
+        raise ValueError("비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
+    return bcrypt.hashpw(encoded, bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str) -> bool:
