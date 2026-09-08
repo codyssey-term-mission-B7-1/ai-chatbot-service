@@ -1,70 +1,31 @@
 {% extends "base.html" %}
 {% block title %}{{ '회원가입' if mode == 'signup' else '로그인' }}{% endblock %}
-
 {% block content %}
 <div class="auth-card">
   <h1>{{ '회원가입' if mode == 'signup' else '로그인' }}</h1>
   <p class="muted">{{ '서비스를 이용하려면 가입이 필요해요.' if mode == 'signup' else '챗봇은 로그인한 사용자만 이용할 수 있어요.' }}</p>
-
-  <form id="auth-form" onsubmit="return submitForm(event)">
+  <form id="auth-form" data-mode="{{ mode }}">
     <label>이메일
       <input type="email" id="email" required placeholder="you@example.com" autocomplete="email">
     </label>
     <label>비밀번호
-      <input type="password" id="password" required minlength="{{ 8 if mode == 'signup' else 1 }}"
-             placeholder="{{ '8자 이상' if mode == 'signup' else '비밀번호' }}" autocomplete="current-password">
+      <input type="password" id="password" required
+             placeholder="{{ '8~64자 · UTF-8 72바이트 이하' if mode == 'signup' else '비밀번호' }}"
+             autocomplete="{{ 'new-password' if mode == 'signup' else 'current-password' }}">
     </label>
     {% if mode == 'signup' %}
-    <label>닉네임 (선택)
-      <input type="text" id="nickname" maxlength="20" placeholder="표시될 이름">
+    <p class="muted small">8자 이상 64자 이하, UTF-8 기준 72바이트 이하입니다. 비밀번호를 잘라 저장하지 않습니다.</p>
+    <label>닉네임 (선택 · 20자 이하)
+      <input type="text" id="nickname" placeholder="표시될 이름" autocomplete="nickname">
     </label>
     {% endif %}
     <button type="submit" id="submit-btn">{{ '가입하기' if mode == 'signup' else '로그인' }}</button>
   </form>
-
-  <p id="msg" class="msg" hidden></p>
+  <p id="msg" class="msg" role="alert" hidden></p>
   <p class="muted small">
-    {{ ('이미 계정이 있나요? <a href="/login">로그인</a>'
-        if mode == 'signup'
-        else '계정이 없나요? <a href="/signup">회원가입</a>') | safe }}
+    {% if mode == 'signup' %}이미 계정이 있나요? <a href="/login">로그인</a>
+    {% else %}계정이 없나요? <a href="/signup">회원가입</a>{% endif %}
   </p>
 </div>
 {% endblock %}
-
-{% block scripts %}
-<script>
-  const MODE = '{{ mode }}';
-  async function submitForm(e) {
-    e.preventDefault();
-    const msg = document.getElementById('msg');
-    const btn = document.getElementById('submit-btn');
-    const body = {
-      email: document.getElementById('email').value.trim(),
-      password: document.getElementById('password').value,
-    };
-    if (MODE === 'signup') {
-      body.nickname = document.getElementById('nickname').value.trim();
-      if (body.password.length < 8) return showMsg('비밀번호는 8자 이상이어야 해요.', true);
-    }
-    btn.disabled = true; btn.textContent = '처리 중…';
-    try {
-      const res = await fetch(MODE === 'signup' ? '/api/auth/signup' : '/api/auth/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) return showMsg(typeof data.detail === 'string' ? data.detail : '입력을 확인해 주세요.', true);
-      location.href = '/';
-    } catch (err) {
-      showMsg('네트워크 오류예요. 잠시 후 다시 시도해 주세요.', true);
-    } finally {
-      btn.disabled = false; btn.textContent = MODE === 'signup' ? '가입하기' : '로그인';
-    }
-  }
-  function showMsg(text, isError) {
-    const msg = document.getElementById('msg');
-    msg.hidden = false; msg.textContent = text;
-    msg.className = 'msg ' + (isError ? 'error' : 'ok');
-  }
-</script>
-{% endblock %}
+{% block scripts %}<script src="/static/js/auth.js"></script>{% endblock %}
