@@ -7,20 +7,20 @@
   <div class="banner">⚠️ 데모 모드 — <code>AI_API_KEY</code> 미설정. 가짜 응답이 반환됩니다.</div>
   {% endif %}
 
-  <div id="chat-window" class="chat-window" data-context-turns="{{ context_turns }}">
-    <div class="bubble ai">
+  <div id="chat-window" class="chat-window" data-context-turns="{{ context_turns }}" data-max-question-length="{{ max_question_length }}">
+    <div class="bubble ai welcome">
       안녕하세요, {{ nickname }}님! 😊<br>
-      궁금한 걸 물어보세요. 직전 {{ context_turns }}개의 대화를 기억해 문맥을 유지합니다.
+      궁금한 걸 물어보세요. 직전 최대 {{ context_turns }}쌍의 성공한 질문·응답을 문맥으로 사용합니다.
     </div>
   </div>
 
   <form id="chat-form" class="chat-input" onsubmit="return send(event)">
-    <textarea id="question" rows="1" maxlength="1000"
-              placeholder="질문을 입력하세요 (Enter 전송 · Shift+Enter 줄바꿈)"></textarea>
+    <textarea id="question" rows="1" aria-label="질문"
+              placeholder="질문을 입력하세요"></textarea>
     <button type="submit" id="send-btn">보내기</button>
   </form>
-  <div class="counter"><span id="count">0</span> / 1000</div>
-  <p id="chat-error" class="msg error" hidden></p>
+  <div class="counter"><span class="input-hint">Enter 전송 · Shift+Enter 줄바꿈</span><span><span id="count">0</span> / {{ max_question_length }}자</span></div>
+  <p id="chat-error" class="msg error" role="alert" hidden></p>
 </div>
 {% endblock %}
 

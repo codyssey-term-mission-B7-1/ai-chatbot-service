@@ -1,13 +1,14 @@
 """단위 테스트 — 설정 기본값/보안 게이트 회귀 방지 (#41, SESSION_SECRET 가드)."""
 
+import pytest
+
 from app.config import (
     INSECURE_SECRETS,
-    load_settings,
     MIN_SECRET_LEN,
     Settings,
+    load_settings,
     resolve_session_secret,
 )
-import pytest
 
 
 def test_ai_timeout_default_is_45s(monkeypatch):

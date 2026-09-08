@@ -1,95 +1,64 @@
-# Railway 배포 런북 (GitHub Actions CI/CD + DB 영속화)
+# Railway 배포 런북
 
-> 관련 이슈: #12 (배포 & 운영) · 파이프라인: `.github/workflows/cd.yml`
-> 원칙: 환경변수 source of truth = **GitHub Secrets**, DB는 **Volume**에 영속화 (재배포해도 초기화 안 됨)
+## 현재 상태
 
-## 1. 아키텍처
+배포 설정 코드와 테스트는 저장소에 있다. **이 문서 자체는 배포 성공 증거가 아니다.** 실제 프로젝트/볼륨/Secrets/공개 URL을 준비하고 성공한 CD·헬스·E2E 기록을 확보해야 한다.
 
-```
-main 머지 ─▶ [gate] ruff+pytest ─▶ [sync] Secrets→Railway 변수 ─▶ [up] railway up
-                                                              ─▶ [health] /health 폴링
-                                                              ─▶ [smoke] e2e_smoke.sh
-```
+## 운영자가 준비할 것
 
-- 배포 단위: `railway.json` (Nixpacks 빌드, `$PORT` 수신, `/health` 헬스체크)
-- DB: Railway Volume → `/data` 마운트 + `DATABASE_URL=sqlite:////data/app.db`
-- 앱은 시작 시 테이블만 생성(`create_all` — 비파괴). 삭제·초기화 코드는 없음
+1. Railway 프로젝트의 서비스와 영구 Volume을 생성하고 `/data`에 마운트한다.
+2. 서비스를 공개 HTTPS 도메인으로 노출한다.
+3. Railway **프로젝트 토큰**을 발급한다. GitHub PAT나 AI 키로 대신하지 않는다.
+4. GitHub Actions Secrets에 필수 값을 등록한다.
 
-## 2. 최초 1회 설정 (사람 작업, 약 10분)
-
-### 2-1. Railway 프로젝트·서비스·볼륨
-
-1. [railway.app](https://railway.app) → New Project → **Empty Service** (GitHub 연동 배포는 끔 — Actions가 배포)
-2. 서비스 이름: `ai-chatbot-service` (다르면 Variables `RAILWAY_SERVICE_NAME`에 지정)
-3. 서비스 → **Volumes** → Add Volume, 마운트 경로: `/data`
-4. 서비스 → **Settings → Networking** → Generate Domain (공개 URL 확보 → `DEPLOY_URL`)
-5. 프로젝트 → **Tokens** → Project Token 발급 (→ `RAILWAY_TOKEN`)
-
-### 2-2. GitHub Secrets 등록 (Settings → Secrets and variables → Actions)
-
-| Secret | 필수 | 값 예시 |
+| Secret | 필수 | 의미 |
 |---|---|---|
-| `RAILWAY_TOKEN` | ✅ | Railway project token |
-| `DEPLOY_URL` | ✅ | `https://xxx.up.railway.app` (끝 `/` 없음) |
-| `SESSION_SECRET` | ✅ | 32자 이상 무작위 (`python -c "import secrets;print(secrets.token_hex(32))"`) |
-| `AI_API_KEY` | 선택 | 네이토/OpenAI 키 (없으면 데모 모드) |
-| `AI_BASE_URL` | 선택 | OpenAI 호환 엔드포인트 |
-| `AI_MODEL` | 선택 | 모델명 |
-| `AI_TIMEOUT_SEC` / `AI_MAX_RETRIES` / `CONTEXT_TURNS` | 선택 | 기본값 사용 시 생략 |
-| `DATABASE_URL` | 선택 | 미설정 시 `sqlite:////data/app.db` 자동 적용 |
+| RAILWAY_TOKEN | 예 | Railway 프로젝트 토큰 |
+| DEPLOY_URL | 예 | 실제 HTTPS 서비스 URL, 끝 `/` 없음 |
+| SESSION_SECRET | 예 | 새 무작위 32자 이상 값. 코드/대화/증빙에 공개하지 않음 |
+| AI_API_KEY | 선택 | 실제 AI 키. 없으면 **빈 값으로 동기화**하여 데모 모드 |
+| AI_BASE_URL | 선택 | 기본 `https://api.openai.com/v1/chat/completions` |
+| AI_MODEL | 선택 | 기본 `gpt-4o-mini` |
+| AI_TIMEOUT_SEC | 선택 | 기본 45초, AI 전체 호출 예산 |
+| AI_MAX_RETRIES | 선택 | 기본 1, 추가 시도 0~5 |
+| CONTEXT_TURNS | 선택 | 기본 5, 0~200 |
+| MAX_QUESTION_LENGTH | 선택 | 기본 1000 코드 포인트 |
+| DATABASE_URL | 선택 | 기본 `sqlite:////data/app.db` |
 
-선택 Variables: `RAILWAY_SERVICE_NAME` (기본 `ai-chatbot-service`), `RAILWAY_ENVIRONMENT` (기본 `production`).
+Variables: `RAILWAY_SERVICE_NAME` 기본 ai-chatbot-service, `RAILWAY_ENVIRONMENT` 기본 production.
 
-## 3. 배포 실행
+## 동기화 계약과 주의
 
-- **자동**: `develop` → `main` PR 머지 시 CD 실행
-- **수동**: Actions → CD → Run workflow (재배포·변수 재동기화)
+- 관리 대상 변수의 미설정은 **기본값/빈 값 적용**이다. 이전 Railway 값을 유지하는 동작이 아니다.
+- 특히 AI_API_KEY Secret을 제거하면 대상 값도 비운다. 실 AI를 계속 써야 한다면 값을 빠뜨리지 말아야 한다.
+- 운영 DEBUG는 **false로 고정**한다. DEBUG Secret을 추가해도 true로 동기화하지 않는다.
+- 대상 서비스/환경과 기존 값을 운영자가 확인한 뒤 실행한다. 실제 Secret 값은 로그/커밋에 넣지 않는다.
+- `DATABASE_URL`을 바꾸면 다른 DB를 사용할 수 있으므로 먼저 백업과 영구 볼륨 경로를 검증한다.
+- `.env` 변경/환경변수 동기화 후에는 새 앱 프로세스가 필요하다. `reset_provider`만 호출해도 환경변수가 다시 읽히는 것은 아니다.
 
-실패 시 Actions 로그에서 단계별 확인 (게이트 → 검증 → 동기화 → up → 헬스 → 스모크 순).
+## 실행
 
-## 4. DB 영속화 검증 (첫 배포 후 1회)
+기존 `.github/workflows/cd.yml`은 main push 및 workflow_dispatch에서 동작한다.
 
-```bash
-# 1) 배포본에 질문 1건 (쿠키 저장)
-curl -c cj.txt -X POST $DEPLOY_URL/api/auth/signup \
-  -H 'Content-Type: application/json' -d '{"email":"probe@test.com","password":"Test1234!"}'
-curl -b cj.txt -c cj.txt -X POST $DEPLOY_URL/api/auth/login \
-  -H 'Content-Type: application/json' -d '{"email":"probe@test.com","password":"Test1234!"}'
-curl -b cj.txt -X POST $DEPLOY_URL/api/chat \
-  -H 'Content-Type: application/json' -d '{"question":"영속화_probe"}'
+1. ruff·pytest 게이트
+2. 필수 Secrets 검증 — 실패하면 배포하지 않는다
+3. Railway 변수 동기화(`--skip-deploys`)
+4. `railway up`
+5. `/health` 확인
+6. E2E 스모크
 
-# 2) 재배포 (Actions 수동 실행 또는 빈 커밋 main 머지)
+단순 `/health`의 ai_mode=real은 외부 AI 접속 성공을 뜻하지 않는다. 실 AI는 `ai_check.py --require-real`로 별도 검증한다.
 
-# 3) 같은 계정으로 로그 조회 — probe 질문이 남아있으면 성공
-curl -b cj.txt -c cj.txt -X POST $DEPLOY_URL/api/auth/login \
-  -H 'Content-Type: application/json' -d '{"email":"probe@test.com","password":"Test1234!"}'
-curl -b cj.txt $DEPLOY_URL/api/me/chats | grep -o "영속화_probe"
-```
+## 영속화·운영 증빙
 
-> 참고: 재배포 후 기존 세션 쿠키는 무효화될 수 있음 (위 절차처럼 재로그인).
-> 세션 `max_age` 적용 전까지 probe 계정은 삭제하지 말 것.
+- 가입/로그인 후 고유한 시험 질문을 저장한다.
+- 재배포 후 같은 계정의 `/api/me/chats`에서 해당 질문이 남아 있는지 확인한다.
+- `SESSION_SECRET`을 바꾸면 다시 로그인해야 한다. DB의 사용자 ID와 세션 지문이 다르면 오래된 세션은 거부된다.
+- 백업은 `python scripts/backup_db.py /data/app.db`를 사용한다. 기본 출력은 `/data/backups/`다.
+- 운영 스케줄러·서버 밖 백업 보관·복원 드릴은 운영자가 실제로 수행하고 기록해야 한다.
 
-## 5. 재배포·롤백·백업
+[관리자 계정](ADMIN.md) · [백업/복원](BACKUP_RESTORE.md) · [검증 구분](VERIFICATION.md)
 
-- **재배포**: Actions 수동 실행 (DB 유지됨 — Volume이 살아있는 한)
-- **롤백**: Railway 대시보드 → Deployments → 이전 버전 Redeploy (DB는 건드리지 않음)
-- **백업**: `scripts/backup_db.sh` + 볼륨 파일 주기적 다운로드 (정책: `docs/BACKUP_RESTORE.md`)
-- **주의**: Volume 삭제 = DB 영구 삭제. 볼륨 설정 변경 전 반드시 백업
+## 실패 시
 
-## 6. 트러블슈팅
-
-| 증상 | 원인 → 조치 |
-|---|---|
-| `unable to open database file` | 볼륨 미마운트 → `/data` 마운트 + `DATABASE_URL` 확인 |
-| 배포마다 데이터 초기화 | Volume 없이 배포 중 → 2-1 절차 3번 확인 (ephemeral disk) |
-| 로그인 후에도 계속 비로그인 상태 | 배포 URL이 `http://` 면 `Secure` 쿠키가 전송되지 않음 → `https://` 도메인만 사용 (임시 우회 `.env`의 `DEBUG=true`, 운영 금지 · #55) |
-| CD가 Secrets 검증에서 실패 | 필수 3종(RAILWAY_TOKEN·DEPLOY_URL·SESSION_SECRET) 등록 여부 확인 |
-| 헬스체크 5분 실패 | 빌드 로그(railway.json startCommand·`$PORT`) 확인 |
-| 데모 응답만 반환 | `AI_API_KEY` 미설정 → Secrets 등록 후 재배포 (변수만 바뀌면 Actions 수동 실행) |
-| `railway` 명령어 오류 | CLI 버전 변경 가능 — `railway <cmd> --help`로 플래그 확인 후 `cd.yml` 수정 |
-
-## 7. 보안 주의
-
-- 시크릿 값은 Actions 로그에 자동 마스킹 — 그래도 `echo $SECRET` 금지 (워크플로는 유무·길이만 검사)
-- `SESSION_SECRET` 교체 시 전원 로그아웃 (세션 서명 변경)
-- `RAILWAY_TOKEN`은 프로젝트 풀권한 — 유출 시 즉시 재발급·폐기
+필수 Secrets 실패는 해당 설정을 안전하게 등록한 뒤 다시 실행한다. 성공한 것처럼 로그를 교체하거나 실패 단계를 건너뛰지 않는다. 실제 URL이 없으면 README/homepage에 임의 주소를 쓰지 않는다.

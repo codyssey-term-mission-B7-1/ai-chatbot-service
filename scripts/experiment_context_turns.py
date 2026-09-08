@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CONTEXT_TURNS 값 실험 (#7) — 토큰 비용 vs 문맥 품질 트레이드오프 측정.
+"""CONTEXT_TURNS 값 실험 (#7) — 문자량과 문맥 범위 측정 (요금·실 AI 품질 측정 아님).
 
 실제 /api/chat 파이프라인을 태우고, AI에 전달된 messages를 그대로 캡처해
 N=3/5/10에서 프롬프트 크기와 문맥 커버리지가 어떻게 달라지는지 잰다.
@@ -11,7 +11,9 @@ import os
 import sys
 from pathlib import Path
 
-os.environ.setdefault("DATABASE_URL", "sqlite://")  # 파일 DB 생성 방지
+os.environ["DATABASE_URL"] = "sqlite://"  # 이 프로세스는 항상 격리 메모리 DB만 사용
+os.environ["AI_API_KEY"] = ""  # 실 AI 호출 금지
+os.environ.setdefault("DEBUG", "true")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from fastapi.testclient import TestClient  # noqa: E402
@@ -24,10 +26,9 @@ from app.database import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.services.ai_client import get_ai_provider  # noqa: E402
 
-logging.disable(logging.INFO)  # 측정 결과만 보이도록 파이프라인 로그 억제
 
 TOTAL_TURNS = 12          # 실험용으로 쌓는 대화 턴 수
-ANSWER_LENGTH = 300       # 실제 AI 답변에 가까운 길이(문자) — 프롬프트 크기 현실화
+ANSWER_LENGTH = 300       # 실험 가정값(문자). 실제 토큰 수·답변 품질·요금은 측정하지 않는다.
 CANDIDATES = [3, 5, 10]
 
 
@@ -59,12 +60,14 @@ def measure(n: int) -> dict:
         finally:
             s.close()
 
+    old_overrides = dict(app.dependency_overrides)
+    old_turns = settings.context_turns
     app.dependency_overrides[get_ai_provider] = lambda: provider
     app.dependency_overrides[get_db] = _get_db
     settings.context_turns = n
 
     try:
-        with TestClient(app) as c:
+        with TestClient(app, base_url="https://testserver") as c:
             c.post("/api/auth/signup", json={"email": f"exp{n}@example.com",
                                              "password": "Test1234!"})
             c.post("/api/auth/login", json={"email": f"exp{n}@example.com",
@@ -73,7 +76,10 @@ def measure(n: int) -> dict:
                 c.post("/api/chat", json={"question": f"{i}번째 질문입니다"})
     finally:
         app.dependency_overrides.clear()
+        app.dependency_overrides.update(old_overrides)
+        settings.context_turns = old_turns
         Base.metadata.drop_all(bind=engine)
+        engine.dispose()
 
     msgs = provider.last_messages
     chars = sum(len(m["content"]) for m in msgs)
@@ -90,7 +96,9 @@ def measure(n: int) -> dict:
 
 def main() -> None:
     original = settings.context_turns
-    print(f"실험 조건: {TOTAL_TURNS}턴 대화 후 마지막 요청의 프롬프트 측정 "
+    old_log_disable = logging.root.manager.disable
+    logging.disable(logging.INFO)
+    print(f"LOCAL/FAKE 실험: {TOTAL_TURNS}번째 요청의 프롬프트 측정 "
           f"(답변 길이 {ANSWER_LENGTH}자 가정)\n")
     header = (f"{'N':>3}  {'메시지 수':>9}  {'과거 Q/A':>8}  "
               f"{'프롬프트 문자':>13}  {'가장 오래된 턴':>14}")
@@ -105,6 +113,7 @@ def main() -> None:
                   f"{r['chars']:>13,}  {r['oldest_turn']:>14}번째")
     finally:
         settings.context_turns = original
+        logging.disable(old_log_disable)
 
     base = rows[0]["chars"]
     print()
