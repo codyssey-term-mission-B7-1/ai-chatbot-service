@@ -1,4 +1,5 @@
 """공통 의존성 — 인증 가드 (의존성 주입 형태라 테스트 override 가능)."""
+
 import logging
 
 from fastapi import Depends, HTTPException, Request
@@ -6,8 +7,9 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.logging_config import log_event
-from app.services.security import email_fingerprint
 from app.models import User
+from app.services.admin import is_admin
+from app.services.security import email_fingerprint
 
 logger = logging.getLogger("app.auth")
 
@@ -38,4 +40,12 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     user = resolve_session_user(request, db)
     if user is None:
         raise HTTPException(status_code=401, detail="로그인이 필요한 기능이에요.")
+    request.state.authenticated_user_id = user.id
+    return user
+
+
+def get_admin_user(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> User:
+    """서버에서 명시적으로 부여한 관리자 권한만 인정한다."""
+    if not is_admin(db, user):
+        raise HTTPException(status_code=403, detail="관리자 권한이 필요한 기능이에요.")
     return user

@@ -1,0 +1,23 @@
+# 현재 리뷰 책임의 분류다. 과거 Author/Committer나 실제 기여 실적을 뜻하지 않는다.
+* @giyeop-cody
+/docs/ @ygyg0605-cloud
+/README.md @ygyg0605-cloud @giyeop-cody
+/CONTRIBUTING.md @Im-Jongseok
+/.github/ @Im-Jongseok
+/.github/workflows/ @ygyg0605-cloud @Im-Jongseok
+/app/models.py @Im-Jongseok
+/app/database.py @Im-Jongseok
+/app/repositories/ @Im-Jongseok
+/app/services/context.py @Im-Jongseok
+/app/services/ai_client.py @loader1017
+/app/logging_config.py @loader1017
+/app/routers/chat.py @Im-Jongseok @loader1017
+/app/routers/logs.py @Im-Jongseok
+/app/routers/admin.py @giyeop-cody @Im-Jongseok
+/templates/ @loader1017
+/static/ @loader1017
+/scripts/backup_db.* @ygyg0605-cloud
+/scripts/manage_admin.py @ygyg0605-cloud @giyeop-cody
+/scripts/capture_local_evidence.py @loader1017 @ygyg0605-cloud
+/docs/commit-audit.md @Im-Jongseok
+/docs/TODO.md @giyeop-cody
