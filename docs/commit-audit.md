@@ -117,3 +117,26 @@ git log --no-merges --format='%ae' origin/develop | sort | uniq -c   # 이메일
   남은 9건은 새로 만들어야 한다. 담당 카드 09·10·11 + 이슈 #18을 이번 주 착수 목표로 지정 (#45).
 - PR #43 머지로 **#29 Enter 전송·IME 가드가 develop에서 소멸**하는 회귀가 발생했다 (JS 테스트가 없어 CI가 못 잡았다)
   → 복구 PR **#61 머지 완료**(`dafa1d7`), 재발 방지 항목을 PR 템플릿·CONTRIBUTING §2.2에 추가 (#60).
+
+## 2주차 마감 — 2026-09-08 07:19 (KST), develop `08453fe` 기준
+
+위 2주차 표(`4bb7189`) 이후 머지 6건(#62·#63·#64·#66·#67·#68)을 반영한 **현재 값**이다. 이 표 역시 문서가 아니라 Git에서 계산하며, 재현 명령:
+
+```bash
+git shortlog -sne --no-merges origin/develop          # 정체별(이메일 단위)
+git log --no-merges --format='%ae' origin/develop | sort | uniq -c
+#   giyeop-cody = cody.giyeop@gmail.com(33) + noreply(14) = 47
+```
+
+| 팀원 | 작업 커밋(비머지) | 머지한 PR | 목표 10회까지 | 상태 |
+|---|---:|---:|---:|---|
+| giyeop-cody | **47** | 19 | — | ✅ |
+| Im-Jongseok | **18** | 4 | — | ✅ |
+| loader1017 (Sungeun `dohc2069@naver.com`) | **1** | 1 (#43) | **9** | ❌ |
+| ygyg | 0 | 0 | 10 | ❌ (미참여) |
+
+- develop 총 커밋 **98**(비머지 67) / GitHub에서 `merged_at != null`로 센 머지 PR **24건**(develop 23 + main 1, #66).
+- 직전 표 대비 증가분은 정적 점검 작업(#54–#59 보안, #51–#53 위생, #47–#50 문서)이며,
+  **팀원 개인 기여 요구는 이 수치로 채워지지 않는다** — loader1017·ygyg의 커밋은 그대로다 (#45).
+- `main`은 #66 머지로 앱 코드를 갖게 되었다 (#46). 방향 검증: `git rev-list --count origin/main ^origin/develop` = **0** → `main`은 develop의 완전한 부분집합이라 되돌릴 커밋이 없고,
+  develop이 #67·#68로 **4커밋 앞서 있다**(트리 차이 = README.md 1파일 +7/−1). 다음 릴리스 PR로 흡수하면 두 브랜치가 내용까지 동일해진다.
