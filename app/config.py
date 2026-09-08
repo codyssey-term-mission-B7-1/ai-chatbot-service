@@ -54,6 +54,7 @@ class Settings(BaseSettings):
 
     # 세션
     session_secret: str = "dev-secret-change-me"  # 운영: .env에서 반드시 변경
+    session_max_age_hours: int = Field(default=24, ge=1, le=168)  # 쿠키 수명(#74), 상한 7일
 
     # AI (OpenAI 호환 chat completions — OpenAI/Groq/코디세이 네이토 등)
     ai_api_key: str | None = None  # 없으면 데모(Fake) 모드로 동작
