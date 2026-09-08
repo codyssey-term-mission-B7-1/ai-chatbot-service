@@ -1,0 +1,62 @@
+{
+  "checks": [
+    "UTF-8 비밀번호 바이트 제한 안내",
+    "가입 → 로그인 → 보호 화면 진입",
+    "공백/1001 코드 포인트 전송 차단",
+    "이모지 501개를 501자로 계산",
+    "Shift+Enter 줄바꿈 / 합성 IME 조합 이벤트는 전송하지 않음",
+    "Enter 1회 전송 / 전송 중 중복 요청 방지",
+    "연속 2질문 문맥 전달/인용 — Fake 모드",
+    "복귀 시 저장된 성공 대화 복원",
+    "모의 504 오류 안내·전송 버튼 복구",
+    "실제 로컬 HTTP로 두 사용자 기록 분리 확인",
+    "본인 기록 화면·UTC 표기",
+    "명시적으로 권한 부여한 관리자 조회",
+    "390px 뷰포트 가로 넘침 없음",
+    "로그아웃 후 보호 HTML은 로그인 화면으로 이동"
+  ],
+  "screenshots": [
+    {
+      "file": "01-signup.png",
+      "meaning": "로컬 실제 회원가입 화면; 실 운영 아님"
+    },
+    {
+      "file": "09-password-byte-error.png",
+      "meaning": "한글 25자 비밀번호의 클라이언트 바이트 제한 안내"
+    },
+    {
+      "file": "02-login.png",
+      "meaning": "실제 가입 완료 후 로그인 안내; 로컬 합성 계정"
+    },
+    {
+      "file": "03-loading.png",
+      "meaning": "네트워크 요청을 1.5초 지연시킨 로컬 로딩 UI"
+    },
+    {
+      "file": "04-context-chat.png",
+      "meaning": "내부 Fake 제공자의 문맥 응답; 실 AI 연결 증거 아님"
+    },
+    {
+      "file": "05-timeout-ui.png",
+      "meaning": "프론트에 모의 HTTP 504를 주어 오류 표시 검증"
+    },
+    {
+      "file": "06-my-logs.png",
+      "meaning": "실제 로컬 DB의 본인 로그; 시각 UTC 표시"
+    },
+    {
+      "file": "07-admin-logs.png",
+      "meaning": "로컬 운영자 함수로 명시 부여한 관리자 계정의 실제 조회 화면"
+    },
+    {
+      "file": "08-mobile-chat.png",
+      "meaning": "390px 로컬 Chromium 뷰포트; 실기기 검증과 구분"
+    }
+  ],
+  "browser_page_errors": [],
+  "created_at_utc": "2026-09-08T10:56:50.007653+00:00",
+  "scope": "LOCAL_SYNTHETIC_NOT_PRODUCTION",
+  "external_AI_requests": 0,
+  "source_code_sha256": "5ab8d6a98ecb99329804e2b143ba7e595a3521a8f5604f7593074c86beed6654",
+  "backend_timeout_is_separately_verified_by_tests": true
+}
