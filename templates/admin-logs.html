@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}관리자 대화 조회{% endblock %}
+{% block content %}
+<div class="logs-wrap admin-panel">
+  <h1>관리자 대화 조회</h1>
+  <p class="muted small">명시적으로 부여된 앱 관리자만 접근할 수 있습니다. 원문에는 개인정보가 포함될 수 있습니다.</p>
+  <form id="admin-filter" class="admin-filter" action="/admin/logs" method="get">
+    <label>사용자 ID <input id="admin-user-id" type="number" min="1" value="{{ filter_user_id or '' }}" placeholder="전체 사용자"></label>
+    <button type="submit">조회</button>
+    <a href="/admin/logs">필터 초기화</a>
+  </form>
+  <p class="muted small">최신 50건 · 시각은 UTC · 표시 {{ logs | length }}건</p>
+  <div class="table-scroll">
+    <table class="logs-table">
+      <thead><tr><th>ID</th><th>사용자</th><th>시각 (UTC)</th><th>질문</th><th>응답</th><th>상태</th><th>요청 ID</th></tr></thead>
+      <tbody>
+      {% for log in logs %}
+        <tr class="{{ 'row-error' if log.status == 'ai_error' else '' }}">
+          <td>{{ log.id }}</td><td>{{ log.user_id }}</td>
+          <td class="nowrap">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+          <td class="q">{{ log.question }}</td><td class="a">{{ log.answer or '(응답 없음)' }}</td>
+          <td class="status-cell">{{ log.status }}</td><td class="request-id">{{ log.request_id }}</td>
+        </tr>
+      {% else %}<tr><td colspan="7">조회된 기록이 없습니다.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if next_before_id %}
+  <a class="next-page" href="/admin/logs?before_id={{ next_before_id }}{% if filter_user_id %}&amp;user_id={{ filter_user_id }}{% endif %}">이전 기록 더 보기</a>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/admin-logs.js"></script>
+{% endblock %}

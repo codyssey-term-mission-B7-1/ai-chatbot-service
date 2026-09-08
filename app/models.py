@@ -1,4 +1,5 @@
 """DB 모델 — users / chat_logs."""
+
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
@@ -42,3 +43,15 @@ class ChatLog(Base):
     )
 
     user: Mapped[User] = relationship(back_populates="chat_logs")
+
+
+class AdminGrant(Base):
+    """운영자가 명시적으로 부여한 앱 관리자 권한. 기존 users 열 변경 없이 별도 테이블 사용."""
+
+    __tablename__ = "admin_grants"
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    granted_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
