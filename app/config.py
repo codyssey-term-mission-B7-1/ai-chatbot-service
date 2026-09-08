@@ -1,9 +1,13 @@
 """환경설정 — 실제 비밀값은 .env 파일 또는 프로세스 환경변수에서 로딩 (코드에 직접 기입 금지)."""
+
 import logging
 import secrets
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.policies import MAX_CONTEXT_TURNS
 
 logger = logging.getLogger(__name__)
 
@@ -52,15 +56,15 @@ class Settings(BaseSettings):
     session_secret: str = "dev-secret-change-me"  # 운영: .env에서 반드시 변경
 
     # AI (OpenAI 호환 chat completions — OpenAI/Groq/코디세이 네이토 등)
-    ai_api_key: str | None = None          # 없으면 데모(Fake) 모드로 동작
+    ai_api_key: str | None = None  # 없으면 데모(Fake) 모드로 동작
     ai_base_url: str = "https://api.openai.com/v1/chat/completions"  # /v1까지만 적어도 됨
     ai_model: str = "gpt-4o-mini"
-    ai_timeout_sec: float = 45.0           # 과제 제약: 타임아웃 필수 (기본 45초, #41)
-    ai_max_retries: int = 1
+    ai_timeout_sec: float = Field(default=45.0, gt=0)  # AI 호출 전체 예산, 초
+    ai_max_retries: int = Field(default=1, ge=0, le=5)
 
     # 챗 파이프라인
-    context_turns: int = 5                 # 직전 N개의 Q/A를 컨텍스트로 전달
-    max_question_length: int = 1000        # 입력 검증: 길이 제한
+    context_turns: int = Field(default=5, ge=0, le=MAX_CONTEXT_TURNS)  # 0이면 문맥 비활성화
+    max_question_length: int = Field(default=1000, ge=1, le=100000)  # 입력 검증: 길이 제한
 
 
 def load_settings() -> Settings:
