@@ -54,7 +54,9 @@ Content-Type: application/json
 {"email":"hong@example.com","nickname":"홍길동","is_admin":false}
 ```
 
-성공 응답에는 `Set-Cookie: session=<마스킹>; ...`가 있다. 이메일/비밀번호 불일치는 동일한 401 메시지다.
+성공 응답에는 `Set-Cookie: session=<마스킹>; ...`가 있다. 이메일/비밀번호 불일치는 동일한 401 메시지다. 미가입 이메일에도 같은 bcrypt 연산을 수행해 타이밍으로 존재 여부를 알 수 없게 한다.
+
+같은 이메일의 실패가 `LOGIN_MAX_FAILS`회(기본 5) 이상 누적되면 `LOGIN_LOCKOUT_SEC`초(기본 900) 동안 429 + `Retry-After`로 잠긴다. 잠금 중에는 올바른 비밀번호도 거부되며 로그인 성공 시 카운터가 초기화된다.
 
 `GET /api/auth/me`도 위 계정 정보를 반환한다. `POST /api/auth/logout`은 `{"detail":"로그아웃했어요."}`를 반환하며 현재 클라이언트 쿠키를 비운다. 복사된 쿠키를 중앙 세션 목록에서 개별 폐기하는 기능은 아니다.
 
@@ -122,6 +124,7 @@ Cookie: session=<실제 요청에서만 사용, 증빙에서는 마스킹>
 | 401 | 로그인 필요 / 인증 실패 | `detail` 한국어 안내 |
 | 403 | 앱 관리자 권한 없음 | `detail` 한국어 안내 |
 | 409 | 이메일 중복 | `detail` 한국어 안내 |
+| 429 | rate limit(로그인 잠금 등) | `detail` 한국어 안내 + `Retry-After` 헤더 |
 | 422 | JSON/필드 검증 실패 | `detail` 배열, loc/type/msg/필요 ctx. 입력 원문은 제외 |
 | 502 | AI 호출·응답 형식 오류 | `detail`에 AI_ERROR |
 | 504 | AI 전체 예산/I/O 타임아웃 | `detail`에 AI_TIMEOUT |
