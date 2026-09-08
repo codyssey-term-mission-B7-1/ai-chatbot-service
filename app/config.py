@@ -66,6 +66,10 @@ class Settings(BaseSettings):
     context_turns: int = Field(default=5, ge=0, le=MAX_CONTEXT_TURNS)  # 0이면 문맥 비활성화
     max_question_length: int = Field(default=1000, ge=1, le=100000)  # 입력 검증: 길이 제한
 
+    # 로그인 무차별 대입 방어(#72) — 이메일별 실패 누적 잠금. 프로세스 메모리·단일 워커 전제
+    login_max_fails: int = Field(default=5, ge=1)
+    login_lockout_sec: float = Field(default=900, gt=0)
+
 
 def load_settings() -> Settings:
     """설정을 불러온 뒤 세션 서명 키를 검증한다. get_settings에서 실제로 호출된다."""
