@@ -25,6 +25,10 @@ input.addEventListener('keydown', (e) => {
   }
 });
 
+// 폼 제출 바인딩 — 인라인 onsubmit 대신 addEventListener(CSP script-src 'self' 호환, #75).
+// send는 함수 선언이라 호이스팅되어 아래 정의를 그대로 참조한다.
+form.addEventListener('submit', send);
+
 function addBubble(text, cls) {
   const div = document.createElement('div');
   div.className = 'bubble ' + cls;
