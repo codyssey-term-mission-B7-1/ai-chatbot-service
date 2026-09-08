@@ -10,6 +10,7 @@ from app.logging_config import log_event
 from app.models import User
 from app.services.admin import is_admin
 from app.services.security import email_fingerprint
+from app.services.sessions import is_session_revoked
 
 logger = logging.getLogger("app.auth")
 
@@ -30,6 +31,15 @@ def resolve_session_user(request: Request, db: Session) -> User | None:
         user = None
     if user is None or email_fingerprint(user.email) != request.session.get("email_fp"):
         log_event(logger, "auth_stale_session", user_id=user_id, level=logging.WARNING)
+        request.session.clear()
+        return None
+    # 서버 측 폐기(#74): 계정별 폐기 기준 이전에 발급(iat)된 세션은 거부한다.
+    # 구버전 쿠키(iat 없음)는 0으로 취급해 폐기 기준이 있으면 함께 무효화된다.
+    iat = request.session.get("iat")
+    if not isinstance(iat, int) or isinstance(iat, bool):
+        iat = 0
+    if is_session_revoked(db, user.id, iat):
+        log_event(logger, "auth_session_revoked", user_id=user.id, level=logging.WARNING)
         request.session.clear()
         return None
     return user
