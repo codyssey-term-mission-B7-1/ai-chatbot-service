@@ -3,6 +3,7 @@
 import base64
 import json
 import logging
+import time
 
 from app.services.sessions import revoke_user_sessions
 from tests.conftest import signup_and_login
@@ -37,7 +38,8 @@ def test_revoked_session_is_rejected_until_relogin(client, db, caplog):
     assert client.post("/api/chat", json={"question": "안녕"}).status_code == 401
     assert any("event=auth_session_revoked" in r.message for r in caplog.records)
 
-    # 재로그인(폐기 이후 iat)은 정상 동작한다.
+    # 재로그인(폐기 이후 iat)은 정상 동작한다. 같은 초 발급은 폐기 대상이므로 1초 뒤에 시도.
+    time.sleep(1.1)
     assert (
         client.post(
             "/api/auth/login", json={"email": "victim@example.com", "password": "Test1234!"}
