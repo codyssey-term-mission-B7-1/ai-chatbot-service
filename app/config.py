@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     ai_timeout_sec: float = Field(default=45.0, gt=0)  # AI 호출 전체 예산, 초
     ai_max_retries: int = Field(default=1, ge=0, le=5)
 
+    # /docs·/redoc·/openapi.json 노출(#75). 로컬/검증은 true, 운영 CD는 false로 동기화
+    docs_enabled: bool = True
+
     # 챗 파이프라인
     context_turns: int = Field(default=5, ge=0, le=MAX_CONTEXT_TURNS)  # 0이면 문맥 비활성화
     max_question_length: int = Field(default=1000, ge=1, le=100000)  # 입력 검증: 길이 제한
