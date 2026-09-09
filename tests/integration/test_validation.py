@@ -1,4 +1,5 @@
 """통합 테스트 — /api/chat 입력 검증 경계값 (신규 파일, #11)."""
+
 from tests.conftest import signup_and_login
 
 
