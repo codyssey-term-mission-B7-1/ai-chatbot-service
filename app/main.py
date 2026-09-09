@@ -6,6 +6,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -68,8 +69,44 @@ async def security_headers(request: Request, call_next):
     """일반/처리된 오류 응답에 헤더 추가. 미처리 500은 아래 핸들러에서도 동일 적용."""
     response = await call_next(request)
     for key, value in SECURITY_HEADERS.items():
+        # /docs·/redoc의 Swagger UI는 CDN 자산을 쓴다 — 개발·검증 전용 경로는 CSP에서 제외(#75).
+        if (
+            key == "Content-Security-Policy"
+            and settings.docs_enabled
+            and request.url.path in DOCS_PATHS
+        ):
+            continue
         response.headers.setdefault(key, value)
     return response
+
+
+_STATE_CHANGING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+DOCS_PATHS = frozenset({"/docs", "/docs/", "/redoc", "/redoc/", "/openapi.json"})
+
+
+@app.middleware("http")
+async def request_guard(request: Request, call_next):
+    """운영 문서 게이트와 교차 출처 상태 변경 차단(#75).
+
+    - DOCS_ENABLED=false면 /docs·/redoc·/openapi.json을 404로 숨긴다(운영 기본).
+    - 상태 변경 메서드에 Origin 헤더가 있고 출처 호스트가 다르면 403. 같은 출처
+      브라우저 요청은 통과하고 curl/스모크처럼 Origin을 보내지 않는 클라이언트도 통과한다.
+    - log_requests 안쪽에 둬서 차단된 요청도 request_finished 로그에 남는다.
+    """
+    if not settings.docs_enabled and request.url.path in DOCS_PATHS:
+        return JSONResponse(
+            status_code=404, content={"detail": "Not Found"}, headers=SECURITY_HEADERS
+        )
+    if request.method in _STATE_CHANGING_METHODS:
+        origin = request.headers.get("origin", "")
+        origin_host = urlparse(origin).netloc if origin else ""
+        if origin_host and origin_host != request.url.netloc:
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "허용되지 않은 요청 출처예요."},
+                headers=SECURITY_HEADERS,
+            )
+    return await call_next(request)
 
 
 @app.middleware("http")
