@@ -4,7 +4,8 @@
 <div class="auth-card">
   <h1>{{ '회원가입' if mode == 'signup' else '로그인' }}</h1>
   <p class="muted">{{ '서비스를 이용하려면 가입이 필요해요.' if mode == 'signup' else '챗봇은 로그인한 사용자만 이용할 수 있어요.' }}</p>
-  <form id="auth-form" data-mode="{{ mode }}">
+  <!-- novalidate: 브라우저 기본 툴팁 대신 앱의 통일된 안내 문구(공백만 입력 포함)를 쓴다 -->
+  <form id="auth-form" data-mode="{{ mode }}" novalidate>
     <label>이메일
       <input type="email" id="email" required placeholder="you@example.com" autocomplete="email">
     </label>

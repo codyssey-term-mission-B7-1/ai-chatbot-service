@@ -42,6 +42,30 @@ def resolve_session_secret(secret: str, *, debug: bool) -> str:
     return secrets.token_hex(32)
 
 
+def resolve_password_pepper(pepper: str, *, debug: bool) -> str:
+    """비밀번호 페퍼(#보안 강화) — 운영에서 미설정/약한 값은 거부, 개발은 임시 페퍼로 대체.
+
+    페퍼는 솔트와 달리 모든 비밀번호에 공통으로 적용되는 서버 비밀값이다. DB 해시가
+    유출돸더라도 페퍼를 모르면 오프라인 대조를 할 수 없게 HMAC-SHA256로 먼저 변환한다.
+    """
+    if pepper and pepper not in INSECURE_SECRETS and len(pepper) >= MIN_SECRET_LEN:
+        return pepper
+    if not debug:
+        raise RuntimeError(
+            "PASSWORD_PEPPER 가 안전하지 않아요. 비어 있거나 공개된 기본값이거나 "
+            f"{MIN_SECRET_LEN}자 미만입니다.\n"
+            '  발급: python -c "import secrets; print(secrets.token_hex(32))"\n'
+            "  로컬 개발에서는 .env 에 DEBUG=true 를 켜면 임시 페퍼로 자동 대체됩니다."
+        )
+    logger.warning(
+        "PASSWORD_PEPPER 가 비어 있거나 최소 길이에 미달하여 개발용 임시 페퍼로 대체합니다 "
+        "(재시작 시 기존 페퍼 해시와 호환되지 않음). "
+        "운영에서는 .env에 %d자 이상 무작위 값을 설정하세요.",
+        MIN_SECRET_LEN,
+    )
+    return secrets.token_hex(32)
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
@@ -54,6 +78,7 @@ class Settings(BaseSettings):
 
     # 세션
     session_secret: str = "dev-secret-change-me"  # 운영: .env에서 반드시 변경
+    password_pepper: str = ""  # 비밀번호 페퍼(HMAC 사전 변환용 서버 비밀). 운영: 필수
     session_max_age_hours: int = Field(default=24, ge=1, le=168)  # 쿠키 수명(#74), 상한 7일
 
     # AI (OpenAI 호환 chat completions — OpenAI/Groq/코디세이 네이토 등)
@@ -92,6 +117,7 @@ def load_settings() -> Settings:
     """설정을 불러온 뒤 세션 서명 키를 검증한다. get_settings에서 실제로 호출된다."""
     s = Settings()
     s.session_secret = resolve_session_secret(s.session_secret, debug=s.debug)
+    s.password_pepper = resolve_password_pepper(s.password_pepper, debug=s.debug)
     return s
 
 
