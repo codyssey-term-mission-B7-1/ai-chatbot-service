@@ -45,6 +45,8 @@ Variables: `RAILWAY_SERVICE_NAME` 기본 ai-chatbot-service, `RAILWAY_ENVIRONMEN
 
 기존 `.github/workflows/cd.yml`은 main push 및 workflow_dispatch에서 동작한다.
 
+**시작 명령은 루트의 `Procfile`이 제공한다.** Railway의 신규 빌더(Railpack)는 deprecated된 `railway.json`의 `startCommand`를 무시하고 자동 감지를 시도하며, `app/main.py` 구조는 감지 규칙에 없어 빌드가 실패한다(2026-09-09 실측). `Procfile`은 Nixpacks/Railpack 공통으로 인식되므로 저장소에서 시작 명령을 계속 관리한다. `railway.json`은 헬스체크/재시작 정책의 의도 문서로 유지한다.
+
 1. ruff·pytest 게이트
 2. 필수 Secrets 검증 — 실패하면 배포하지 않는다
 3. Railway 변수 동기화(`--skip-deploys`)
