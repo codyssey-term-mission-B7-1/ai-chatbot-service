@@ -2,7 +2,12 @@
 
 ## 현재 상태
 
-배포 설정 코드와 테스트는 저장소에 있다. **이 문서 자체는 배포 성공 증거가 아니다.** 실제 프로젝트/볼륨/Secrets/공개 URL을 준비하고 성공한 CD·헬스·E2E 기록을 확보해야 한다.
+2026-09-09 첫 운영 배포에 성공했다. CD 전 구간(게이트 → Secrets 검증 → 변수 동기화 → `railway up` → `/health` → E2E 스모크 7/7)이 통과했으며 [실행 기록](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/runs/34324577000)에서 확인한다.
+
+- 운영 URL: https://ai-chatbot-service-production-4aa1.up.railway.app (저장소 homepage 등록됨)
+- 현재 `ai_mode=demo` — `AI_API_KEY` Secret 등록 후 재배포 시 실 AI로 전환 (절차는 [OPERATIONS.md](OPERATIONS.md) P0-1)
+
+**이 문서 자체는 배포 성공 증거가 아니다.** 이후 배포도 매번 CD 기록·헬스·E2E 성공을 확보해야 한다.
 
 ## 운영자가 준비할 것
 
