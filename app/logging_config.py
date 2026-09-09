@@ -25,6 +25,8 @@ EVENTS = frozenset(
         "auth_stale_session",
         "user_signup",
         "user_login",
+        "user_login_fail",
+        "user_login_locked",
         "admin_logs_viewed",
     }
 )

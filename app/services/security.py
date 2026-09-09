@@ -23,6 +23,22 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
+# 이메일 존재 여부를 타이밍으로 누출하지 않기 위한 더미 해시(#72).
+# 실제 계정 해시와 동일한 bcrypt 비용(기본 12 라운드)으로 미가입 경로의 소요 시간을 맞춘다.
+_DUMMY_HASH = bcrypt.hashpw("timing-equalizer-not-a-real-account".encode("utf-8"), bcrypt.gensalt())
+
+
+def verify_dummy_password(password: str) -> None:
+    """존재하지 않는 이메일에도 실제 검증과 같은 bcrypt 연산을 수행한다.
+
+    반환값은 항상 없다(검증 결과를 쓰지 않음). 로그인 실패 응답은 두 경로 모두 동일한 401이다.
+    """
+    try:
+        bcrypt.checkpw(password.encode("utf-8"), _DUMMY_HASH)
+    except ValueError:
+        pass
+
+
 def email_fingerprint(email: str) -> str:
     """세션-계정 바인딩(#33)용 지문. 쿠키에 이메일 평문을 넣지 않기 위해 HMAC으로 대체한다.
 
