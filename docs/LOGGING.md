@@ -15,7 +15,7 @@
 uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 ```
 
-## 등록된 이벤트 16종
+## 등록된 이벤트 17종
 
 | 이벤트 | 목적 | 주요 필드 / 집계 주의 |
 |---|---|---|
@@ -30,6 +30,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 | db_save_fail | 저장 장애 | user_id, reason(예외 타입), request_id. 원문/SQL 파라미터 제외 |
 | unhandled_error | 예상 밖 서버 오류 | path, error(예외 타입), request_id |
 | auth_stale_session | 오래된 세션 파기 | user_id, request_id(HTTP 요청 안이면 자동 부여) |
+| auth_session_revoked | 서버 측 폐기 세션 거부 | user_id, request_id. 폐기 기준 이전 발급 세션 차단(#74) |
 | user_signup | 계정 생성 추적 | user_id, email_domain. 평문 이메일 제외 |
 | user_login | 성공 로그인 추적 | user_id, request_id |
 | user_login_fail | 인증 실패·무차별 대입 징후 | user_id(있으면), email_domain, request_id. 이메일 평문 제외 |
