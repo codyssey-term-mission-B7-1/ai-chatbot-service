@@ -5,7 +5,7 @@ FastAPI + SQLite 기반의 로그인형 AI 챗봇입니다. **현재 소스에�
 [![CI](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/ci.yml/badge.svg)](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/ci.yml)
 [![CD](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/cd.yml/badge.svg)](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/cd.yml)
 
-> **운영 URL: 아직 검증된 실 URL이 없습니다.** 이전 CD는 필수 Secrets 검증에서 실패했습니다. 로컬/Fake/모의 HTTP 테스트와 운영 배포·실 AI 성공을 혼동하지 않습니다.
+> **운영 URL: https://ai-chatbot-service-production-4aa1.up.railway.app** — 2026-09-09 CD 전 구간 통과(게이트 → Secrets 검증 → 변수 동기화 → railway up → /health → E2E 스모크 7/7, [실행 기록](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/runs/34324577000)). 현재 `ai_mode=demo`(실 AI 키 미등록)이며 `AI_API_KEY` Secret 등록 후 재배포 시 `real`로 전환됩니다. 로컬/Fake/모의 HTTP 테스트와 운영 배포·실 AI 성공을 혼동하지 않습니다.
 
 ## 1. 문제·사용자·시나리오
 
@@ -152,7 +152,7 @@ python scripts/capture_local_evidence.py --output artifacts/local-ui
 
 ## 8. 배포 상태와 필요한 외부 작업
 
-기존 Railway CD는 main push 또는 수동 실행에서 테스트 → Secrets 검증 → 변수 동기화 → 배포 → 헬스 → 스모크 순입니다. **필수 Secrets가 없으면 실패로 중단**하며 성공으로 표시하지 않습니다.
+Railway CD는 main push 또는 수동 실행에서 테스트 → Secrets 검증 → 변수 동기화 → 배포 → 헬스 → 스모크 순입니다. **필수 Secrets가 없으면 실패로 중단**하며 성공으로 표시하지 않습니다. 2026-09-09 첫 운영 배포에 성공했습니다(위 실행 기록). 시작 명령은 루트 `Procfile`이 제공합니다.
 
 필수: `RAILWAY_TOKEN`, `DEPLOY_URL`, `SESSION_SECRET`. 실제 AI용 `AI_API_KEY`는 별도입니다. GitHub PAT는 Railway 토큰이나 AI 키가 아닙니다.
 
