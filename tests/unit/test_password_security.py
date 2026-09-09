@@ -6,6 +6,8 @@ import pytest
 from app.config import resolve_password_pepper
 from app.services.security import (
     hash_password,
+    is_peppered_hash,
+    mark_peppered_hash,
     verify_dummy_password,
     verify_password,
     verify_password_legacy,
@@ -17,7 +19,8 @@ def test_hash_contains_random_salt_per_password():
     a = hash_password("UserPass123!")
     b = hash_password("UserPass123!")
     assert a != b
-    assert a.startswith("$2")  # bcrypt 형식
+    assert a.startswith("p2:$2")  # 페퍼 마커 + bcrypt 형식
+    assert is_peppered_hash(a)
 
 
 def test_verify_roundtrip_current_path():
@@ -84,3 +87,22 @@ def test_byte_limit_guard_still_enforced():
     """UTF-8 72바이트 상한 가드는 그대로 — HMAC이 안전하게 만들어도 API 계약(422)과 일치."""
     with pytest.raises(ValueError, match="72바이트"):
         hash_password("가" * 40)  # 120 UTF-8 바이트
+
+
+def test_marker_is_attached_and_strippable():
+    """p2: 마커 — 새 해시에 붙고, 마커 없는 페퍼 해시에는 보강 마킹이 가능하다."""
+    h = hash_password("UserPass123!")
+    assert is_peppered_hash(h)
+    raw = h[len("p2:") :]  # 마커 없는 형태(마커 도입 직후 창구 호환)
+    assert not is_peppered_hash(raw)
+    assert verify_password("UserPass123!", raw) is True  # 마커 없이도 검증 호환
+    assert mark_peppered_hash(raw) == h.split("$", 1)[0] + raw or mark_peppered_hash(raw).endswith(
+        raw
+    )
+    assert is_peppered_hash(mark_peppered_hash(raw))
+
+
+def test_legacy_hash_is_not_peppered_hash():
+    """레거시 평문 bcrypt 해시는 p2: 마커가 없다(현황 집계의 레거시 분류 근거)."""
+    legacy = bcrypt.hashpw(b"UserPass123!", bcrypt.gensalt()).decode()
+    assert not is_peppered_hash(legacy)

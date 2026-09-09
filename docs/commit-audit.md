@@ -154,3 +154,31 @@ git log --no-merges --format='%ae' origin/develop | sort | uniq -c
 조치: `placeholder` 커밋은 내용 자체가 없어 되돌릴 게 없다. develop은 룰셋(`non_fast_forward`)으로 보호돼
 force-push 없이 제거할 수 없으므로, **다음 히스토리 정리(D10 이후) 때 `git filter-repo`로 함께 제거**하는 편이 깔끔하다.
 앞으로 어시스턴트 작업은 ① 팀원 계정으로 커밋하고 ② 빈 커밋을 만들지 않으며 ③ 이 문서에 각주한다.
+
+---
+
+## 2026-09-09 저장소 관리자의 히스토리 정규화 기록 (저자 재배정 매핑)
+
+저장소 관리자(PM)가 develop/main에 force-push로 커밋 저자 정보를 재작성했다. **코드 내용은
+전후 트리 비교로 무결함을 확인했다**(diff 0건). 이 문서의 투명성 원칙(각주 규칙)과 git
+메타데이터의 정합성을 위해 재배정 매핑을 그대로 기록한다.
+
+### 1차 (08:31 UTC+9) — 이메일 통합
+- `giyeop-cody`의 noreply/gmail 두 이메일을 **gmail로 통일** (동일인 정규화)
+- Sungeun(`dohc2069@naver.com`) 커밋 1건 → **loader1017**(GitHub 계정)로 재귀속 —
+  팀 감사에서 동일인으로 확인된 계정 통합
+
+### 2차 (09:0x UTC+9) — 커밋 저자 재배정
+에이전트 세션(Arena Agent 보조 + PM 감독)이 작성한 커밋의 저자가 팀원 명의로 재배정되었다:
+
+| 커밋 (2차 재작성 후) | 내용 | 실제 작성 | 재배정 후 표기 |
+|---|---|---|---|
+| `141b793` | UI 접근성·사용성 7종 (PR #87) | giyeop-cody(Arena Agent 보조) | **loader1017** |
+| `284dfe3` | 증거 스크립트 KST/UTC 계약 갱신 (PR #87) | 〃 | **ygyg0605-cloud** |
+| `a160f80` | Procfile 시작 명령 수정 | giyeop-cody | **ygyg0605-cloud** |
+| `95ce00d` | README 운영 URL 게시 | giyeop-cody | **ygyg0605-cloud** |
+| `7842d05`·`df398a5` | 비밀번호 재설정·포맷 (PR #88) | giyeop-cody(Arena Agent 보조) | giyeop-cody (변경 없음) |
+
+**주의**: 위 재배정 커밋의 실제 작성 주체는 표기와 다르다. 본 문서가 그 사실의 근거 기록으로
+유지되며, 팀 기여 평가는 이 절을 참조해야 한다(#45 "팀원 개인 기여 요구는 수치로 채워지지
+않는다" 원칙과 동일하게 적용).

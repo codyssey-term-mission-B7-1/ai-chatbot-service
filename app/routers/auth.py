@@ -25,6 +25,8 @@ from app.services.rate_limit import login_limiter
 from app.services.security import (
     email_fingerprint,
     hash_password,
+    is_peppered_hash,
+    mark_peppered_hash,
     verify_dummy_password,
     verify_password,
     verify_password_legacy,
@@ -95,6 +97,10 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
                 db.commit()
                 log_event(logger, "auth_password_rehashed", user_id=user.id)
                 password_ok = True
+        elif not is_peppered_hash(user.password_hash):
+            # 마커 도입 직후 창구에 저장된 비표시 페퍼 해시 — 마킹만 보강한다.
+            user.password_hash = mark_peppered_hash(user.password_hash)
+            db.commit()
     else:
         # 이메일 존재 여부를 타이밍으로 누출하지 않게 미가입 경로도 bcrypt를 수행한다(#72).
         verify_dummy_password(body.password)
