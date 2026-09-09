@@ -48,7 +48,9 @@ def create_reset_token(db: Session, user: User, request_ip: str = "") -> str | N
     now = int(time.time())
     window_start = now - settings.password_reset_window_minutes * 60
     requested = db.scalar(
-        select(func.count()).select_from(PasswordReset).where(
+        select(func.count())
+        .select_from(PasswordReset)
+        .where(
             PasswordReset.user_id == user.id,
             PasswordReset.created_epoch >= window_start,
         )
@@ -100,8 +102,7 @@ def deliver_reset_email(to_email: str, link: str) -> str:
     message["Subject"] = "AI Chatbot Service — 비밀번호 재설정 안내"
     message["From"] = settings.smtp_from
     message["To"] = to_email
-    message.set_content(
-        f"""안녕하세요, AI Chatbot Service입니다.
+    message.set_content(f"""안녕하세요, AI Chatbot Service입니다.
 
 비밀번호 재설정 요청을 받았습니다. 아래 링크에서 새 비밀번호를 설정하세요.
 ({settings.password_reset_expiry_minutes}분 후 만료되며 한 번만 사용할 수 있습니다.)
@@ -111,8 +112,7 @@ def deliver_reset_email(to_email: str, link: str) -> str:
 본인이 요청하지 않았다면 이 메일을 무시하세요 — 기존 비밀번호는 그대로 유지됩니다.
 링크를 누른 적이 없다면 계정에 접근한 사람이 없을 가능성이 높지만,
 혹시 걱정된다면 로그인 후 비밀번호를 직접 변경하고 관리자에게 알려주세요.
-"""
-    )
+""")
     if settings.smtp_port == 465:
         smtp = smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=15)
     else:
