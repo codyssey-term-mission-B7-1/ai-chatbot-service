@@ -149,7 +149,7 @@ python scripts/capture_local_evidence.py --output artifacts/local-ui
 - [사전평가 31개 항목 증빙](docs/EVALUATION_CHECKLIST.md)
 - [브라우저·실행 증빙](docs/evidence/LOCAL_VERIFICATION.md)
 - [문맥 실험](docs/DEMO_CONTEXT.md): 실제 12번째 요청의 프롬프트 문자량 측정. 요금·실 AI 품질 실험 아님
-- [로그 목적·필드 17종](docs/LOGGING.md): 표준 이벤트 stderr, 원문/시크릿 제외, 값 이스케이프
+- [로그 목적·필드 28종](docs/LOGGING.md): 표준 이벤트 stderr, 원문/시크릿 제외, 값 이스케이프
 
 실 AI 확인은 `python scripts/ai_check.py --require-real`로 별도 수행합니다. 키가 없으면 종료 2이며 **연결 성공으로 처리하지 않습니다**. 모의 OpenAI 서버는 `scripts/mock_openai_server.py`이며 로컬 테스트용입니다.
 
