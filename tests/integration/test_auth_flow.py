@@ -150,3 +150,22 @@ def test_login_blank_email_or_password_shows_422_or_401(client):
     """빈/공백 이메일·비밀번호 로그인 시도 — 서버는 422(형식) 또는 401(불일치)로 응답."""
     r = client.post("/api/auth/login", json={"email": "   ", "password": "   "})
     assert r.status_code in (401, 422)
+
+
+def test_unmarked_peppered_hash_gets_marked_on_login(client, db):
+    """마커 도입 직후 창구의 비표시 페퍼 해시 — 로그인 시 마킹만 보강된다(재해싱 아님)."""
+    from app.models import User
+    from app.services.security import hash_password, is_peppered_hash, verify_password
+
+    email = "unmarked@test.com"
+    unmarked = hash_password("Unmarked123!")[len("p2:") :]  # 페퍼 적용이되 마커 없는 형태
+    db.add(User(email=email, password_hash=unmarked, nickname="비표시"))
+    db.commit()
+
+    r = client.post("/api/auth/login", json={"email": email, "password": "Unmarked123!"})
+    assert r.status_code == 200
+    db.expire_all()
+    refreshed = db.query(User).filter_by(email=email).one()
+    assert is_peppered_hash(refreshed.password_hash)
+    # 동일 bcrypt 값에 마커만 붙었다 — 재해싱이 아니다
+    assert verify_password("Unmarked123!", refreshed.password_hash) is True
