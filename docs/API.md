@@ -10,6 +10,8 @@
 - 질문·비밀번호 문자 수는 Unicode 코드 포인트 기준. 비밀번호는 UTF-8 72바이트 제한도 적용한다.
 - 모든 시각 응답은 UTC `Z` 형식이다. SQLite가 tzinfo를 보존하지 않아도 UTC 계약을 적용해 직렬화한다.
 
+모든 상태 변경 요청(POST 등)은 `Origin` 헤더의 출처가 서버 호스트와 다르면 403으로 차단된다(#75). 같은 출처 브라우저 요청과 Origin을 보내지 않는 curl/스모크 클라이언트는 통과한다. `/docs`·`/redoc`·`/openapi.json`은 `DOCS_ENABLED=false`면 404다(운영 기본).
+
 ## 경로
 
 | 메서드 | 경로 | 접근 / 성공 |
@@ -54,7 +56,9 @@ Content-Type: application/json
 {"email":"hong@example.com","nickname":"홍길동","is_admin":false}
 ```
 
-성공 응답에는 `Set-Cookie: session=<마스킹>; ...`가 있다. 이메일/비밀번호 불일치는 동일한 401 메시지다.
+성공 응답에는 `Set-Cookie: session=<마스킹>; ...`가 있다. 이메일/비밀번호 불일치는 동일한 401 메시지다. 미가입 이메일에도 같은 bcrypt 연산을 수행해 타이밍으로 존재 여부를 알 수 없게 한다.
+
+같은 이메일의 실패가 `LOGIN_MAX_FAILS`회(기본 5) 이상 누적되면 `LOGIN_LOCKOUT_SEC`초(기본 900) 동안 429 + `Retry-After`로 잠긴다. 잠금 중에는 올바른 비밀번호도 거부되며 로그인 성공 시 카운터가 초기화된다.
 
 `GET /api/auth/me`도 위 계정 정보를 반환한다. `POST /api/auth/logout`은 `{"detail":"로그아웃했어요."}`를 반환하며 현재 클라이언트 쿠키를 비운다. 복사된 쿠키를 중앙 세션 목록에서 개별 폐기하는 기능은 아니다.
 
@@ -80,6 +84,8 @@ Cookie: session=<실제 요청에서만 사용, 증빙에서는 마스킹>
 - 전송 오류·429·5xx만 최대 `AI_MAX_RETRIES` 추가 시도. 다른 4xx·형식 오류·타임아웃은 재시도하지 않는다.
 - 키 없음 → Fake 데모 선택. 실 AI 실패를 Fake 성공으로 바꾸는 폴백은 없다.
 - `status=success`는 AI 응답 성공만 의미한다. DB 실패는 `chat_id=-1`이며 기록이 남지 않을 수 있다.
+
+사용자별로 `CHAT_RATE_PER_MIN`회(기본 10)/분을 초과하면 429 + `Retry-After`로 거부되며 이때 AI 호출·DB 저장은 일어나지 않는다. `CHAT_RATE_PER_MIN=0`이면 제한이 비활성화된다.
 
 ## 본인 기록
 
@@ -120,8 +126,9 @@ Cookie: session=<실제 요청에서만 사용, 증빙에서는 마스킹>
 | 상태 | 의미 | 응답 |
 |---|---|---|
 | 401 | 로그인 필요 / 인증 실패 | `detail` 한국어 안내 |
-| 403 | 앱 관리자 권한 없음 | `detail` 한국어 안내 |
+| 403 | 앱 관리자 권한 없음 / 교차 출처 상태 변경 | `detail` 한국어 안내 |
 | 409 | 이메일 중복 | `detail` 한국어 안내 |
+| 429 | rate limit(로그인 잠금 등) | `detail` 한국어 안내 + `Retry-After` 헤더 |
 | 422 | JSON/필드 검증 실패 | `detail` 배열, loc/type/msg/필요 ctx. 입력 원문은 제외 |
 | 502 | AI 호출·응답 형식 오류 | `detail`에 AI_ERROR |
 | 504 | AI 전체 예산/I/O 타임아웃 | `detail`에 AI_TIMEOUT |

@@ -8,10 +8,10 @@
 | `GET /logs` | 302 → `/login` | 200, 본인 기록 | 200, 본인 기록 |
 | `GET /login`, `/signup` | 200 | 302 → `/` | 302 → `/` |
 | `POST /api/auth/signup` | 201 / 검증 422 / 중복 409 | 동일 | 동일 |
-| `POST /api/auth/login` | 성공 200 + 쿠키 / 실패 401 | 동일 | 동일 |
+| `POST /api/auth/login` | 성공 200 + 쿠키 / 실패 401 / 반복 실패 잠금 429 | 동일 | 동일 |
 | `POST /api/auth/logout` | 200 | 200 + 현재 쿠키 비움 | 동일 |
 | `GET /api/auth/me` | 401 | 200 | 200 |
-| `POST /api/chat` | 401 | 200 / 422 / 502 / 504 | 동일 |
+| `POST /api/chat` | 401 | 200 / 422 / 429 / 502 / 504 | 동일 |
 | `GET /api/me/chats` | 401 | 200, 본인 기록만 | 200, 본인 기록만 |
 | `GET /api/admin/chats` | 401 | 403 | 200, 전체/필터 조회 |
 | `GET /admin/logs` | 302 → `/login` | 403 | 200 |
@@ -24,15 +24,21 @@
 - `SessionMiddleware`가 서명된 쿠키를 처리한다. **JWT가 아니며 암호화 쿠키도 아니다.**
 - 저장 키는 `user_id`와 `email_fp`다. 평문 이메일 대신 HMAC-SHA256 지문의 앞 16자를 사용한다.
 - 서명 검증 후에도 DB의 사용자와 지문을 대조한다. DB 재생성 후 ID가 다른 계정에 배정되면 세션을 비우고 보호 API 접근을 거부한다.
-- 쿠키는 HttpOnly·SameSite=Lax, 7일 Max-Age다. 세션이 있는 응답에서 갱신되는 방식이며 로그인 시점부터의 절대 수명 7일을 뜻하지 않는다.
+- 쿠키는 HttpOnly·SameSite=Lax, `SESSION_MAX_AGE_HOURS` Max-Age(기본 24시간, 상한 168)다. 세션이 있는 응답에서 갱신되는 방식이며 로그인 시점부터의 절대 수명을 뜻하지 않는다.
 - 운영에서는 `DEBUG=false`여서 Secure 쿠키를 사용한다. 로컬 HTTP 테스트만 `DEBUG=true`를 사용한다.
-- 로그아웃은 현재 클라이언트 쿠키를 비우는 동작이다. 복사된 쿠키를 서버 세션 목록에서 개별 폐기하는 기능은 없다. 시크릿 교체는 기존 쿠키를 모두 무효화한다.
+- 로그아웃은 현재 클라이언트 쿠키를 비우는 동작이다. 계정별 강제 폐기는 `scripts/revoke_sessions.py --email`이 지원한다: 세션의 발급 시각(iat)이 폐기 기준 이하면 서명이 유효해도 거부되며(`auth_session_revoked`), 재로그인은 정상 동작한다(#74). 시크릿 교체는 기존 쿠키를 모두 무효화한다.
 
 ## 로그인 제한의 이유와 한계
 
 1. **보안:** 인증된 사용자만 AI·개인 기록 API에 접근시키고 다른 사용자 기록을 격리한다.
-2. **비용:** 익명 사용자의 직접 AI 호출을 막는다. 단, 로그인만으로 남용 방지·요청량 제한·비용 상한이 완성되는 것은 아니다. 별도 rate limit은 아직 없다.
+2. **비용:** 익명 사용자의 직접 AI 호출을 막는다. 로그인은 이메일별 실패 누적 잠금(`LOGIN_MAX_FAILS`/`LOGIN_LOCKOUT_SEC`, 프로세스 메모리·단일 워커 전제)으로 무차별 대입을 늦춘다. 채팅은 사용자별 분당 상한(`CHAT_RATE_PER_MIN`, 기본 10, 0=비활성, 429)으로 비용 남용을 제한한다. 다만 로그인과 상한만으로 계정 생성을 통한 우회까지 막는 것은 아니다.
 3. **개인화:** 같은 사용자의 성공 Q/A만 문맥에 넣고 본인 기록을 복원한다.
+
+## 문서 노출과 심층 방어(#75)
+
+- 모든 응답에 `Content-Security-Policy`(script-src 'self' 등)·nosniff·DENY·Referrer-Policy 헤더를 붙인다. UI는 인라인 스크립트/핸들러를 쓰지 않는다.
+- 상태 변경 메서드는 교차 출처 `Origin`을 403으로 차단한다(SameSite=Lax·JSON 전용 외의 2차 방어).
+- `/docs`·`/redoc`·`/openapi.json`은 `DOCS_ENABLED=false`면 404(운영 CD 기본 false, 로컬 기본 true).
 
 ## 관리자
 
@@ -43,5 +49,6 @@
 - `tests/integration/test_auth_flow.py`: 가입·로그인·로그아웃·중복·세션 바인딩
 - `tests/integration/test_verified_gaps.py`: HTML/API 구분, 미들웨어 순서, 500 헤더·종료 로그
 - `tests/integration/test_admin.py`: 비관리자 403, 전체 조회, 본인 API 격리, 권한 회수
+- `tests/integration/test_session_revocation.py`: 쿠키 수명 설정, 계정별 세션 폐기·재로그인(#74)
 
 실행 결과와 로컬/운영 증빙의 구분은 [검증 기록](VERIFICATION.md)을 따른다.
