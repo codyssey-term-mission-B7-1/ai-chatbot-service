@@ -15,11 +15,22 @@ from app.logging_config import log_event
 from app.models import User
 from app.repositories.chat_logs import list_logs
 from app.services.admin import is_admin
+from app.services.password_reset import is_reset_token_valid
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 router = APIRouter(include_in_schema=False)
 logger = logging.getLogger("app.admin")
+
+
+def _kst(value):
+    """UTC 저장 시각을 KST(UTC+9) 표시 문자열로 변환 — 서버 TZ 설정과 무관하게 고정 오프셋."""
+    from datetime import timedelta
+
+    return (value + timedelta(hours=9)).strftime("%m-%d %H:%M")
+
+
+templates.env.filters["kst"] = _kst
 
 
 def _session_user(request: Request, db: Session) -> User | None:
@@ -62,6 +73,32 @@ def signup_page(request: Request, db: Session = Depends(get_db)):
     if _session_user(request, db):
         return RedirectResponse("/", status_code=302)
     return templates.TemplateResponse(request, "login.html", {"mode": "signup"})
+
+
+@router.get("/forgot-password")
+def forgot_password_page(request: Request, db: Session = Depends(get_db)):
+    """비밀번호 찾기 화면 — 로그인 없이 접근 가능. 메일 설정 상태만 안내한다."""
+    if _session_user(request, db):
+        return RedirectResponse("/", status_code=302)
+    smtp_ready = bool(settings.smtp_host) or settings.debug  # 개발 모드는 콘솔 출력 경로 제공
+    return templates.TemplateResponse(
+        request, "forgot-password.html", {"mode": "forgot", "smtp_ready": smtp_ready}
+    )
+
+
+@router.get("/reset-password")
+def reset_password_page(
+    request: Request, token: str = Query(default=""), db: Session = Depends(get_db)
+):
+    """재설정 화면 — 토큰은 소모하지 않고 표시용으로만 검증한다(실제 사용은 POST에서)."""
+    if _session_user(request, db):
+        return RedirectResponse("/", status_code=302)
+    token_valid = is_reset_token_valid(db, token)
+    return templates.TemplateResponse(
+        request,
+        "reset-password.html",
+        {"mode": "reset", "token": token, "token_valid": token_valid},
+    )
 
 
 @router.get("/logs")
