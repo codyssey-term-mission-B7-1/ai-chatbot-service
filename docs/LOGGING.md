@@ -15,7 +15,7 @@
 uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 ```
 
-## 등록된 이벤트 25종
+## 등록된 이벤트 28종
 
 | 이벤트 | 목적 | 주요 필드 / 집계 주의 |
 |---|---|---|
@@ -35,7 +35,10 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 | user_login | 성공 로그인 추적 | user_id, request_id |
 | user_login_fail | 인증 실패·무차별 대입 징후 | user_id(있으면), email_domain, request_id. 이메일 평문 제외 |
 | user_login_locked | 실패 누적 잠금 발동 | email_domain, retry_after_sec, request_id. 이메일 평문 제외 |
+| auth_password_rehashed | 레거시 해시 자동 재해싱 | user_id. 페퍼 도입 전 가입자의 다음 로그인 때 기록 |
 | admin_logs_viewed | 민감 기록 접근 감사 | user_id(검증된 관리자), filter_user_id, result_count, before_id, request_id |
+| admin_hash_status_viewed | 해시 현황 조회 감사 | user_id(검증된 관리자), total, legacy |
+| admin_user_deleted | 사용자 삭제 감사 | user_id(검증된 관리자), deleted_user_id, email_domain. 평문 이메일 제외, WARNING |
 | auth_password_reset_requested | 재설정 링크 발급 | user_id, request_id. 토큰 원문 없음 |
 | auth_password_reset_rate_limited | 요청 상한 초과로 발송 생략 | user_id, request_id |
 | auth_password_reset_email_sent | 재설정 메일 발송 성공 | user_id, request_id |
