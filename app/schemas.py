@@ -165,3 +165,16 @@ class AdminLogPage(BaseModel):
 
 
 LogStatus = Literal["success", "ai_error"]
+
+
+class PasswordHashStatusOut(BaseModel):
+    """페퍼 해시 마이그레이션 현황 — legacy가 0이면 레거시 폴백 제거 가능."""
+
+    total: int
+    peppered: int
+    legacy: int
+
+
+class DeletedUserOut(BaseModel):
+    user_id: int
+    email: str
