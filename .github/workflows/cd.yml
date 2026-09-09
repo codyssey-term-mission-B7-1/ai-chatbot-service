@@ -8,6 +8,7 @@
 #   RAILWAY_TOKEN  : Railway project token (CLI 인증)
 #   DEPLOY_URL     : 공개 URL (스모크 대상, 예: https://xxx.up.railway.app)
 #   SESSION_SECRET : 세션 서명 키 (32자 이상 — dev 기본값 금지)
+#   PASSWORD_PEPPER: 비밀번호 페퍼 (32자 이상 — DB 유출 시 오프라인 대조 방어)
 # 선택 Secrets (없으면 코드 기본값 사용):
 #   AI_API_KEY                 : 없으면 데모 모드로 배포 (경고 출력)
 #   AI_BASE_URL / AI_MODEL / AI_TIMEOUT_SEC / AI_MAX_RETRIES / CONTEXT_TURNS
@@ -68,12 +69,15 @@ jobs:
         env:
           DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          PASSWORD_PEPPER: ${{ secrets.PASSWORD_PEPPER }}
         run: |
           fail=0
           [ -n "$RAILWAY_TOKEN" ] || { echo "❌ RAILWAY_TOKEN 미설정"; fail=1; }
           [ -n "$DEPLOY_URL" ] || { echo "❌ DEPLOY_URL 미설정"; fail=1; }
           if [ -z "$SESSION_SECRET" ]; then echo "❌ SESSION_SECRET 미설정"; fail=1;
           elif [ "${#SESSION_SECRET}" -lt 32 ]; then echo "❌ SESSION_SECRET 32자 이상 필요"; fail=1; fi
+          if [ -z "$PASSWORD_PEPPER" ]; then echo "❌ PASSWORD_PEPPER 미설정 (신규 가입·로그인 불가)"; fail=1;
+          elif [ "${#PASSWORD_PEPPER}" -lt 32 ]; then echo "❌ PASSWORD_PEPPER 32자 이상 필요"; fail=1; fi
           # 시크릿 값은 절대 출력하지 않음 (유무·길이만 검사 — 값은 마스킹됨)
           [ "$fail" = 0 ] || exit 1
           echo "✅ 필수 Secrets 확인"
@@ -96,6 +100,7 @@ jobs:
           SESSION_MAX_AGE_HOURS: ${{ secrets.SESSION_MAX_AGE_HOURS }}
           DOCS_ENABLED: ${{ secrets.DOCS_ENABLED }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          PASSWORD_PEPPER: ${{ secrets.PASSWORD_PEPPER }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
@@ -131,6 +136,7 @@ jobs:
           set_var DOCS_ENABLED "$DOCS_ENABLED" "false"
           set_var DEBUG "false" "false"
           set_var SESSION_SECRET "$SESSION_SECRET" ""
+          set_var PASSWORD_PEPPER "$PASSWORD_PEPPER" ""
           set_var DATABASE_URL "$DATABASE_URL" "sqlite:////data/app.db"
           set_var SMTP_HOST "$SMTP_HOST" ""
           set_var SMTP_PORT "$SMTP_PORT" "587"
