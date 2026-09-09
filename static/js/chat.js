@@ -29,14 +29,33 @@ input.addEventListener('keydown', (e) => {
 // send는 함수 선언이라 호이스팅되어 아래 정의를 그대로 참조한다.
 form.addEventListener('submit', send);
 
-function addBubble(text, cls) {
+function addBubble(text, cls, timeText) {
   const div = document.createElement('div');
   div.className = 'bubble ' + cls;
   // 텍스트만 삽입한다(innerHTML 금지 — 서버/사용자 문자열 보간 XSS 방어). null/undefined는 빈 문자열로
   div.textContent = text ?? '';
+  if (timeText) {
+    const time = document.createElement('span');
+    time.className = 'bubble-time';
+    time.textContent = timeText;  // 문자열만 — 서버 값도 textContent로 삽입
+    div.appendChild(time);
+  }
   window_.appendChild(div);
   window_.scrollTop = window_.scrollHeight;
   return div;
+}
+
+// 말풍선 시각 — 현재는 HH:MM, 이력은 MM-DD HH:MM(다른 날 대화 구분)
+function nowTime() {
+  return new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+function historyTime(isoUtc) {
+  const d = new Date(isoUtc);
+  if (isNaN(d)) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  const sameDay = new Date().toDateString() === d.toDateString();
+  const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return sameDay ? hm : `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${hm}`;
 }
 
 // 서버 오류 메시지를 안전하고 읽기 쉽게 정규화
@@ -67,7 +86,7 @@ async function send(e) {
   if (FormUtils.codepointLength(question) > MAX_LEN) return showError(`질문이 너무 길어요. ${MAX_LEN}자 이하로 줄여주세요.`);
 
   errorBox.hidden = true;
-  addBubble(question, 'user');
+  addBubble(question, 'user', nowTime());
   input.value = '';
   counter.textContent = '0';
   input.style.height = 'auto';
@@ -104,7 +123,7 @@ async function send(e) {
       addBubble('응답 형식을 확인할 수 없어요. 잠시 후 다시 시도해 주세요.', 'ai error-bubble');
       return;
     }
-    addBubble(data.answer, 'ai');
+    addBubble(data.answer, 'ai', nowTime());
   } catch (err) {
     loading.remove();
     showError('네트워크 오류예요. 연결을 확인하고 다시 시도해 주세요.');
@@ -141,9 +160,21 @@ async function loadHistory() {
   if (recent.length === 0) return;
   addDivider(`이전 대화 ${recent.length}개`);
   for (const log of recent) {
-    addBubble(log.question, 'user');
-    addBubble(log.answer, 'ai');
+    const when = historyTime(log.created_at);
+    addBubble(log.question, 'user', when);
+    addBubble(log.answer, 'ai', when);
   }
+}
+
+// 데모 모드 배너 — 현재 세션에서만 닫을 수 있다(새 세션에서는 재표시)
+const banner = document.getElementById('demo-banner');
+const bannerClose = document.getElementById('banner-close');
+if (banner && bannerClose) {
+  if (sessionStorage.getItem('demo-banner-dismissed') === '1') banner.hidden = true;
+  bannerClose.addEventListener('click', () => {
+    banner.hidden = true;
+    sessionStorage.setItem('demo-banner-dismissed', '1');
+  });
 }
 
 if (document.readyState === 'loading') {
