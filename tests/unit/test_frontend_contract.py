@@ -109,4 +109,4 @@ def test_auth_forms_treat_blank_input_as_empty():
 def test_auth_form_uses_custom_validation_not_native_tooltip():
     """인증 폼은 novalidate — 브라우저 기본 툴팁이 아니라 앱 안내 문구로 검증한다."""
     html = (ROOT / "templates" / "login.html").read_text()
-    assert 'novalidate' in html
+    assert "novalidate" in html
