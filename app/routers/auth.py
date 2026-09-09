@@ -1,5 +1,6 @@
 """회원 인증 API. 세션 쿠키 발급과 앱 관리자 권한은 별개다."""
 
+import asyncio
 import logging
 import time
 
@@ -11,8 +12,15 @@ from app.deps import get_current_user
 from app.logging_config import log_event
 from app.models import User
 from app.repositories.users import DuplicateEmailError, create_user, find_by_email
-from app.schemas import LoginIn, SignupIn, UserOut
+from app.schemas import LoginIn, PasswordResetCompleteIn, PasswordResetRequestIn, SignupIn, UserOut
 from app.services.admin import is_admin
+from app.services.password_reset import (
+    SmtpNotConfigured,
+    build_reset_link,
+    complete_password_reset,
+    create_reset_token,
+    deliver_reset_email,
+)
 from app.services.rate_limit import login_limiter
 from app.services.security import (
     email_fingerprint,
@@ -101,6 +109,85 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
     request.state.authenticated_user_id = user.id
     log_event(logger, "user_login", user_id=user.id)
     return UserOut(email=user.email, nickname=user.nickname, is_admin=is_admin(db, user))
+
+
+@router.post(
+    "/password/reset-request",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="비밀번호 재설정 요청",
+    description=(
+        "입력한 이메일이 가입되어 있으면 재설정 링크를 담은 메일을 보낸다. "
+        "계정 존재 여부를 응답으로 구분할 수 없게 항상 같은 202를 반환한다. "
+        "요청 상한(PASSWORD_RESET_MAX_REQUESTS회/PASSWORD_RESET_WINDOW_MINUTES분)을 넘으면 "
+        "메일을 보내지 않지만 응답은 동일하다. 운영에서 SMTP 미설정이면 503."
+    ),
+    responses={
+        202: {"description": "요청 접수 — 이메일 존재 여부는 알려주지 않음"},
+        503: {"description": "메일 발송(SMTP) 미설정 — 운영자가 SMTP_* 환경변수를 등록해야 함"},
+        502: {"description": "메일 발송 실패"},
+    },
+)
+async def password_reset_request(
+    body: PasswordResetRequestIn, request: Request, db: Session = Depends(get_db)
+):
+    generic_ok = {"detail": "요청을 받았어요. 이메일이 가입되어 있다면 재설정 안내를 보냈니다."}
+    user = find_by_email(db, body.email)
+    if user is None:
+        # 타이밍 평탄화(#72와 동일 원칙) — 미가입 경로도 bcrypt 비용을 지불한다.
+        verify_dummy_password("timing-equalizer")
+        return generic_ok
+    token = create_reset_token(db, user, request.client.host if request.client else "")
+    if token is None:  # 요청 상한 초과 — 응답은 동일하게 유지(존재 누출 방지)
+        return generic_ok
+    log_event(logger, "auth_password_reset_requested", user_id=user.id)
+    link = build_reset_link(str(request.base_url), token)
+    try:
+        # 동기 smtplib을 이벤트 루프 밖에서 실행 — 다른 요청을 차단하지 않는다.
+        result = await asyncio.to_thread(deliver_reset_email, user.email, link)
+    except SmtpNotConfigured:
+        log_event(logger, "auth_password_reset_email_unconfigured", level=logging.WARNING)
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "메일 발송 설정(SMTP)이 되어 있지 않아 요청을 처리할 수 없어요. "
+                "운영자에게 문의해 주세요."
+            ),
+        ) from None
+    except Exception as exc:  # SMTP 연결/인증 오류 — 토큰은 만료되어 자연 무효화된다.
+        log_event(logger, "auth_password_reset_email_failed", error=str(exc), level=logging.ERROR)
+        raise HTTPException(
+            status_code=502, detail="재설정 메일 발송에 실패했어요. 잠시 후 다시 시도해 주세요."
+        ) from None
+    if result == "dev_console":
+        event_name = "auth_password_reset_email_dev_console"
+    else:
+        event_name = "auth_password_reset_email_sent"
+    log_event(logger, event_name, user_id=user.id)
+    return generic_ok
+
+
+@router.post(
+    "/password/reset",
+    summary="비밀번호 재설정 완료",
+    description=(
+        "메일 링크의 토큰과 새 비밀번호로 재설정을 완료한다. 토큰은 단일 사용·시간 제한이며 "
+        "완료 시 해당 계정의 기존 세션을 전부 폐기한다(다른 기기 로그아웃)."
+    ),
+    responses={
+        200: {"description": "변경 완료 — 새 비밀번호로 로그인 필요"},
+        400: {"description": "유효하지 않거나 만료/사용된 토큰"},
+    },
+)
+def password_reset(body: PasswordResetCompleteIn, db: Session = Depends(get_db)):
+    user = complete_password_reset(db, body.token, body.new_password)
+    if user is None:
+        log_event(logger, "auth_password_reset_rejected", level=logging.WARNING)
+        raise HTTPException(
+            status_code=400,
+            detail="재설정 링크가 유효하지 않거나 만료되었어요. 다시 요청해 주세요.",
+        )
+    log_event(logger, "auth_password_reset_completed", user_id=user.id)
+    return {"detail": "비밀번호를 변경했어요. 새 비밀번호로 로그인해 주세요."}
 
 
 @router.post(

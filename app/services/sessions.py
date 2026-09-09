@@ -13,9 +13,13 @@ from app.models import SessionRevocation, User
 from app.repositories.users import find_by_email
 
 
-def revoke_user_sessions(db: Session, user: User) -> int:
-    """해당 계정의 '현재 시점 이전' 발급 세션을 모두 무효화한다. 반환값은 기준 epoch 초."""
-    epoch = int(time.time())
+def revoke_user_sessions(db: Session, user: User, *, backoff_seconds: int = 0) -> int:
+    """해당 계정의 '현재 시점 이전' 발급 세션을 모두 무효화한다. 반환값은 기준 epoch 초.
+
+    backoff_seconds: 기준을 과거로 당긴다. 비밀번호 재설정처럼 "폐기 직후 재로그인"이
+    필요한 플로우에서 같은 초 경합(iat == 기준 → 거부)을 피할 때 사용한다(#78 교훈).
+    """
+    epoch = int(time.time()) - backoff_seconds
     row = db.get(SessionRevocation, user.id)
     if row is None:
         db.add(SessionRevocation(user_id=user.id, revoked_before_epoch=epoch))

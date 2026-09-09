@@ -9,6 +9,9 @@ function showAuthMessage(text, failed = true) {
 if (authMode === 'login' && new URLSearchParams(location.search).has('registered')) {
   showAuthMessage('가입이 완료됐어요. 로그인해 주세요.', false);
 }
+if (authMode === 'login' && new URLSearchParams(location.search).has('reset')) {
+  showAuthMessage('비밀번호가 변경됐어요. 새 비밀번호로 로그인해 주세요.', false);
+}
 authForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const button = document.getElementById('submit-btn');

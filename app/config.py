@@ -77,6 +77,16 @@ class Settings(BaseSettings):
     # 채팅 비용 남용 방어(#73) — 사용자별 분당 요청 상한. 0이면 비활성화
     chat_rate_per_min: int = Field(default=10, ge=0)
 
+    # 이메일 기반 비밀번호 재설정 — SMTP 미설정 시 DEBUG=true면 링크를 서버 로그로만 출력
+    smtp_host: str = ""  # 비어 있으면 메일 발송 불가(운영 503, 개발 로그 출력)
+    smtp_port: int = Field(default=587, ge=1, le=65535)  # 465=SMTP_SSL, 그 외 STARTTLS
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "AI Chatbot Service <no-reply@example.com>"
+    password_reset_expiry_minutes: int = Field(default=30, ge=5, le=1440)
+    password_reset_max_requests: int = Field(default=3, ge=1)  # 창 내 요청 상한
+    password_reset_window_minutes: int = Field(default=15, ge=1)
+
 
 def load_settings() -> Settings:
     """설정을 불러온 뒤 세션 서명 키를 검증한다. get_settings에서 실제로 호출된다."""
