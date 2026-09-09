@@ -33,6 +33,8 @@ class SignupIn(BaseModel):
     @field_validator("password")
     @classmethod
     def password_byte_limit(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("비밀번호는 공백만으로 구성될 수 없어요.")
         if len(value.encode("utf-8")) > MAX_PASSWORD_BYTES:
             raise ValueError("비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
         return value
@@ -74,6 +76,13 @@ class PasswordResetCompleteIn(BaseModel):
     token: str = Field(min_length=20, max_length=128)
     new_password: str = Field(min_length=8, max_length=MAX_PASSWORD_CHARS)
     model_config = {"extra": "forbid"}
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_not_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("비밀번호는 공백만으로 구성될 수 없어요.")
+        return value
 
 
 class UserOut(BaseModel):
