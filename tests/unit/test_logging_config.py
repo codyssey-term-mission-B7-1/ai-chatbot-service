@@ -1,4 +1,5 @@
 """단위 테스트 — 로그 유틸 (포맷·민감정보 정책 회귀 방지, #11)."""
+
 import logging
 
 from app.logging_config import log_event, truncate
@@ -27,7 +28,8 @@ def test_log_event_format(caplog):
 def test_log_event_error_level(caplog):
     logger = logging.getLogger("test.tracing")
     with caplog.at_level(logging.ERROR, logger="test.tracing"):
-        log_event(logger, "ai_call_fail", request_id="abc123", reason="timeout",
-                  level=logging.ERROR)
+        log_event(
+            logger, "ai_call_fail", request_id="abc123", reason="timeout", level=logging.ERROR
+        )
     assert "event=ai_call_fail" in caplog.text
     assert "reason=timeout" in caplog.text
