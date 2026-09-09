@@ -85,3 +85,28 @@ def test_log_pages_show_kst_with_utc():
         html = (ROOT / "templates" / name).read_text()
         assert "| kst" in html, name
         assert "UTC" in html, name
+
+
+def test_chat_validation_errors_render_inside_window_without_layout_shift():
+    """채팅 검증 오류는 창 안 말풍선로 표시해야 한다 — 폼 아래 박스는 레이아웃 시프트를 일으킨다."""
+    code = (ROOT / "static" / "js" / "chat.js").read_text()
+    html = (ROOT / "templates" / "chat.html").read_text()
+    # 검증/네트워크 오류가 창 내부 말풍선(error-bubble)과 role=alert으로 표시된다
+    assert "addBubble(text, 'ai error-bubble')" in code
+    assert "setAttribute('role', 'alert')" in code
+    assert "errorBox" not in code
+    # 시프트 원인이던 폼 하단 에러 박스는 제거되어 있다
+    assert "chat-error" not in html
+
+
+def test_auth_forms_treat_blank_input_as_empty():
+    """로그인 빈 값·회원가입 공백 전용 비밀번호는 서버 왕복 전에 안내해야 한다."""
+    code = (ROOT / "static" / "js" / "auth.js").read_text()
+    assert "이메일과 비밀번호를 모두 입력해 주세요." in code
+    assert "비밀번호는 공백만으로 구성될 수 없어요." in code
+
+
+def test_auth_form_uses_custom_validation_not_native_tooltip():
+    """인증 폼은 novalidate — 브라우저 기본 툴팁이 아니라 앱 안내 문구로 검증한다."""
+    html = (ROOT / "templates" / "login.html").read_text()
+    assert "novalidate" in html

@@ -1,4 +1,15 @@
-"""비밀번호 해싱(bcrypt)·세션 바인딩용 지문 — 평문 저장 금지, 운영 전송에는 HTTPS 사용."""
+"""비밀번호 해싱(peppered bcrypt)·세션 바인딩용 지문 — 평문 저장 금지, 운영 전송에는 HTTPS 사용.
+
+해싱 구조(2026-09 강화):
+1. 페퍼(PASSWORD_PEPPER) — 서버 비밀값으로 모든 비밀번호에 공통 적용. DB가 유출돼도
+   페퍼를 모르면 오프라인 대조 불가. HMAC-SHA256(pepper, password)로 먼저 변환한다.
+2. bcrypt — 검증된 느린 해시. gensalt()가 비밀번호마다 무작위 솔트를 생성하므로
+   동일 비밀번호도 해시가 매번 다르고 무지개 테이블 대조도 막힌다.
+   HMAC 출력은 32바이트 고정이라 bcrypt의 UTF-8 72바이트 한계를 자동으로 만족한다.
+
+기존(페퍼 이전) 해시를 가진 계정은 로그인 시 레거시 경로로 검증된 뒤
+페퍼 적용 해시로 즉시 재저장된다(투명 마이그레이션 — auth.py 참조).
+"""
 
 import hashlib
 import hmac
@@ -9,14 +20,35 @@ from app.config import settings
 from app.policies import MAX_PASSWORD_BYTES
 
 
+def _peppered(password: str) -> bytes:
+    """비밀번호를 페퍼로 HMAC 변환한다. 출력 32바이트 고정."""
+    return hmac.new(
+        settings.password_pepper.encode("utf-8"), password.encode("utf-8"), hashlib.sha256
+    ).digest()
+
+
 def hash_password(password: str) -> str:
+    """페퍼 적용 bcrypt 해시. 신규 가입·재설정·마이그레이션 재해싱이 모두 이 경로를 쓴다."""
     encoded = password.encode("utf-8")
     if len(encoded) > MAX_PASSWORD_BYTES:
         raise ValueError("비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
-    return bcrypt.hashpw(encoded, bcrypt.gensalt()).decode("utf-8")
+    return bcrypt.hashpw(_peppered(password), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, password_hash: str) -> bool:
+    """페퍼 적용 해시 검증(현재 기본 경로)."""
+    try:
+        return bcrypt.checkpw(_peppered(password), password_hash.encode("utf-8"))
+    except ValueError:
+        return False
+
+
+def verify_password_legacy(password: str, password_hash: str) -> bool:
+    """페퍼 도입 전 평문 bcrypt 해시 검증(마이그레이션 전용).
+
+    로그인에서 verify_password 실패 시에만 시도한다. 전 계정이 재로그인으로
+    재해싱되면 이 경로는 제거할 수 있다(docs/SECURITY.md 참조).
+    """
     try:
         return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
     except ValueError:
@@ -25,7 +57,8 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 # 이메일 존재 여부를 타이밍으로 누출하지 않기 위한 더미 해시(#72).
 # 실제 계정 해시와 동일한 bcrypt 비용(기본 12 라운드)으로 미가입 경로의 소요 시간을 맞춘다.
-_DUMMY_HASH = bcrypt.hashpw("timing-equalizer-not-a-real-account".encode("utf-8"), bcrypt.gensalt())
+# 현재 기본 경로가 페퍼 적용 해시이므로 더미도 페퍼 적용 값으로 생성한다.
+_DUMMY_HASH = bcrypt.hashpw(_peppered("timing-equalizer-not-a-real-account"), bcrypt.gensalt())
 
 
 def verify_dummy_password(password: str) -> None:
@@ -34,7 +67,7 @@ def verify_dummy_password(password: str) -> None:
     반환값은 항상 없다(검증 결과를 쓰지 않음). 로그인 실패 응답은 두 경로 모두 동일한 401이다.
     """
     try:
-        bcrypt.checkpw(password.encode("utf-8"), _DUMMY_HASH)
+        bcrypt.checkpw(_peppered(password), _DUMMY_HASH)
     except ValueError:
         pass
 

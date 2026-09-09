@@ -3,7 +3,6 @@ const form = document.getElementById('chat-form');
 const input = document.getElementById('question');
 const window_ = document.getElementById('chat-window');
 const sendBtn = document.getElementById('send-btn');
-const errorBox = document.getElementById('chat-error');
 const counter = document.getElementById('count');
 
 const MAX_LEN = parseInt(window_.dataset.maxQuestionLength || '1000', 10);
@@ -70,10 +69,12 @@ function errorText(data, status) {
   return '오류가 발생했어요. 다시 시도해 주세요.';
 }
 
+// 검증·네트워크 오류도 채팅창 안에 말풍선으로 표시한다.
+// 폼 아래 별도 박스를 쓰면 나타날 때 입력 영역이 위로 밀려나 레이아웃이 흔들린다(약 52~70px 실측).
+// 창 안 말풍선은 서버 오류(error-bubble)와 동일한 패턴이라 시각적으로도 일관된다.
 function showError(text) {
-  errorBox.hidden = false;
-  errorBox.textContent = text;
-  setTimeout(() => { errorBox.hidden = true; }, 6000);
+  const bubble = addBubble(text, 'ai error-bubble');
+  bubble.setAttribute('role', 'alert');
 }
 
 async function send(e) {
@@ -85,7 +86,6 @@ async function send(e) {
   if (!question) return showError('질문을 입력해 주세요. (빈 입력은 전송되지 않아요)');
   if (FormUtils.codepointLength(question) > MAX_LEN) return showError(`질문이 너무 길어요. ${MAX_LEN}자 이하로 줄여주세요.`);
 
-  errorBox.hidden = true;
   addBubble(question, 'user', nowTime());
   input.value = '';
   counter.textContent = '0';
