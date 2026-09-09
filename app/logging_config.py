@@ -30,6 +30,7 @@ EVENTS = frozenset(
         "user_login_fail",
         "user_login_locked",
         "admin_logs_viewed",
+        "auth_password_rehashed",
         "auth_password_reset_requested",
         "auth_password_reset_rate_limited",
         "auth_password_reset_email_sent",

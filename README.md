@@ -59,6 +59,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 운영에서는 `DEBUG=false`와 새로 생성한 32자 이상 무작위 `SESSION_SECRET`이 필요합니다. 값은 GitHub/배포 플랫폼의 비밀변수로 관리하고 저장소에 넣지 않습니다.
 
+비밀번호는 **페퍼 + bcrypt(자동 솔트)** 이중 구조로 저장합니다. `PASSWORD_PEPPER`(서버 비밀)로 먼저 HMAC-SHA256 변환한 뒤 비밀번호마다 무작위 솔트가 붙은 bcrypt 해시를 만듭니다. DB가 유출돼도 페퍼를 모르면 오프라인 대조가 불가능하고, 동일 비밀번호도 해시가 매번 달라 무지개 테이블이 무의미해집니다. 운영 배포에는 32자 이상의 `PASSWORD_PEPPER`가 필수이며(CD가 사전 검증), 페퍼 도입 전 계정은 다음 로그인 때 자동으로 재해싱됩니다.
+
 ## 4. API·인증
 
 상세 요청/응답: **[docs/API.md](docs/API.md)**. `DOCS_ENABLED=true`인 개발·검증 환경에서 실행 중 `/docs`, `/redoc`, `/openapi.json`의 대화형 명세를 확인할 수 있습니다(운영 CD는 기본 `false`로 동기화).
@@ -155,7 +157,7 @@ python scripts/capture_local_evidence.py --output artifacts/local-ui
 
 Railway CD는 main push 또는 수동 실행에서 테스트 → Secrets 검증 → 변수 동기화 → 배포 → 헬스 → 스모크 순입니다. **필수 Secrets가 없으면 실패로 중단**하며 성공으로 표시하지 않습니다. 2026-09-09 첫 운영 배포에 성공했습니다(위 실행 기록). 시작 명령은 루트 `Procfile`이 제공합니다.
 
-필수: `RAILWAY_TOKEN`, `DEPLOY_URL`, `SESSION_SECRET`. 실제 AI용 `AI_API_KEY`는 별도입니다. GitHub PAT는 Railway 토큰이나 AI 키가 아닙니다.
+필수: `RAILWAY_TOKEN`, `DEPLOY_URL`, `SESSION_SECRET`, `PASSWORD_PEPPER`. 실제 AI용 `AI_API_KEY`는 별도입니다. GitHub PAT는 Railway 토큰이나 AI 키가 아닙니다.
 
 관리하는 선택 변수의 미설정은 **명시적 기본값/빈 값 적용**입니다. 예전 Railway 값을 조용히 유지하지 않습니다. `AI_API_KEY`가 비면 원격 값도 비우고, `DEBUG=false`를 고정하며 질문 상한도 동기화합니다. 운영 설정에 미치는 영향을 확인한 후 배포하세요. [배포 런북](docs/RAILWAY_DEPLOY.md)
 
