@@ -160,7 +160,10 @@ def test_utc_marker_survives_sqlite_roundtrip(client, db):
     db.commit()
     record = client.get("/api/me/chats?limit=1").json()[0]
     assert record["created_at"] == "2026-09-08T00:00:00Z"
-    assert "시각 (UTC)" in client.get("/logs").text
+    # 로그 화면은 KST 기본 표기 + UTC 병기 — UTC 원본 명시 원칙 유지
+    page_text = client.get("/logs").text
+    assert "시각 (KST / UTC)" in page_text
+    assert "09-08 09:00" in page_text  # KST = UTC+9
 
 
 def test_malformed_multipart_maps_to_502_and_is_saved(client, monkeypatch):

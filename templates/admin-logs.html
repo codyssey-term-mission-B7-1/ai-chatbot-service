@@ -9,15 +9,15 @@
     <button type="submit">조회</button>
     <a href="/admin/logs">필터 초기화</a>
   </form>
-  <p class="muted small">최신 50건 · 시각은 UTC · 표시 {{ logs | length }}건</p>
+  <p class="muted small">최신 50건 · 시각 KST(괄호 UTC) · 표시 {{ logs | length }}건</p>
   <div class="table-scroll">
     <table class="logs-table">
-      <thead><tr><th>ID</th><th>사용자</th><th>시각 (UTC)</th><th>질문</th><th>응답</th><th>상태</th><th>요청 ID</th></tr></thead>
+      <thead><tr><th>ID</th><th>사용자</th><th>시각 (KST / UTC)</th><th>질문</th><th>응답</th><th>상태</th><th>요청 ID</th></tr></thead>
       <tbody>
       {% for log in logs %}
         <tr class="{{ 'row-error' if log.status == 'ai_error' else '' }}">
           <td>{{ log.id }}</td><td>{{ log.user_id }}</td>
-          <td class="nowrap">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+          <td class="nowrap">{{ log.created_at | kst }}<br><span class="muted small">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC</span></td>
           <td class="q">{{ log.question }}</td><td class="a">{{ log.answer or '(응답 없음)' }}</td>
           <td class="status-cell">{{ log.status }}</td><td class="request-id">{{ log.request_id }}</td>
         </tr>

@@ -22,6 +22,16 @@ router = APIRouter(include_in_schema=False)
 logger = logging.getLogger("app.admin")
 
 
+def _kst(value):
+    """UTC 저장 시각을 KST(UTC+9) 표시 문자열로 변환 — 서버 TZ 설정과 무관하게 고정 오프셋."""
+    from datetime import timedelta
+
+    return (value + timedelta(hours=9)).strftime("%m-%d %H:%M")
+
+
+templates.env.filters["kst"] = _kst
+
+
 def _session_user(request: Request, db: Session) -> User | None:
     user = resolve_session_user(request, db)
     if user is not None:
