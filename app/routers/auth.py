@@ -136,9 +136,7 @@ async def password_reset_request(
         # 타이밍 평탄화(#72와 동일 원칙) — 미가입 경로도 bcrypt 비용을 지불한다.
         verify_dummy_password("timing-equalizer")
         return generic_ok
-    token = create_reset_token(
-        db, user, request.client.host if request.client else ""
-    )
+    token = create_reset_token(db, user, request.client.host if request.client else "")
     if token is None:  # 요청 상한 초과 — 응답은 동일하게 유지(존재 누출 방지)
         return generic_ok
     log_event(logger, "auth_password_reset_requested", user_id=user.id)
@@ -156,9 +154,7 @@ async def password_reset_request(
             ),
         ) from None
     except Exception as exc:  # SMTP 연결/인증 오류 — 토큰은 만료되어 자연 무효화된다.
-        log_event(
-            logger, "auth_password_reset_email_failed", error=str(exc), level=logging.ERROR
-        )
+        log_event(logger, "auth_password_reset_email_failed", error=str(exc), level=logging.ERROR)
         raise HTTPException(
             status_code=502, detail="재설정 메일 발송에 실패했어요. 잠시 후 다시 시도해 주세요."
         ) from None

@@ -102,12 +102,14 @@ def test_complete_changes_password_and_revokes_sessions(client, db, fake_smtp):
     # 기존 세션은 즉시 폐기 — 재설정 즉시 재로그인 유도
     assert client.get("/api/auth/me").status_code == 401
     # 이전 비밀번호로는 로그인 불가, 새 비밀번호로 로그인 성공
-    assert client.post(
-        "/api/auth/login", json={"email": EMAIL, "password": OLD_PASSWORD}
-    ).status_code == 401
-    assert client.post(
-        "/api/auth/login", json={"email": EMAIL, "password": NEW_PASSWORD}
-    ).status_code == 200
+    assert (
+        client.post("/api/auth/login", json={"email": EMAIL, "password": OLD_PASSWORD}).status_code
+        == 401
+    )
+    assert (
+        client.post("/api/auth/login", json={"email": EMAIL, "password": NEW_PASSWORD}).status_code
+        == 200
+    )
 
 
 def test_token_is_single_use(client, db, fake_smtp):
@@ -134,9 +136,7 @@ def test_expired_token_is_rejected(client, db, fake_smtp):
     request_reset(client)
     token = extract_token(fake_smtp)
 
-    db.execute(
-        update(PasswordReset).values(expires_epoch=int(time.time()) - 60)
-    )
+    db.execute(update(PasswordReset).values(expires_epoch=int(time.time()) - 60))
     db.commit()
 
     response = client.post(
