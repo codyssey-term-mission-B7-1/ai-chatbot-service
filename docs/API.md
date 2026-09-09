@@ -5,7 +5,7 @@
 ## 공통
 
 - 인증: `POST /api/auth/login`이 발급한 **서명 세션 쿠키**를 보낸다. JWT가 아니다.
-- Cookie payload는 `user_id`/`email_fp`; 값은 증빙에 복사하지 않는다. HttpOnly·SameSite=Lax·7일 Max-Age, 운영 Secure.
+- Cookie payload는 `user_id`/`email_fp`; 값은 증빙에 복사하지 않는다. HttpOnly·SameSite=Lax·`SESSION_MAX_AGE_HOURS` Max-Age(기본 24시간, 상한 168), 운영 Secure.
 - 응답의 `X-Request-ID`는 앱 표준 이벤트·저장된 대화와 연결된다.
 - 질문·비밀번호 문자 수는 Unicode 코드 포인트 기준. 비밀번호는 UTF-8 72바이트 제한도 적용한다.
 - 비밀번호는 공백만으로 구성될 수 없다(스페이스/개행/탭만 입력하면 422).

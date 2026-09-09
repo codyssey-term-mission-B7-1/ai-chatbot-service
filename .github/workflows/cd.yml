@@ -6,7 +6,7 @@
 #
 # 필수 Secrets (Settings → Secrets and variables → Actions):
 #   RAILWAY_TOKEN  : Railway project token (CLI 인증)
-#   DEPLOY_URL     : 공개 URL (스모크 대상, 예: https://xxx.up.railway.app)
+#   DEPLOY_URL     : 공개 URL (스모크 대상, 예: https://ai-chatbot-service-production-4aa1.up.railway.app)
 #   SESSION_SECRET : 세션 서명 키 (32자 이상 — dev 기본값 금지)
 #   PASSWORD_PEPPER: 비밀번호 페퍼 (32자 이상 — DB 유출 시 오프라인 대조 방어)
 # 선택 Secrets (없으면 코드 기본값 사용):

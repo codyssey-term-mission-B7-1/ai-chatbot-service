@@ -77,7 +77,11 @@ event=ai_call_success   request_id=567fc45c latency_ms=5
 event=db_save_success   user_id=1 chat_id=2 status=success
 ```
 
-3턴 전체가 동일한 순서로 기록되며, 질문은 로그 컨벤션대로 50자에서 잘린다.
+3턴 전체가 동일한 순서로 기록된다.
+
+> ※ 위 로그는 9/7 실행 당시 형식 그대로의 기록이다. 현행 계약(D18·D19)과 다르다:
+> 질문 원문은 로그에 남기지 않으며(`question=` 필드 없음), `request_id`는 20자리다.
+> 현재 형식은 [로그 계약](LOGGING.md)과 [추적 가이드](REQUEST_TRACING.md)를 따른다.
 
 ## 5. DB 저장 확인 (#8 연계)
 
