@@ -53,5 +53,8 @@ def test_revoke_by_email_raises_for_unknown_email(db):
 
 def test_revoke_by_email_normalizes_case(db):
     user = _user(db, email="case@test.com")
+    before = int(time.time())
     revoke_sessions_by_email(db, "  CASE@TEST.COM  ")
-    assert is_session_revoked(db, user.id, iat=int(time.time())) is True
+    # 폐기 기준은 before 이후이므로 before 발급 세션은 항상 폐기.
+    # 폐기 후 int(time.time())을 쓰면 초 경계에서 flake (#98).
+    assert is_session_revoked(db, user.id, iat=before) is True
