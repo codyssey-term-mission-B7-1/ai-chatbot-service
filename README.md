@@ -13,7 +13,7 @@ FastAPI + SQLite 기반의 로그인형 AI 챗봇입니다. **현재 소스에�
 |---|---|
 | 문제 | 질문·답변이 흩어지면 이전 대화의 맥락과 개인 기록을 다시 확인하기 어렵다. |
 | 대상 | 계정별 질의응답·자신의 대화 기록을 추적하려는 사용자 |
-| 핵심 흐름 | 가입 → 로그인 → 질문 → AI 응답 → 성공 대화 문맥 유지 → 본인 기록 조회 |
+| 핵심 흐름 | 가입 → 로그인 → 질문 → AI 응답 → 성공 대화 문맥 유지 → 본인 기록 조회 · 비밀번호 재설정(이메일 링크) |
 | 운영자 흐름 | 명시적 앱 관리자 권한을 부여받은 계정만 전체 기록 조회·필터 가능 |
 | 한계 | 실제 AI 키가 없으면 Fake 데모. 계정별 rate limit·요금 상한·중앙 세션 폐기는 별도 미구현 |
 
@@ -69,12 +69,13 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 | POST | `/api/auth/login` | 성공 200 + 서명된 세션 쿠키 / 반복 실패 잠금 429 |
 | POST | `/api/auth/logout` | 비로그인도 200, 현재 쿠키 비움 |
 | GET | `/api/auth/me` | 로그인 필요 |
+| POST | `/api/auth/password/reset-request` · `/api/auth/password/reset` | 공개, 이메일 재설정(계정 존재 은닉·토큰 단일 사용·세션 전면 폐기) |
 | POST | `/api/chat` | 로그인 필요, 200 / 422 / 429 / 502 / 504 |
 | GET | `/api/me/chats` | 본인 기록만, 성공 필터·커서 지원 |
 | GET | `/api/admin/chats` | 명시적 앱 관리자만 |
 | GET | `/health` | 기동/버전/제공자 선택 모드; AI 연결 검증 아님 |
 
-JWT가 아니라 `SessionMiddleware`의 서명 쿠키입니다. 로그인은 이메일별 실패 누적 잠금(`LOGIN_MAX_FAILS`회/`LOGIN_LOCKOUT_SEC`초, 기본 5회/15분, 429+`Retry-After`)이 적용되고, 미가입 이메일에도 동일한 bcrypt 연산을 수행해 이메일 열거 타이밍을 차단합니다. 내용은 `user_id`와 `email_fp`이며 쿠키 서명은 암호화가 아닙니다. HttpOnly·SameSite=Lax·`SESSION_MAX_AGE_HOURS` Max-Age(기본 24시간), 운영 Secure를 사용합니다. 세션에는 발급 시각(iat)이 들어가 `scripts/revoke_sessions.py --email`로 계정별 기존 세션을 서버 측에서 폐기할 수 있습니다. [접근 제어](docs/ACCESS_CONTROL.md)
+JWT가 아니라 `SessionMiddleware`의 서명 쿠키입니다. 로그인은 이메일별 실패 누적 잠금(`LOGIN_MAX_FAILS`회/`LOGIN_LOCKOUT_SEC`초, 기본 5회/15분, 429+`Retry-After`)이 적용되고, 미가입 이메일에도 동일한 bcrypt 연산을 수행해 이메일 열거 타이밍을 차단합니다. 내용은 `user_id`와 `email_fp`이며 쿠키 서명은 암호화가 아닙니다. HttpOnly·SameSite=Lax·`SESSION_MAX_AGE_HOURS` Max-Age(기본 24시간), 운영 Secure를 사용합니다. 세션에는 발급 시각(iat)이 들어가 `scripts/revoke_sessions.py --email`로 계정별 기존 세션을 서버 측에서 폐기할 수 있습니다. 비밀번호를 잊은 경우 `/forgot-password`에서 이메일로 재설정 링크를 받을 수 있습니다(토큰은 해시 저장·단일 사용, 완료 시 기존 세션 전면 폐기). [접근 제어](docs/ACCESS_CONTROL.md)
 
 관리자 권한은 기본적으로 없고 GitHub 역할이나 닉네임으로 생기지 않습니다. 전용 계정을 만든 뒤 **신뢰된 서버 운영자**가 `scripts/manage_admin.py`로 부여합니다. [관리자 운영](docs/ADMIN.md)
 
