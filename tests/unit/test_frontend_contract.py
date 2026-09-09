@@ -24,6 +24,15 @@ def test_frontend_counts_codepoints_like_pydantic():
     assert json.loads(output) == {"count": 501, "passwordBytes": 75}
 
 
+def test_templates_have_no_inline_event_handlers():
+    """CSP script-src 'self' 하에서 인라인 핸들러는 무시된다 — 템플릿에 남으면 안 된다(#75)."""
+    import re
+
+    for name in ["base.html", "chat.html", "login.html", "logs.html", "admin-logs.html"]:
+        html = (ROOT / "templates" / name).read_text()
+        assert not re.search(r"\son(click|submit|change|error|load|input|key\w*)=", html), name
+
+
 def test_template_does_not_apply_a_different_native_utf16_cap():
     html = (ROOT / "templates/chat.html").read_text()
     assert 'maxlength="1000"' not in html
