@@ -114,3 +114,39 @@ def test_session_cookie_expiry_is_one_day_by_default(client):
     r = client.post("/api/auth/login", json={"email": "exp@example.com", "password": "Test1234!"})
     cookie = r.headers.get_list("set-cookie")[0]
     assert "Max-Age=86400" in cookie, cookie
+
+
+def test_signup_whitespace_only_password_422(client):
+    """공백만으로 구성된 비밀번호는 8자 이상이어도 거부된다(스페이스/개행/탭)."""
+    for blank in ["        ", "\n\n\n\n\n\n\n\n", "\t \t \t \t "]:
+        r = client.post("/api/auth/signup", json={"email": "blank-pw@test.com", "password": blank})
+        assert r.status_code == 422
+        assert "공백만으로" in r.text
+
+
+def test_legacy_hash_login_rehashes_to_peppered(client, db):
+    """페퍼 도입 전 레거시 해시 — 로그인 성공 시 페퍼 적용 해시로 자동 재저장된다."""
+    import bcrypt as _bcrypt
+
+    from app.models import User
+
+    email = "legacy@test.com"
+    legacy_hash = _bcrypt.hashpw("LegacyPass123!".encode(), _bcrypt.gensalt()).decode()
+    db.add(User(email=email, password_hash=legacy_hash, nickname="레거시"))
+    db.commit()
+
+    r = client.post("/api/auth/login", json={"email": email, "password": "LegacyPass123!"})
+    assert r.status_code == 200
+
+    db.expire_all()
+    refreshed = db.query(User).filter_by(email=email).one()
+    assert refreshed.password_hash != legacy_hash
+    from app.services.security import verify_password
+
+    assert verify_password("LegacyPass123!", refreshed.password_hash) is True
+
+
+def test_login_blank_email_or_password_shows_422_or_401(client):
+    """빈/공백 이메일·비밀번호 로그인 시도 — 서버는 422(형식) 또는 401(불일치)로 응답."""
+    r = client.post("/api/auth/login", json={"email": "   ", "password": "   "})
+    assert r.status_code in (401, 422)

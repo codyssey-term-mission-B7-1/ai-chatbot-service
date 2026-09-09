@@ -27,6 +27,7 @@ from app.services.security import (
     hash_password,
     verify_dummy_password,
     verify_password,
+    verify_password_legacy,
 )
 
 logger = logging.getLogger("app.auth")
@@ -38,7 +39,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
     response_model=UserOut,
     status_code=status.HTTP_201_CREATED,
     summary="회원가입",
-    description="bcrypt 해싱. 8~64자 및 UTF-8 72바이트 이하.",
+    description="페퍼(HMAC) + bcrypt 해싱. 8~64자, UTF-8 72바이트 이하, 공백만으로 구성 불가.",
     responses={
         409: {"description": "이미 가입된 이메일"},
         422: {"description": "이메일/비밀번호/닉네임 검증 실패"},
@@ -87,6 +88,13 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
     user = find_by_email(db, body.email)
     if user is not None:
         password_ok = verify_password(body.password, user.password_hash)
+        if not password_ok:
+            # 페퍼 도입 전 레거시 해시 — 검증되면 즉시 페퍼 적용 해시로 재저장(투명 마이그레이션).
+            if verify_password_legacy(body.password, user.password_hash):
+                user.password_hash = hash_password(body.password)
+                db.commit()
+                log_event(logger, "auth_password_rehashed", user_id=user.id)
+                password_ok = True
     else:
         # 이메일 존재 여부를 타이밍으로 누출하지 않게 미가입 경로도 bcrypt를 수행한다(#72).
         verify_dummy_password(body.password)
