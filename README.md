@@ -157,7 +157,9 @@ python scripts/capture_local_evidence.py --output artifacts/local-ui
 
 Railway CD는 main push 또는 수동 실행에서 테스트 → Secrets 검증 → 변수 동기화 → 배포 → 헬스 → 스모크 순입니다. **필수 Secrets가 없으면 실패로 중단**하며 성공으로 표시하지 않습니다. 2026-09-09 첫 운영 배포에 성공했습니다(위 실행 기록). 시작 명령은 루트 `Procfile`이 제공합니다.
 
-필수: `RAILWAY_TOKEN`, `DEPLOY_URL`, `SESSION_SECRET`, `PASSWORD_PEPPER`. 실제 AI용 `AI_API_KEY`는 별도입니다. GitHub PAT는 Railway 토큰이나 AI 키가 아닙니다.
+필수: `RAILWAY_TOKEN`, `DEPLOY_URL`, `SESSION_SECRET`, `PASSWORD_PEPPER`.
+
+운영자가 직접 발급·등록해야 하는 P0(AI 키·SMTP·관리자 계정)와 테스트 계정 정리, 레거시 폴백 제거 기준은 **[docs/OPERATIONS.md](docs/OPERATIONS.md)** 를 따른다. 실제 AI용 `AI_API_KEY`는 별도입니다. GitHub PAT는 Railway 토큰이나 AI 키가 아닙니다.
 
 관리하는 선택 변수의 미설정은 **명시적 기본값/빈 값 적용**입니다. 예전 Railway 값을 조용히 유지하지 않습니다. `AI_API_KEY`가 비면 원격 값도 비우고, `DEBUG=false`를 고정하며 질문 상한도 동기화합니다. 운영 설정에 미치는 영향을 확인한 후 배포하세요. [배포 런북](docs/RAILWAY_DEPLOY.md)
 

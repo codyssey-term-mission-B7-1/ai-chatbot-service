@@ -156,3 +156,11 @@ Cookie: session=<실제 요청에서만 사용, 증빙에서는 마스킹>
 | 500 | 예상하지 못한 내부 오류 | 일반화된 INTERNAL 안내 + 보안 헤더 + 요청 ID |
 
 위 JSON은 설명용 예시다. 실제 실행 증거는 [검증 기록](VERIFICATION.md)의 환경·시각·소스 해시와 함께 확인한다.
+
+## 관리자 전용 (앱 관리자 권한 필요)
+
+- `GET /api/admin/security/password-hashes` — 페퍼(p2:) 해시 마이그레이션 현황.
+  `{total, peppered, legacy}`. legacy가 0이면 레거시 폴백 제거 가능(docs/OPERATIONS.md).
+- `DELETE /api/admin/users/{user_id}` — 사용자 삭제(테스트 계정 정리용).
+  대화 기록·세션·재설정 토큰 CASCADE 삭제 + 서버 측 세션 즉시 폐기.
+  자기 자신(400)/다른 관리자(400)/존재하지 않는 대상(404)은 거부.
