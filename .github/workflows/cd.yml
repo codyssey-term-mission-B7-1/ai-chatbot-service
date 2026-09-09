@@ -12,6 +12,10 @@
 #   AI_API_KEY                 : 없으면 데모 모드로 배포 (경고 출력)
 #   AI_BASE_URL / AI_MODEL / AI_TIMEOUT_SEC / AI_MAX_RETRIES / CONTEXT_TURNS
 #   DATABASE_URL               : 기본 sqlite:////data/app.db (Railway Volume 경로)
+#   CHAT_RATE_PER_MIN          : 기본 10 (사용자별 분당 채팅 상한, 0=비활성) (#73)
+#   LOGIN_MAX_FAILS / LOGIN_LOCKOUT_SEC : 기본 5 / 900 (로그인 실패 잠금) (#72)
+#   SESSION_MAX_AGE_HOURS      : 기본 24 (세션 쿠키 수명) (#74)
+#   DOCS_ENABLED               : 기본 false — 운영에서 /docs·/redoc·/openapi.json 비활성 (#75)
 # 선택 Variables: RAILWAY_SERVICE_NAME (기본 ai-chatbot-service),
 #                 RAILWAY_ENVIRONMENT (기본 production)
 
@@ -84,6 +88,11 @@ jobs:
           AI_MAX_RETRIES: ${{ secrets.AI_MAX_RETRIES }}
           CONTEXT_TURNS: ${{ secrets.CONTEXT_TURNS }}
           MAX_QUESTION_LENGTH: ${{ secrets.MAX_QUESTION_LENGTH }}
+          CHAT_RATE_PER_MIN: ${{ secrets.CHAT_RATE_PER_MIN }}
+          LOGIN_MAX_FAILS: ${{ secrets.LOGIN_MAX_FAILS }}
+          LOGIN_LOCKOUT_SEC: ${{ secrets.LOGIN_LOCKOUT_SEC }}
+          SESSION_MAX_AGE_HOURS: ${{ secrets.SESSION_MAX_AGE_HOURS }}
+          DOCS_ENABLED: ${{ secrets.DOCS_ENABLED }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SERVICE: ${{ vars.RAILWAY_SERVICE_NAME }}
@@ -105,6 +114,11 @@ jobs:
           set_var AI_MAX_RETRIES "$AI_MAX_RETRIES" "1"
           set_var CONTEXT_TURNS "$CONTEXT_TURNS" "5"
           set_var MAX_QUESTION_LENGTH "$MAX_QUESTION_LENGTH" "1000"
+          set_var CHAT_RATE_PER_MIN "$CHAT_RATE_PER_MIN" "10"
+          set_var LOGIN_MAX_FAILS "$LOGIN_MAX_FAILS" "5"
+          set_var LOGIN_LOCKOUT_SEC "$LOGIN_LOCKOUT_SEC" "900"
+          set_var SESSION_MAX_AGE_HOURS "$SESSION_MAX_AGE_HOURS" "24"
+          set_var DOCS_ENABLED "$DOCS_ENABLED" "false"
           set_var DEBUG "false" "false"
           set_var SESSION_SECRET "$SESSION_SECRET" ""
           set_var DATABASE_URL "$DATABASE_URL" "sqlite:////data/app.db"
