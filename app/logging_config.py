@@ -18,13 +18,17 @@ EVENTS = frozenset(
         "ai_call_start",
         "ai_call_success",
         "ai_call_fail",
+        "chat_rate_limited",
         "ai_retry",
         "db_save_success",
         "db_save_fail",
         "unhandled_error",
         "auth_stale_session",
+        "auth_session_revoked",
         "user_signup",
         "user_login",
+        "user_login_fail",
+        "user_login_locked",
         "admin_logs_viewed",
     }
 )

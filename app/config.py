@@ -54,6 +54,7 @@ class Settings(BaseSettings):
 
     # 세션
     session_secret: str = "dev-secret-change-me"  # 운영: .env에서 반드시 변경
+    session_max_age_hours: int = Field(default=24, ge=1, le=168)  # 쿠키 수명(#74), 상한 7일
 
     # AI (OpenAI 호환 chat completions — OpenAI/Groq/코디세이 네이토 등)
     ai_api_key: str | None = None  # 없으면 데모(Fake) 모드로 동작
@@ -62,9 +63,19 @@ class Settings(BaseSettings):
     ai_timeout_sec: float = Field(default=45.0, gt=0)  # AI 호출 전체 예산, 초
     ai_max_retries: int = Field(default=1, ge=0, le=5)
 
+    # /docs·/redoc·/openapi.json 노출(#75). 로컬/검증은 true, 운영 CD는 false로 동기화
+    docs_enabled: bool = True
+
     # 챗 파이프라인
     context_turns: int = Field(default=5, ge=0, le=MAX_CONTEXT_TURNS)  # 0이면 문맥 비활성화
     max_question_length: int = Field(default=1000, ge=1, le=100000)  # 입력 검증: 길이 제한
+
+    # 로그인 무차별 대입 방어(#72) — 이메일별 실패 누적 잠금. 프로세스 메모리·단일 워커 전제
+    login_max_fails: int = Field(default=5, ge=1)
+    login_lockout_sec: float = Field(default=900, gt=0)
+
+    # 채팅 비용 남용 방어(#73) — 사용자별 분당 요청 상한. 0이면 비활성화
+    chat_rate_per_min: int = Field(default=10, ge=0)
 
 
 def load_settings() -> Settings:

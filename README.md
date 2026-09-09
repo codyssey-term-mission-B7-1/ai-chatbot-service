@@ -61,20 +61,20 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 ## 4. API·인증
 
-상세 요청/응답: **[docs/API.md](docs/API.md)**. 실행 중 `/docs`, `/redoc`, `/openapi.json`에서 대화형 명세를 확인할 수 있습니다.
+상세 요청/응답: **[docs/API.md](docs/API.md)**. `DOCS_ENABLED=true`인 개발·검증 환경에서 실행 중 `/docs`, `/redoc`, `/openapi.json`의 대화형 명세를 확인할 수 있습니다(운영 CD는 기본 `false`로 동기화).
 
 | 메서드 | 경로 | 접근 |
 |---|---|---|
 | POST | `/api/auth/signup` | 공개, 201 / 중복 409 / 검증 422 |
-| POST | `/api/auth/login` | 성공 200 + 서명된 세션 쿠키 |
+| POST | `/api/auth/login` | 성공 200 + 서명된 세션 쿠키 / 반복 실패 잠금 429 |
 | POST | `/api/auth/logout` | 비로그인도 200, 현재 쿠키 비움 |
 | GET | `/api/auth/me` | 로그인 필요 |
-| POST | `/api/chat` | 로그인 필요, 200 / 422 / 502 / 504 |
+| POST | `/api/chat` | 로그인 필요, 200 / 422 / 429 / 502 / 504 |
 | GET | `/api/me/chats` | 본인 기록만, 성공 필터·커서 지원 |
 | GET | `/api/admin/chats` | 명시적 앱 관리자만 |
 | GET | `/health` | 기동/버전/제공자 선택 모드; AI 연결 검증 아님 |
 
-JWT가 아니라 `SessionMiddleware`의 서명 쿠키입니다. 내용은 `user_id`와 `email_fp`이며 쿠키 서명은 암호화가 아닙니다. HttpOnly·SameSite=Lax·7일 Max-Age, 운영 Secure를 사용합니다. [접근 제어](docs/ACCESS_CONTROL.md)
+JWT가 아니라 `SessionMiddleware`의 서명 쿠키입니다. 로그인은 이메일별 실패 누적 잠금(`LOGIN_MAX_FAILS`회/`LOGIN_LOCKOUT_SEC`초, 기본 5회/15분, 429+`Retry-After`)이 적용되고, 미가입 이메일에도 동일한 bcrypt 연산을 수행해 이메일 열거 타이밍을 차단합니다. 내용은 `user_id`와 `email_fp`이며 쿠키 서명은 암호화가 아닙니다. HttpOnly·SameSite=Lax·`SESSION_MAX_AGE_HOURS` Max-Age(기본 24시간), 운영 Secure를 사용합니다. 세션에는 발급 시각(iat)이 들어가 `scripts/revoke_sessions.py --email`로 계정별 기존 세션을 서버 측에서 폐기할 수 있습니다. [접근 제어](docs/ACCESS_CONTROL.md)
 
 관리자 권한은 기본적으로 없고 GitHub 역할이나 닉네임으로 생기지 않습니다. 전용 계정을 만든 뒤 **신뢰된 서버 운영자**가 `scripts/manage_admin.py`로 부여합니다. [관리자 운영](docs/ADMIN.md)
 
@@ -85,9 +85,11 @@ JWT가 아니라 `SessionMiddleware`의 서명 쿠키입니다. 내용은 `user_
 - 닉네임은 최대 20자. 생략하면 이메일 접두어의 앞 20자를 사용합니다.
 - 문맥은 같은 사용자의 직전 성공 Q/A `CONTEXT_TURNS`쌍. 0이면 비활성화, 최대 200.
 - UI는 `status=success&limit=N`을 사용해 AI와 같은 범위를 복원합니다. 실패 로그 50건 뒤에도 성공 문맥을 잃지 않습니다.
+- 채팅은 사용자별 분당 상한(`CHAT_RATE_PER_MIN`, 기본 10, 0=비활성)이 있어 초과 시 429+`Retry-After`입니다.
 - `AI_TIMEOUT_SEC`(기본 45초)은 **AI 호출 전체 예산**: 연결·읽기·추가 시도·대기 포함, DB/전체 HTTP 시간은 제외.
 - 타임아웃은 재시도하지 않습니다. 전송 오류·429·5xx만 최대 `AI_MAX_RETRIES`(기본 1)만큼 추가 시도합니다. 다른 4xx와 잘못된 응답 형식은 즉시 AI_ERROR/502입니다.
 - API 비로그인은 401, HTML 보호 화면은 로그인으로 302. 관리자 권한 부족은 403.
+- 모든 응답에 `Content-Security-Policy`를 포함한 보안 헤더가 붙고(#75), 상태 변경 요청은 교차 출처 `Origin`을 403으로 차단합니다(Origin이 없는 curl/스모크는 통과).
 
 ## 6. DB와 추적
 
@@ -144,7 +146,7 @@ python scripts/capture_local_evidence.py --output artifacts/local-ui
 - [사전평가 31개 항목 증빙](docs/EVALUATION_CHECKLIST.md)
 - [브라우저·실행 증빙](docs/evidence/LOCAL_VERIFICATION.md)
 - [문맥 실험](docs/DEMO_CONTEXT.md): 실제 12번째 요청의 프롬프트 문자량 측정. 요금·실 AI 품질 실험 아님
-- [로그 목적·필드 13종](docs/LOGGING.md): 표준 이벤트 stderr, 원문/시크릿 제외, 값 이스케이프
+- [로그 목적·필드 17종](docs/LOGGING.md): 표준 이벤트 stderr, 원문/시크릿 제외, 값 이스케이프
 
 실 AI 확인은 `python scripts/ai_check.py --require-real`로 별도 수행합니다. 키가 없으면 종료 2이며 **연결 성공으로 처리하지 않습니다**. 모의 OpenAI 서버는 `scripts/mock_openai_server.py`이며 로컬 테스트용입니다.
 
