@@ -1,9 +1,9 @@
 /* AI Chatbot Service — 공통 스타일 */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #f4f6fb; --card: #ffffff; --ink: #1f2430; --muted: #7a8194;
+  --bg: #f4f6fb; --card: #ffffff; --ink: #1f2430; --muted: #5c6474;
   --brand: #4f6df5; --brand-dark: #3b55d9; --user: #4f6df5; --ai: #ffffff;
-  --danger: #d64545; --ok: #2e9e5b; --border: #e3e7f0;
+  --danger: #c43a3a; --ok: #2e9e5b; --border: #e3e7f0;
 }
 body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; background: var(--bg); color: var(--ink); }
 
@@ -38,8 +38,13 @@ body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; backgr
 
 /* 채팅 */
 .chat-wrap { display: flex; flex-direction: column; height: calc(100vh - 150px); }
-.banner { background: #fff7e0; border: 1px solid #f0dfa8; color: #8a6d1a;
-          border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 10px; }
+.banner { background: #fff7e0; border: 1px solid #f0dfa8; color: #755c12;
+          border-radius: 8px; padding: 8px 36px 8px 12px; font-size: 13px; margin-bottom: 10px;
+          position: relative; }
+.banner-close { position: absolute; top: 4px; right: 6px; min-width: 28px; min-height: 28px;
+                border: none; background: none; color: inherit; font-size: 18px; line-height: 1;
+                cursor: pointer; border-radius: 6px; }
+.banner-close:hover { background: rgba(0,0,0,.06); }
 .chat-window { flex: 1; overflow-y: auto; background: var(--card); border: 1px solid var(--border);
                border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
 .bubble { max-width: 78%; padding: 12px 14px; border-radius: 14px; font-size: 15px; line-height: 1.55;
@@ -48,6 +53,9 @@ body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; backgr
 .bubble.ai { align-self: flex-start; background: var(--ai); border: 1px solid var(--border);
              border-bottom-left-radius: 4px; }
 .bubble.loading { color: var(--muted); font-style: italic; }
+.bubble-time { display: block; margin-top: 4px; font-size: 11px; text-align: right; }
+.bubble.user .bubble-time { color: rgba(255,255,255,.82); }
+.bubble.ai .bubble-time { color: var(--muted); }
 .bubble.error-bubble { background: #fdecec; border: 1px solid #f2c5c5; color: var(--danger); }
 .history-divider { align-self: center; font-size: 12px; color: var(--muted); background: var(--bg);
                    border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px; }
@@ -88,6 +96,7 @@ body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; backgr
   .brand { font-size: 16px; }
   .container { padding: 16px 12px; }
   .auth-card { margin: 20px auto; padding: 24px; }
+  .nav-link, .linklike { min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; }
   .chat-wrap { min-height: 360px; height: calc(100dvh - 180px); }
   .bubble { max-width: 92%; }
   .logs-wrap { padding: 16px; }
@@ -100,3 +109,18 @@ body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; backgr
 .admin-panel .logs-table { min-width: 1000px; }
 .status-cell, .request-id { white-space: nowrap; }
 .request-id { font-family: ui-monospace, monospace; font-size: 12px; }
+
+/* 다크 모드 — 시스템 설정(prefers-color-scheme)을 따른다. 문구/동작은 동일. */
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #14161b; --card: #1d2027; --ink: #e6e8ef; --muted: #a6adbf;
+          --border: #2e323d; --ai: #1d2027; --danger: #ff9d9d; }
+  .banner { background: #2b2413; border-color: #4a3d1c; color: #e5c96b; }
+  .banner-close:hover { background: rgba(255,255,255,.08); }
+  .msg.error { background: #3a1d1d; }
+  .msg.ok { background: #1d3325; color: #7fd8a2; }
+  .auth-card input, .chat-input textarea, .admin-filter input {
+    background: #14161b; color: var(--ink); }
+  .row-error { background: #2a1b1b; }
+  .user-chip { background: #262b3d; }
+  .history-divider { background: var(--bg); }
+}

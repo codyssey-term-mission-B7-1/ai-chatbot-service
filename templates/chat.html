@@ -4,7 +4,9 @@
 {% block content %}
 <div class="chat-wrap">
   {% if demo_mode %}
-  <div class="banner">⚠️ 데모 모드 — <code>AI_API_KEY</code> 미설정. 가짜 응답이 반환됩니다.</div>
+  <div class="banner" id="demo-banner">⚠️ 데모 모드 — <code>AI_API_KEY</code> 미설정. 가짜 응답이 반환됩니다.
+    <button type="button" id="banner-close" class="banner-close" aria-label="데모 모드 안내 닫기">×</button>
+  </div>
   {% endif %}
 
   <div id="chat-window" class="chat-window" data-context-turns="{{ context_turns }}" data-max-question-length="{{ max_question_length }}">
