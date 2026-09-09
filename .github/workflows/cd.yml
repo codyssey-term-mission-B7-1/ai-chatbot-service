@@ -16,6 +16,8 @@
 #   LOGIN_MAX_FAILS / LOGIN_LOCKOUT_SEC : 기본 5 / 900 (로그인 실패 잠금) (#72)
 #   SESSION_MAX_AGE_HOURS      : 기본 24 (세션 쿠키 수명) (#74)
 #   DOCS_ENABLED               : 기본 false — 운영에서 /docs·/redoc·/openapi.json 비활성 (#75)
+#   SMTP_HOST/PORT/USER/PASSWORD/FROM : 비밀번호 재설정 메일. 없으면 운영 503(개발은 로그 출력)
+#   PASSWORD_RESET_EXPIRY_MINUTES/MAX_REQUESTS/WINDOW_MINUTES : 재설정 토큰 정책
 # 선택 Variables: RAILWAY_SERVICE_NAME (기본 ai-chatbot-service),
 #                 RAILWAY_ENVIRONMENT (기본 production)
 
@@ -95,6 +97,14 @@ jobs:
           DOCS_ENABLED: ${{ secrets.DOCS_ENABLED }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          PASSWORD_RESET_EXPIRY_MINUTES: ${{ secrets.PASSWORD_RESET_EXPIRY_MINUTES }}
+          PASSWORD_RESET_MAX_REQUESTS: ${{ secrets.PASSWORD_RESET_MAX_REQUESTS }}
+          PASSWORD_RESET_WINDOW_MINUTES: ${{ secrets.PASSWORD_RESET_WINDOW_MINUTES }}
           SERVICE: ${{ vars.RAILWAY_SERVICE_NAME }}
           RAIL_ENV: ${{ vars.RAILWAY_ENVIRONMENT }}
         run: |
@@ -122,6 +132,14 @@ jobs:
           set_var DEBUG "false" "false"
           set_var SESSION_SECRET "$SESSION_SECRET" ""
           set_var DATABASE_URL "$DATABASE_URL" "sqlite:////data/app.db"
+          set_var SMTP_HOST "$SMTP_HOST" ""
+          set_var SMTP_PORT "$SMTP_PORT" "587"
+          set_var SMTP_USER "$SMTP_USER" ""
+          set_var SMTP_PASSWORD "$SMTP_PASSWORD" ""
+          set_var SMTP_FROM "$SMTP_FROM" "AI Chatbot Service <no-reply@example.com>"
+          set_var PASSWORD_RESET_EXPIRY_MINUTES "$PASSWORD_RESET_EXPIRY_MINUTES" "30"
+          set_var PASSWORD_RESET_MAX_REQUESTS "$PASSWORD_RESET_MAX_REQUESTS" "3"
+          set_var PASSWORD_RESET_WINDOW_MINUTES "$PASSWORD_RESET_WINDOW_MINUTES" "15"
 
       - name: 배포 (railway up)
         env:
