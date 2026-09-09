@@ -20,6 +20,8 @@
 | POST | /api/auth/login | 공개 / 200 + 쿠키 |
 | POST | /api/auth/logout | 비로그인도 가능 / 200 |
 | GET | /api/auth/me | 로그인 / 200 |
+| POST | /api/auth/password/reset-request | 공개 / 202 (계정 존재 은닉) |
+| POST | /api/auth/password/reset | 공개 / 200 · 400 |
 | POST | /api/chat | 로그인 / 200 |
 | GET | /api/me/chats | 로그인 / 본인 기록 |
 | GET | /api/admin/chats | 명시적 앱 관리자 / 전체 조회 |
@@ -61,6 +63,23 @@ Content-Type: application/json
 같은 이메일의 실패가 `LOGIN_MAX_FAILS`회(기본 5) 이상 누적되면 `LOGIN_LOCKOUT_SEC`초(기본 900) 동안 429 + `Retry-After`로 잠긴다. 잠금 중에는 올바른 비밀번호도 거부되며 로그인 성공 시 카운터가 초기화된다.
 
 `GET /api/auth/me`도 위 계정 정보를 반환한다. `POST /api/auth/logout`은 `{"detail":"로그아웃했어요."}`를 반환하며 현재 클라이언트 쿠키를 비운다. 복사된 쿠키를 중앙 세션 목록에서 개별 폐기하는 기능은 아니다.
+
+## 비밀번호 재설정
+
+```
+POST /api/auth/password/reset-request   {"email": "..."}
+→ 202 {"detail": "요청을 받았어요. 이메일이 가입되어 있다면 재설정 안내를 보냈습니다."}
+
+POST /api/auth/password/reset           {"token": "메일 링크의 토큰", "new_password": "..."}
+→ 200 {"detail": "비밀번호를 변경했어요. 새 비밀번호로 로그인해 주세요."}
+```
+
+- 요청 응답은 **가입 여부와 무관하게 항상 동일한 202** — 이메일 열거 방지. 미가입 경로도 동일한 bcrypt 비용을 지불한다.
+- 토큰은 메일에만 존재하고 DB에는 **SHA-256 해시** 저장. 단일 사용, `PASSWORD_RESET_EXPIRY_MINUTES`(기본 30분) 만료.
+- 요청 상한: 창(`PASSWORD_RESET_WINDOW_MINUTES`, 기본 15분) 내 `PASSWORD_RESET_MAX_REQUESTS`(기본 3)회 초과 시 메일 미발송 — 응답은 동일.
+- 완료 시 해당 계정의 기존 세션을 전부 폐기한다(#74 재사용) — 다른 기기도 로그아웃.
+- SMTP 미설정: 운영은 503(설정 안내), 개발(DEBUG=true)은 재설정 링크를 서버 로그로만 출력.
+- 화면: `/forgot-password`, `/reset-password?token=...`
 
 ## 채팅
 
