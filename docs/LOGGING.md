@@ -15,7 +15,7 @@
 uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 ```
 
-## 등록된 이벤트 13종
+## 등록된 이벤트 17종
 
 | 이벤트 | 목적 | 주요 필드 / 집계 주의 |
 |---|---|---|
@@ -25,12 +25,16 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 | ai_call_success | 응답 성공·시간 | user_id, request_id, latency_ms |
 | ai_call_fail | 장애 진단 | user_id, request_id, reason, latency_ms |
 | ai_retry | 추가 시도 집계 | attempt, previous_error, delay_ms. 실제 추가 시도를 시작할 때만 기록 |
+| chat_rate_limited | 사용자별 요청 상한 초과 | user_id, retry_after_sec, request_id. AI 호출 없이 429로 종료 |
 | db_save_success | 저장 추적 | user_id, chat_id, status, request_id |
 | db_save_fail | 저장 장애 | user_id, reason(예외 타입), request_id. 원문/SQL 파라미터 제외 |
 | unhandled_error | 예상 밖 서버 오류 | path, error(예외 타입), request_id |
 | auth_stale_session | 오래된 세션 파기 | user_id, request_id(HTTP 요청 안이면 자동 부여) |
+| auth_session_revoked | 서버 측 폐기 세션 거부 | user_id, request_id. 폐기 기준 이전 발급 세션 차단(#74) |
 | user_signup | 계정 생성 추적 | user_id, email_domain. 평문 이메일 제외 |
 | user_login | 성공 로그인 추적 | user_id, request_id |
+| user_login_fail | 인증 실패·무차별 대입 징후 | user_id(있으면), email_domain, request_id. 이메일 평문 제외 |
+| user_login_locked | 실패 누적 잠금 발동 | email_domain, retry_after_sec, request_id. 이메일 평문 제외 |
 | admin_logs_viewed | 민감 기록 접근 감사 | user_id(검증된 관리자), filter_user_id, result_count, before_id, request_id |
 
 HTTP 수신 이벤트는 `/api/` 요청당 **1회**다. 채팅 라우트에서 같은 이벤트를 중복 기록하지 않는다. `X-Request-ID` 응답 헤더와 DB `request_id`도 같은 ID를 사용한다. 요청 취소 시 종료 로그의 499는 내부 표기이며 실제 499 응답 전송을 보장하지 않는다.

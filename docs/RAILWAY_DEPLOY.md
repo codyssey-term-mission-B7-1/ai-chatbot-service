@@ -22,6 +22,11 @@
 | AI_TIMEOUT_SEC | 선택 | 기본 45초, AI 전체 호출 예산 |
 | AI_MAX_RETRIES | 선택 | 기본 1, 추가 시도 0~5 |
 | CONTEXT_TURNS | 선택 | 기본 5, 0~200 |
+| CHAT_RATE_PER_MIN | 선택 | 기본 10. 사용자별 분당 채팅 상한, 0=비활성 (#73) |
+| LOGIN_MAX_FAILS | 선택 | 기본 5. 이메일별 로그인 실패 잠금 기준 (#72) |
+| LOGIN_LOCKOUT_SEC | 선택 | 기본 900. 로그인 잠금 지속 초 (#72) |
+| SESSION_MAX_AGE_HOURS | 선택 | 기본 24. 세션 쿠키 수명 시간 (#74) |
+| DOCS_ENABLED | 선택 | 기본 false. /docs·/redoc·/openapi.json 노출 (#75) |
 | MAX_QUESTION_LENGTH | 선택 | 기본 1000 코드 포인트 |
 | DATABASE_URL | 선택 | 기본 `sqlite:////data/app.db` |
 
