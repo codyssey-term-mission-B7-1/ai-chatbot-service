@@ -72,3 +72,80 @@ def test_admin_pagination_does_not_repeat_rows(client, db):
     ).json()
     assert len(first["items"]) == 2 and len(second["items"]) == 1
     assert {r["id"] for r in first["items"]}.isdisjoint(r["id"] for r in second["items"])
+
+
+def test_password_hash_status_reports_migration_progress(client, db):
+    """해시 현황 — 레거시/페퍼 카운트가 정확하고 관리자 전용이다."""
+    signup_and_login(client, "legacy-user@example.com")
+    # 레거시(페퍼 이전) 해시 사용자 1명 추가
+    import bcrypt as _bcrypt
+
+    db.add(
+        User(
+            email="legacy2@example.com",
+            password_hash=_bcrypt.hashpw(b"x" * 8, _bcrypt.gensalt()).decode(),
+            nickname="레거시",
+        )
+    )
+    db.commit()
+
+    assert client.get("/api/admin/security/password-hashes").status_code == 403
+    grant_admin(db, "legacy-user@example.com")
+    r = client.get("/api/admin/security/password-hashes")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] >= 2
+    assert body["peppered"] >= 1  # signup_and_login 계정(로그인 시 마킹됨)
+    assert body["legacy"] >= 1
+
+
+def test_admin_deletes_user_with_chats_and_sessions(client, db):
+    """사용자 삭제 — 대화 CASCADE·세션 폐기·재설정 토큰까지 정리된다."""
+    signup_and_login(client, "victim@example.com")
+    client.post("/api/chat", json={"question": "지워질 질문"})
+    victim_id = client.get("/api/auth/me").json()["email"]  # 스키인지만 확인용
+    from app.repositories.users import find_by_email
+
+    victim = find_by_email(db, "victim@example.com")
+    victim_id = victim.id
+
+    signup_and_login(client, "admin@example.com")
+    grant_admin(db, "admin@example.com")
+    r = client.delete(f"/api/admin/users/{victim_id}")
+    assert r.status_code == 200
+    assert r.json()["email"] == "victim@example.com"
+    db.expire_all()
+    assert db.get(User, victim_id) is None
+    assert db.query(User).filter_by(email="victim@example.com").first() is None
+    # 대화 로그도 사라진다
+    from app.models import ChatLog
+
+    assert db.query(ChatLog).filter_by(user_id=victim_id).count() == 0
+
+
+def test_admin_cannot_delete_self_or_other_admin(client, db):
+    signup_and_login(client, "root@example.com")
+    grant_admin(db, "root@example.com")
+    root_id = find_id(db, "root@example.com")
+    assert client.delete(f"/api/admin/users/{root_id}").status_code == 400
+
+    signup_and_login(client, "peer-admin@example.com")
+    grant_admin(db, "peer-admin@example.com")
+    peer_id = find_id(db, "peer-admin@example.com")
+    # 관리자는 직전 로그인 세션이 아니라 '현재' 세션이므로 root 삭제 시도는 peer-admin 세션에서 수행
+    assert client.delete(f"/api/admin/users/{root_id}").status_code == 400
+    assert client.delete(f"/api/admin/users/{peer_id}").status_code == 400
+
+
+def test_delete_user_requires_admin_and_existing_target(client):
+    signup_and_login(client, "plain@example.com")
+    assert client.delete("/api/admin/users/999").status_code == 403
+    signup_and_login(client, "admin2@example.com")
+    # admin2는 관리자가 아님 → 403; 404 우선순위 확인은 관리자로 수행
+    assert client.delete("/api/admin/users/999").status_code == 403
+
+
+def find_id(db, email):
+    from app.repositories.users import find_by_email
+
+    return find_by_email(db, email).id

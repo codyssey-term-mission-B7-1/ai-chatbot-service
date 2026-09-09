@@ -9,6 +9,12 @@
 
 기존(페퍼 이전) 해시를 가진 계정은 로그인 시 레거시 경로로 검증된 뒤
 페퍼 적용 해시로 즉시 재저장된다(투명 마이그레이션 — auth.py 참조).
+
+해시 버전 마커: 페퍼 적용 해시는 "p2:" 접두어로 저장한다. 접두어가 없으면
+페퍼 이전(또는 마커 도입 직후의 비표시 페퍼 해시)이다. 검증은 두 형식을 모두
+수용하므로 마커는 하위 호환을 깨뜨리지 않으며, 관리자 현황 조회
+(GET /api/admin/security/password-hashes)가 마이그레이션 진행률을 정확히
+보고할 수 있게 해 준다.
 """
 
 import hashlib
@@ -27,18 +33,39 @@ def _peppered(password: str) -> bytes:
     ).digest()
 
 
+PEPPER_MARK = "p2:"  # 페퍼 적용 해시임을 나타내는 저장 버전 마커
+
+
 def hash_password(password: str) -> str:
-    """페퍼 적용 bcrypt 해시. 신규 가입·재설정·마이그레이션 재해싱이 모두 이 경로를 쓴다."""
+    """페퍼 적용 bcrypt 해시(p2: 마커 포함). 신규 가입·재설정·마이그레이션이 모두 이 경로를 쓴다."""
     encoded = password.encode("utf-8")
     if len(encoded) > MAX_PASSWORD_BYTES:
         raise ValueError("비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
-    return bcrypt.hashpw(_peppered(password), bcrypt.gensalt()).decode("utf-8")
+    digest = bcrypt.hashpw(_peppered(password), bcrypt.gensalt()).decode("utf-8")
+    return PEPPER_MARK + digest
+
+
+def is_peppered_hash(password_hash: str) -> bool:
+    """저장된 해시가 페퍼 적용(p2: 마커)인지 — 관리자 현황 조회용."""
+    return password_hash.startswith(PEPPER_MARK)
+
+
+def mark_peppered_hash(password_hash: str) -> str:
+    """마커 없는 페퍼 해시(마커 도입 전 창구에 저장된 값)에 마커를 붙인다.
+
+    검증은 마커 없이도 되지만, 마킹해야 마이그레이션 현황이 정확해진다.
+    """
+    return password_hash if is_peppered_hash(password_hash) else PEPPER_MARK + password_hash
+
+
+def _strip_mark(password_hash: str) -> str:
+    return password_hash[len(PEPPER_MARK) :] if is_peppered_hash(password_hash) else password_hash
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    """페퍼 적용 해시 검증(현재 기본 경로)."""
+    """페퍼 적용 해시 검증(현재 기본 경로). 마커 유무와 무관하게 동작한다."""
     try:
-        return bcrypt.checkpw(_peppered(password), password_hash.encode("utf-8"))
+        return bcrypt.checkpw(_peppered(password), _strip_mark(password_hash).encode("utf-8"))
     except ValueError:
         return False
 
@@ -47,10 +74,10 @@ def verify_password_legacy(password: str, password_hash: str) -> bool:
     """페퍼 도입 전 평문 bcrypt 해시 검증(마이그레이션 전용).
 
     로그인에서 verify_password 실패 시에만 시도한다. 전 계정이 재로그인으로
-    재해싱되면 이 경로는 제거할 수 있다(docs/SECURITY.md 참조).
+    재해싱되면 이 경로는 제거할 수 있다(docs/OPERATIONS.md 참조).
     """
     try:
-        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+        return bcrypt.checkpw(password.encode("utf-8"), _strip_mark(password_hash).encode("utf-8"))
     except ValueError:
         return False
 
