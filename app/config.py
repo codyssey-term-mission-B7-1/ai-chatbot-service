@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     login_max_fails: int = Field(default=5, ge=1)
     login_lockout_sec: float = Field(default=900, gt=0)
 
+    # 채팅 비용 남용 방어(#73) — 사용자별 분당 요청 상한. 0이면 비활성화
+    chat_rate_per_min: int = Field(default=10, ge=0)
+
 
 def load_settings() -> Settings:
     """설정을 불러온 뒤 세션 서명 키를 검증한다. get_settings에서 실제로 호출된다."""
