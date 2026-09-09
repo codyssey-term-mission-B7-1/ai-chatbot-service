@@ -61,7 +61,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 ## 4. API·인증
 
-상세 요청/응답: **[docs/API.md](docs/API.md)**. 실행 중 `/docs`, `/redoc`, `/openapi.json`에서 대화형 명세를 확인할 수 있습니다.
+상세 요청/응답: **[docs/API.md](docs/API.md)**. `DOCS_ENABLED=true`인 개발·검증 환경에서 실행 중 `/docs`, `/redoc`, `/openapi.json`의 대화형 명세를 확인할 수 있습니다(운영 CD는 기본 `false`로 동기화).
 
 | 메서드 | 경로 | 접근 |
 |---|---|---|
@@ -89,6 +89,7 @@ JWT가 아니라 `SessionMiddleware`의 서명 쿠키입니다. 로그인은 이
 - `AI_TIMEOUT_SEC`(기본 45초)은 **AI 호출 전체 예산**: 연결·읽기·추가 시도·대기 포함, DB/전체 HTTP 시간은 제외.
 - 타임아웃은 재시도하지 않습니다. 전송 오류·429·5xx만 최대 `AI_MAX_RETRIES`(기본 1)만큼 추가 시도합니다. 다른 4xx와 잘못된 응답 형식은 즉시 AI_ERROR/502입니다.
 - API 비로그인은 401, HTML 보호 화면은 로그인으로 302. 관리자 권한 부족은 403.
+- 모든 응답에 `Content-Security-Policy`를 포함한 보안 헤더가 붙고(#75), 상태 변경 요청은 교차 출처 `Origin`을 403으로 차단합니다(Origin이 없는 curl/스모크는 통과).
 
 ## 6. DB와 추적
 
