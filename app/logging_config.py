@@ -24,6 +24,7 @@ EVENTS = frozenset(
         "db_save_fail",
         "unhandled_error",
         "auth_stale_session",
+        "auth_session_revoked",
         "user_signup",
         "user_login",
         "user_login_fail",

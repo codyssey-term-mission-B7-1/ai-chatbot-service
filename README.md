@@ -74,7 +74,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 | GET | `/api/admin/chats` | 명시적 앱 관리자만 |
 | GET | `/health` | 기동/버전/제공자 선택 모드; AI 연결 검증 아님 |
 
-JWT가 아니라 `SessionMiddleware`의 서명 쿠키입니다. 로그인은 이메일별 실패 누적 잠금(`LOGIN_MAX_FAILS`회/`LOGIN_LOCKOUT_SEC`초, 기본 5회/15분, 429+`Retry-After`)이 적용되고, 미가입 이메일에도 동일한 bcrypt 연산을 수행해 이메일 열거 타이밍을 차단합니다. 내용은 `user_id`와 `email_fp`이며 쿠키 서명은 암호화가 아닙니다. HttpOnly·SameSite=Lax·7일 Max-Age, 운영 Secure를 사용합니다. [접근 제어](docs/ACCESS_CONTROL.md)
+JWT가 아니라 `SessionMiddleware`의 서명 쿠키입니다. 로그인은 이메일별 실패 누적 잠금(`LOGIN_MAX_FAILS`회/`LOGIN_LOCKOUT_SEC`초, 기본 5회/15분, 429+`Retry-After`)이 적용되고, 미가입 이메일에도 동일한 bcrypt 연산을 수행해 이메일 열거 타이밍을 차단합니다. 내용은 `user_id`와 `email_fp`이며 쿠키 서명은 암호화가 아닙니다. HttpOnly·SameSite=Lax·`SESSION_MAX_AGE_HOURS` Max-Age(기본 24시간), 운영 Secure를 사용합니다. 세션에는 발급 시각(iat)이 들어가 `scripts/revoke_sessions.py --email`로 계정별 기존 세션을 서버 측에서 폐기할 수 있습니다. [접근 제어](docs/ACCESS_CONTROL.md)
 
 관리자 권한은 기본적으로 없고 GitHub 역할이나 닉네임으로 생기지 않습니다. 전용 계정을 만든 뒤 **신뢰된 서버 운영자**가 `scripts/manage_admin.py`로 부여합니다. [관리자 운영](docs/ADMIN.md)
 
@@ -145,7 +145,7 @@ python scripts/capture_local_evidence.py --output artifacts/local-ui
 - [사전평가 31개 항목 증빙](docs/EVALUATION_CHECKLIST.md)
 - [브라우저·실행 증빙](docs/evidence/LOCAL_VERIFICATION.md)
 - [문맥 실험](docs/DEMO_CONTEXT.md): 실제 12번째 요청의 프롬프트 문자량 측정. 요금·실 AI 품질 실험 아님
-- [로그 목적·필드 16종](docs/LOGGING.md): 표준 이벤트 stderr, 원문/시크릿 제외, 값 이스케이프
+- [로그 목적·필드 17종](docs/LOGGING.md): 표준 이벤트 stderr, 원문/시크릿 제외, 값 이스케이프
 
 실 AI 확인은 `python scripts/ai_check.py --require-real`로 별도 수행합니다. 키가 없으면 종료 2이며 **연결 성공으로 처리하지 않습니다**. 모의 OpenAI 서버는 `scripts/mock_openai_server.py`이며 로컬 테스트용입니다.
 

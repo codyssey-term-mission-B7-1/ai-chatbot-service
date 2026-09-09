@@ -121,7 +121,7 @@ async def log_requests(request: Request, call_next):
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.session_secret,
-    max_age=60 * 60 * 24 * 7,
+    max_age=settings.session_max_age_hours * 3600,  # 기본 24시간(#74)
     https_only=not settings.debug,
 )
 

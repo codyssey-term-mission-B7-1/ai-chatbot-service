@@ -24,9 +24,9 @@
 - `SessionMiddleware`가 서명된 쿠키를 처리한다. **JWT가 아니며 암호화 쿠키도 아니다.**
 - 저장 키는 `user_id`와 `email_fp`다. 평문 이메일 대신 HMAC-SHA256 지문의 앞 16자를 사용한다.
 - 서명 검증 후에도 DB의 사용자와 지문을 대조한다. DB 재생성 후 ID가 다른 계정에 배정되면 세션을 비우고 보호 API 접근을 거부한다.
-- 쿠키는 HttpOnly·SameSite=Lax, 7일 Max-Age다. 세션이 있는 응답에서 갱신되는 방식이며 로그인 시점부터의 절대 수명 7일을 뜻하지 않는다.
+- 쿠키는 HttpOnly·SameSite=Lax, `SESSION_MAX_AGE_HOURS` Max-Age(기본 24시간, 상한 168)다. 세션이 있는 응답에서 갱신되는 방식이며 로그인 시점부터의 절대 수명을 뜻하지 않는다.
 - 운영에서는 `DEBUG=false`여서 Secure 쿠키를 사용한다. 로컬 HTTP 테스트만 `DEBUG=true`를 사용한다.
-- 로그아웃은 현재 클라이언트 쿠키를 비우는 동작이다. 복사된 쿠키를 서버 세션 목록에서 개별 폐기하는 기능은 없다. 시크릿 교체는 기존 쿠키를 모두 무효화한다.
+- 로그아웃은 현재 클라이언트 쿠키를 비우는 동작이다. 계정별 강제 폐기는 `scripts/revoke_sessions.py --email`이 지원한다: 세션의 발급 시각(iat)이 폐기 기준 이하면 서명이 유효해도 거부되며(`auth_session_revoked`), 재로그인은 정상 동작한다(#74). 시크릿 교체는 기존 쿠키를 모두 무효화한다.
 
 ## 로그인 제한의 이유와 한계
 
@@ -43,5 +43,6 @@
 - `tests/integration/test_auth_flow.py`: 가입·로그인·로그아웃·중복·세션 바인딩
 - `tests/integration/test_verified_gaps.py`: HTML/API 구분, 미들웨어 순서, 500 헤더·종료 로그
 - `tests/integration/test_admin.py`: 비관리자 403, 전체 조회, 본인 API 격리, 권한 회수
+- `tests/integration/test_session_revocation.py`: 쿠키 수명 설정, 계정별 세션 폐기·재로그인(#74)
 
 실행 결과와 로컬/운영 증빙의 구분은 [검증 기록](VERIFICATION.md)을 따른다.
