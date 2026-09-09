@@ -56,7 +56,7 @@ python scripts/capture_local_evidence.py --output artifacts/local-ui
 ## 남아 있는 외부 완료 조건
 
 - 실제 AI 제공사 endpoint/model/key로 `ai_check.py --require-real` 성공 및 문맥 품질 확인
-- Railway 프로젝트·영구 볼륨·Secrets, 실제 URL, 첫 배포/E2E/복원 드릴
+- ~~Railway 프로젝트·영구 볼륨·Secrets, 실제 URL, 첫 배포/E2E~~ — 2026-09-09 완료 (CD 실행 기록 actions/runs/34324577000). **복원 드릴은 여전히 남음**
 - 팀별 실제 작업·PR/리뷰, 3주 스탠드업·회고, M1/M2/M3 승인
 
 현재 실행 결과와 화면은 `docs/evidence/`의 시각·소스 해시를 함께 확인한다. 새 코드를 과거 PR에서 검증한 것처럼 SHA나 과거 리뷰 기록을 바꾸지 않는다.
