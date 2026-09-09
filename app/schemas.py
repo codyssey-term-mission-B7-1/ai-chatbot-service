@@ -61,6 +61,21 @@ class LoginIn(BaseModel):
         return value.strip().lower() if isinstance(value, str) else value
 
 
+class PasswordResetRequestIn(BaseModel):
+    """재설정 요청 — 응답은 계정 존재 여부를 누출하지 않는다."""
+
+    email: EmailStr
+    model_config = {"extra": "forbid"}
+
+
+class PasswordResetCompleteIn(BaseModel):
+    """재설정 완료 — 토큰과 새 비밀번호(회원가입과 동일한 정책)."""
+
+    token: str = Field(min_length=20, max_length=128)
+    new_password: str = Field(min_length=8, max_length=MAX_PASSWORD_CHARS)
+    model_config = {"extra": "forbid"}
+
+
 class UserOut(BaseModel):
     email: str
     nickname: str

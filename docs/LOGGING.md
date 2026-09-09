@@ -15,7 +15,7 @@
 uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 ```
 
-## 등록된 이벤트 17종
+## 등록된 이벤트 25종
 
 | 이벤트 | 목적 | 주요 필드 / 집계 주의 |
 |---|---|---|
@@ -36,6 +36,14 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 | user_login_fail | 인증 실패·무차별 대입 징후 | user_id(있으면), email_domain, request_id. 이메일 평문 제외 |
 | user_login_locked | 실패 누적 잠금 발동 | email_domain, retry_after_sec, request_id. 이메일 평문 제외 |
 | admin_logs_viewed | 민감 기록 접근 감사 | user_id(검증된 관리자), filter_user_id, result_count, before_id, request_id |
+| auth_password_reset_requested | 재설정 링크 발급 | user_id, request_id. 토큰 원문 없음 |
+| auth_password_reset_rate_limited | 요청 상한 초과로 발송 생략 | user_id, request_id |
+| auth_password_reset_email_sent | 재설정 메일 발송 성공 | user_id, request_id |
+| auth_password_reset_email_dev_console | 개발 모드 링크 콘솔 출력 | 링크는 경고 로그에만 |
+| auth_password_reset_email_unconfigured | 운영 SMTP 미설정 503 | request_id |
+| auth_password_reset_email_failed | 메일 발송 예외 | error 요약, request_id |
+| auth_password_reset_rejected | 무효·만료·사용된 토큰 | request_id. 토큰 값 없음 |
+| auth_password_reset_completed | 비밀번호 변경 완료 + 세션 전면 폐기 | user_id, request_id |
 
 HTTP 수신 이벤트는 `/api/` 요청당 **1회**다. 채팅 라우트에서 같은 이벤트를 중복 기록하지 않는다. `X-Request-ID` 응답 헤더와 DB `request_id`도 같은 ID를 사용한다. 요청 취소 시 종료 로그의 499는 내부 표기이며 실제 499 응답 전송을 보장하지 않는다.
 

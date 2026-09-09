@@ -30,6 +30,14 @@ EVENTS = frozenset(
         "user_login_fail",
         "user_login_locked",
         "admin_logs_viewed",
+        "auth_password_reset_requested",
+        "auth_password_reset_rate_limited",
+        "auth_password_reset_email_sent",
+        "auth_password_reset_email_dev_console",
+        "auth_password_reset_email_unconfigured",
+        "auth_password_reset_email_failed",
+        "auth_password_reset_rejected",
+        "auth_password_reset_completed",
     }
 )
 SENSITIVE_FIELDS = frozenset(
