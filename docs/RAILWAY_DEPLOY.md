@@ -34,6 +34,9 @@
 | DOCS_ENABLED | 선택 | 기본 false. /docs·/redoc·/openapi.json 노출 (#75) |
 | MAX_QUESTION_LENGTH | 선택 | 기본 1000 코드 포인트 |
 | DATABASE_URL | 선택 | 기본 `sqlite:////data/app.db` |
+| SMTP_HOST/PORT/USER/PASSWORD/FROM | 선택 | SMTP 메일 발송. 없으면 빈 값 동기화(운영 503). **Railway Free/Hobby는 SMTP 아웃바운드(25/465/587/2525) 차단 — Pro가 아니면 발송 불가** |
+| RESEND_API_KEY | 선택 | HTTPS 이메일 발송(Resend, 443포트). Railway Free/Hobby의 SMTP 차단 우회용. **설정 시 SMTP보다 우선** |
+| RESEND_FROM | 선택 | 기본 `onboarding@resend.dev`. 도메인 인증 전엔 수신이 Resend 계정 본인 이메일로 제한 |
 
 Variables: `RAILWAY_SERVICE_NAME` 기본 ai-chatbot-service, `RAILWAY_ENVIRONMENT` 기본 production.
 
