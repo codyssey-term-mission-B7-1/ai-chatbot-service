@@ -108,6 +108,12 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_from: str = "AI Chatbot Service <no-reply@example.com>"
+
+    # Railway Free/Hobby는 아웃바운드 SMTP(25/465/587/2525)를 차단한다(Pro만 허용) —
+    # HTTPS 이메일 API(Resend, 443포트)로 우회한다. 키가 있으면 SMTP보다 우선 사용.
+    resend_api_key: str = ""  # 비어 있으면 SMTP 경로(smtp_host) 사용
+    # 기본 발신자는 도메인 인증 전엔 수신이 Resend 계정 본인 이메일로 제한된다
+    resend_from: str = "onboarding@resend.dev"
     password_reset_expiry_minutes: int = Field(default=30, ge=5, le=1440)
     password_reset_max_requests: int = Field(default=3, ge=1)  # 창 내 요청 상한
     password_reset_window_minutes: int = Field(default=15, ge=1)
