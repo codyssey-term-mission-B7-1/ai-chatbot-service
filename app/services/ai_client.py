@@ -77,6 +77,15 @@ class OpenAICompatClient(AIProvider):
         self.timeout_sec = timeout_sec
         self.max_retries = max_retries
 
+    def build_payload(self, messages: list[dict]) -> dict:
+        """요청 본문 — 응답 길이·온도를 서버 정책으로 고정(미설정 시 제공사 기본값 노출 방지)."""
+        return {
+            "model": self.model,
+            "messages": messages,
+            "max_tokens": settings.ai_max_tokens,
+            "temperature": settings.ai_temperature,
+        }
+
     async def generate(self, messages: list[dict]) -> str:
         try:
             async with asyncio.timeout(self.timeout_sec):

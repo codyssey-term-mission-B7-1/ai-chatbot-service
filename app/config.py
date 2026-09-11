@@ -87,6 +87,9 @@ class Settings(BaseSettings):
     ai_model: str = "gpt-4o-mini"
     ai_timeout_sec: float = Field(default=45.0, gt=0)  # AI 호출 전체 예산, 초
     ai_max_retries: int = Field(default=1, ge=0, le=5)
+    # 요청 본문에 명시해 응답 길이 폭탄·비용 편차·타임아웃 예산 침식을 방어(C-3).
+    ai_max_tokens: int = Field(default=800, ge=16, le=8192)  # 응답 생성 토큰 상한
+    ai_temperature: float = Field(default=0.6, ge=0, le=2)  # 낮을수록 일관적; 평가 시 0 권장
 
     # /docs·/redoc·/openapi.json 노출(#75). 로컬/검증은 true, 운영 CD는 false로 동기화
     docs_enabled: bool = True
