@@ -57,3 +57,12 @@ def test_logs_shows_my_logs_when_logged_in(client, fake_ai):
     assert res.status_code == 200
     assert "logs-table" in res.text
     assert "첫 질문" in res.text
+
+
+def test_signup_page_discloses_admin_review_login_does_not(client):
+    """가입 화면에만 관리자 열람 고지가 노출된다(B-1 — 데이터 정책 초안과 함께 고지 계약)."""
+    signup = client.get("/signup").text
+    login = client.get("/login").text
+    assert "관리자가 대화 내용을 열람할 수 있어요" in signup
+    assert "감사 로그로 남습니다" in signup
+    assert "관리자가 대화 내용을 열람" not in login  # 로그인 화면은 고지 아님
