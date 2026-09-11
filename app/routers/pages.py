@@ -115,6 +115,7 @@ def admin_logs_page(
     request: Request,
     user_id: int | None = Query(default=None, gt=0),
     before_id: int | None = Query(default=None, gt=0),
+    reason: str = Query(default="", max_length=200, description="열람 사유 — 감사 로그에 기록"),
     db: Session = Depends(get_db),
 ):
     user = _session_user(request, db)
@@ -123,14 +124,16 @@ def admin_logs_page(
     if not is_admin(db, user):
         raise HTTPException(status_code=403, detail="관리자 권한이 필요한 기능이에요.")
     rows = list_logs(db, user_id=user_id, before_id=before_id, limit=50)
-    log_event(
-        logger,
-        "admin_logs_viewed",
-        user_id=user.id,
-        filter_user_id=user_id,
-        result_count=len(rows),
-        before_id=before_id,
-    )
+    audit = {
+        "user_id": user.id,
+        "filter_user_id": user_id,
+        "result_count": len(rows),
+        "before_id": before_id,
+    }
+    cleaned_reason = reason.strip()[:200]
+    if cleaned_reason:
+        audit["reason"] = cleaned_reason
+    log_event(logger, "admin_logs_viewed", **audit)
     return templates.TemplateResponse(
         request,
         "admin-logs.html",
@@ -138,6 +141,7 @@ def admin_logs_page(
             **_context(db, user),
             "logs": rows,
             "filter_user_id": user_id,
+            "filter_reason": cleaned_reason,
             "next_before_id": rows[-1].id if len(rows) == 50 else None,
         },
     )
