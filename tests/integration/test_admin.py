@@ -149,3 +149,21 @@ def find_id(db, email):
     from app.repositories.users import find_by_email
 
     return find_by_email(db, email).id
+
+
+def test_admin_page_view_records_reason_in_audit_log(client, db, caplog):
+    """/admin/logs 열람 사유가 admin_logs_viewed 감사 이벤트에 기록된다(B-1 — who/what/why)."""
+    import logging
+
+    signup_and_login(client, "reason-admin@example.com")
+    grant_admin(db, "reason-admin@example.com")
+    with caplog.at_level(logging.INFO, logger="app.pages"):
+        response = client.get("/admin/logs", params={"reason": "장애 조사: 사용자 문의 대응 #100"})
+    assert response.status_code == 200
+    assert "event=admin_logs_viewed" in caplog.text
+    assert "reason=" in caplog.text
+
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="app.pages"):
+        client.get("/admin/logs")  # 사유 없이 열람해도 기존 동작(하위 호환)
+    assert "event=admin_logs_viewed" in caplog.text
