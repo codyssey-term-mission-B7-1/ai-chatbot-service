@@ -26,7 +26,7 @@
     </table>
   </div>
   {% if next_before_id %}
-  <a class="next-page" href="/admin/logs?before_id={{ next_before_id }}{% if filter_user_id %}&amp;user_id={{ filter_user_id }}{% endif %}">이전 기록 더 보기</a>
+  <a class="next-page" href="/admin/logs?before_id={{ next_before_id }}{% if filter_user_id %}&amp;user_id={{ filter_user_id }}{% endif %}{% if filter_reason %}&amp;reason={{ filter_reason | urlencode }}{% endif %}">이전 기록 더 보기</a>
   {% endif %}
 </div>
 {% endblock %}

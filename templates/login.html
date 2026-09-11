@@ -19,6 +19,7 @@
     <label>닉네임 (선택 · 20자 이하)
       <input type="text" id="nickname" placeholder="표시될 이름" autocomplete="nickname">
     </label>
+    <p class="muted small">가입하면 서비스 지원·오류 조사 목적으로 관리자가 대화 내용을 열람할 수 있어요. 열람 기록은 감사 로그로 남습니다.</p>
     {% endif %}
     <button type="submit" id="submit-btn">{{ '가입하기' if mode == 'signup' else '로그인' }}</button>
   </form>
