@@ -167,11 +167,10 @@ Railway CD는 main push 또는 수동 실행에서 테스트 → Secrets 검증 
 
 | 계정 | 역할 카드 | 현재 책임 |
 |---|---|---|
-| giyeop-cody | 01·03·04·05 | PM·서버·인증·접근 제어 |
+| giyeop-cody | 01·03·04·05·12·13 | PM·서버·인증·접근 제어·배포·운영·기술 문서·검증 패키지 |
 | Im-Jongseok | 02·07·08 | 형상관리·문맥·DB |
 | loader1017 | 06·09·10·11 | AI 연동·UI·로깅·입력 검증 |
-| ygyg0605-cloud | 12·13 | 배포·운영·기술 문서·검증 패키지 |
 
-역할표와 CODEOWNERS는 **현재 책임/리뷰 요청 기준**이지 과거 작성자 증명이 아닙니다. 실제 개인별 커밋·PR·리뷰와 M1/M2/M3·회고 기록은 별도로 확인합니다. 기존 기록은 [커밋 감사](docs/commit-audit.md)에 보존합니다.
+역할표와 CODEOWNERS는 **현재 책임/리뷰 요청 기준**이지 과거 작성자 증명이 아닙니다. 실제 개인별 커밋·PR·리뷰와 M1/M2/M3·회고 기록은 별도로 확인합니다. 기존 기록은 [커밋 감사](docs/commit-audit.md)에 보존합니다. 2026-09-11 ygyg0605-cloud 이탈로 12·13 카드는 giyeop-cody가 인수했으며, ygyg 계정 명의 기록의 실제 작성자 정정은 [08-기여정정](docs/project/08-contribution-amendment.md) 참조.
 
 [열린 작업과 완료 조건](docs/TODO.md) · [팀 컨벤션](CONTRIBUTING.md)
