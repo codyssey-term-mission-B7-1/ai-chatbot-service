@@ -1,0 +1,23 @@
+{
+  "_readme": "골든 세트 스타터(C-2 조치). 사용법: 각 케이스를 운영/스테이징에 순서대로 제출하고 응답을 저장 → 루브릭으로 LLM-as-judge 또는 사람 채점. 프롬프트·모델·CONTEXT_TURNS 변경 시 전체 재실행하고 점수 비교. expect_context는 직전 턴들이 프롬프트에 포함돼야 함을 뜻한다.",
+  "_rubric": {
+    "context_accuracy": "이전 대화 인용이 정확한가 (0-2)",
+    "factual_grounding": "기록에 없는 내용을 지어내지 않았는가 (0-2)",
+    "conciseness": "질문 길이·형식 대비 적절한 분량인가 (0-2)",
+    "tone": "안내 문구가 이해 가능한가 (0-2)"
+  },
+  "cases": [
+    { "id": "G-01", "category": "context_quote", "turns": ["나를 기억해?", "방금 내가 뭘 물었지?"], "expect": "직전 질문을 표현 그대로 따옴표 인용" },
+    { "id": "G-02", "category": "context_long", "turns": ["파스타 레시피 알려줘(구체 조리 순서 요청)", "아까 재료가 뭐가 필요하다고 했지?"], "expect": "첫 응답의 재료 목록을 정확히 회상" },
+    { "id": "G-03", "category": "context_boundary", "turns": ["파스타 재료 알려줘", "세금 신고 기한은 언제야?", "그럼 아까 음식은 뭐였어?"], "expect": "2번째 질문 이후에도 1번째 주제를 정확히 회상(오염 없음)" },
+    { "id": "G-04", "category": "fact_short", "turns": ["HTTP 401과 403의 차이를 한 문장으로"], "expect": "미인증 vs 권한 없음 구분" },
+    { "id": "G-05", "category": "fact_korean_long", "turns": ["800자에 가까운 긴 한국어 질문(요구사항 나열형) — 항목 5개를 담은 요청", "expect": "5개 항목 누락 없이 응답"], "expect": "항목 누락 없음" },
+    { "id": "G-06", "category": "mixed_language", "turns": ["FastAPI에서 request body validation은 어떻게 하나요? 한국어로 답해주세요"], "expect": "한국어 서술 + 영문 용어 유지" },
+    { "id": "G-07", "category": "refusal_grounding", "turns": ["저번에 내가 말한 내 생일 선물이 뭐라고 했지?"], "expect": "기록에 없으면 모른다고 답함(지어내지 않음 — SYSTEM_PROMPT 계약)" },
+    { "id": "G-08", "category": "format_list", "turns": ["오늘 할 일 3가지를 번호 목록으로 예시 들어줘"], "expect": "번호 목록 형식 준수" },
+    { "id": "G-09", "category": "after_failure", "turns": ["(실패 유도: 타임아웃 직후) 다시 물을게 — 방금 실패했던 질문 앞부분이 뭐였지?"], "expect": "실패 응답이 문맥에 포함되지 않음을 확인(성공 Q/A만 문맥)" },
+    { "id": "G-10", "category": "code_request", "turns": ["파이썬으로 두 문자열이 아나그램인지 검사하는 함수를 보여줘"], "expect": "실행 가능한 코드 + 간단 설명" },
+    { "id": "G-11", "category": "math_light", "turns": ["17 곱하기 23은 얼마야?"], "expect": "391 (사실 정확성)" },
+    { "id": "G-12", "category": "long_output_guard", "turns": ["HTTP의 역사를 아주 자세히 설명해줘"], "expect": "max_tokens 상한 내에서 마무리된 응답(잘림 시 finish_reason 기록 확인)" }
+  ]
+}
