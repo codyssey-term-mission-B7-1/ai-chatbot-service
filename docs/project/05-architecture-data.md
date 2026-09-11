@@ -90,7 +90,7 @@ erDiagram
 
 ## 6. 배포·운영 파이프라인 (GitHub Actions)
 
-- **CI**: ruff → black --check → isort --check-only → pytest(205) — PR 필수 게이트.
+- **CI**: ruff → black --check → isort --check-only → pytest(221, 2026-09-11 기준) — PR 필수 게이트.
 - **CD**(main push/수동): 테스트 → Secrets 검증(누락 시 실패 중단) → Railway 변수 동기화 → `railway up` → /health → E2E 스모크 7항목.
 - 시작 명령은 루트 `Procfile`(Railpack 감지 실패 #81 대응), `railway.json`은 헬스체크·재시작 정책 문서.
 - 백업: DB 디렉터리 `backups/` 7세대·온라인 백업·무결성/해시 검증(scripts/backup_db.sh).

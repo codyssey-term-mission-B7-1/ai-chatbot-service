@@ -90,7 +90,7 @@
 | NFR-02 안정성 | AI 장애 시 서버 생존 | 타임아웃 504, 저장 실패 분리, 재시도 예산 | test_ai_http_budget, test_storage_failure |
 | NFR-03 추적성 | 요청 상관관계 | X-Request-ID ↔ 로그 ↔ chat_logs.request_id | test_logging_contract |
 | NFR-04 프라이버시 | 로그에 원문·시크릿 금지 | 28종 이벤트 필드 정의 준수, 민감접미사 마스킹 회귀 4건(#104) | test_logging_suffix_redaction |
-| NFR-05 품질 게이트 | ruff/black/isort/pytest | CI 필수 통과, 205 tests (09-10) | CI workflow |
+| NFR-05 품질 게이트 | ruff/black/isort/pytest | CI 필수 통과, 221 tests (09-11, PR #107) | CI workflow |
 | NFR-06 운영 | 외부 URL 상시 가동 + 스모크 | CD 게이트→Secrets 검증→동기화→배포→헬스→E2E 7/7 | CD workflow |
 | NFR-07 복구 | DB 백업 | 7세대·해시 검증·복원 절차 문서 | BACKUP_RESTORE.md |
 
