@@ -158,9 +158,7 @@ def test_admin_page_view_records_reason_in_audit_log(client, db, caplog):
     signup_and_login(client, "reason-admin@example.com")
     grant_admin(db, "reason-admin@example.com")
     with caplog.at_level(logging.INFO, logger="app.pages"):
-        response = client.get(
-            "/admin/logs", params={"reason": "장애 조사: 사용자 문의 대응 #100"}
-        )
+        response = client.get("/admin/logs", params={"reason": "장애 조사: 사용자 문의 대응 #100"})
     assert response.status_code == 200
     assert "event=admin_logs_viewed" in caplog.text
     assert "reason=" in caplog.text
