@@ -16,8 +16,9 @@
       (2026-09-10 17:41·19:37 CD 성공 후 실측, https://ai-chatbot-service-production-4aa1.up.railway.app)
 - [x] 실 AI 동작 증명 — 운영에서 실제 AI 응답 확인(한국어 자기소개 응답, latency 1.6~2.0초, 2회 실측).
       `scripts/ai_check.py --require-real` 로컬 캡처는 선택(운영 real이 상위 증거)
-- [x] pytest **205 passed**(2026-09-10, PR #101 시점 전체 스위트) / ruff·black·isort 전부 통과
-      (CI run: PR #101 녹색)
+- [x] pytest **221 passed**(2026-09-11, PR #107 병합 시점 전체 스위트 — 평가 대비 하드닝 테스트 5건 포함)
+      / ruff·black·isort 전부 통과 (CI run: PR #107 ci·browser 녹색, CD run 34557356968 전 구간 성공)
+      · 이전 실측: 205 passed(2026-09-10, PR #101 시점)
 
 ## 2. 사전평가 31항 연결표 (증거 위치)
 > 각 행은 `docs/EVALUATION_CHECKLIST.md`와 1:1. 증거 기준 = 실제 소스 경로 + 테스트명 또는 캡처.
