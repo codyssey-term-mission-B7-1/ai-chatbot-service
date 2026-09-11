@@ -162,6 +162,8 @@ def test_admin_page_view_records_reason_in_audit_log(client, db, caplog):
     assert response.status_code == 200
     assert "event=admin_logs_viewed" in caplog.text
     assert "reason=" in caplog.text
+    # JS(admin-logs.js)가 참조하는 입력이 실제 렌더에 존재해야 한다 — 유실 시 폼 제출이 깨진다.
+    assert 'id="admin-reason"' in response.text
 
     caplog.clear()
     with caplog.at_level(logging.INFO, logger="app.pages"):
