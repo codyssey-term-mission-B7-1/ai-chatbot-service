@@ -23,5 +23,10 @@ SECURITY_HEADERS = {
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "same-origin",
     "Content-Security-Policy": CONTENT_SECURITY_POLICY,
+    # HTTPS 종단(Railway 엣지) 이후 브라우저가 HTTP 다운그레이드를 금지하도록 강제(B-6).
+    # http(로컬)에선 브라우저가 무시하므로 무해하다.
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+    # 이 서비스가 쓰지 않는 브라우저 기능(카메라·마이크·위치)을 명시적으로 차단.
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 }
 DEMO_EMAILS = frozenset({"demo@demo.com", "tester@demo.com", "admin@demo.com"})

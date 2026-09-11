@@ -41,6 +41,7 @@ def all_chats(
     user_id: int | None = Query(default=None, gt=0),
     status_: LogStatus | None = Query(default=None, alias="status"),
     before_id: int | None = Query(default=None, gt=0),
+    reason: str = Query(default="", max_length=200, description="열람 사유 — 감사 로그에 기록"),
     user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
@@ -48,14 +49,15 @@ def all_chats(
     rows = list_logs(
         db, user_id=user_id, limit=effective_limit, status=status_, before_id=before_id
     )
-    log_event(
-        logger,
-        "admin_logs_viewed",
-        user_id=user.id,
-        filter_user_id=user_id,
-        result_count=len(rows),
-        before_id=before_id,
-    )
+    audit = {
+        "user_id": user.id,
+        "filter_user_id": user_id,
+        "result_count": len(rows),
+        "before_id": before_id,
+    }
+    if reason.strip():
+        audit["reason"] = reason.strip()[:200]
+    log_event(logger, "admin_logs_viewed", **audit)
     return AdminLogPage(
         items=[AdminChatLogOut.model_validate(row) for row in rows],
         next_before_id=rows[-1].id if len(rows) == effective_limit else None,
