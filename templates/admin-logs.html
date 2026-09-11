@@ -6,6 +6,7 @@
   <p class="muted small">명시적으로 부여된 앱 관리자만 접근할 수 있습니다. 원문에는 개인정보가 포함될 수 있습니다.</p>
   <form id="admin-filter" class="admin-filter" action="/admin/logs" method="get">
     <label>사용자 ID <input id="admin-user-id" type="number" min="1" value="{{ filter_user_id or '' }}" placeholder="전체 사용자"></label>
+    <label>열람 사유 <input id="admin-reason" name="reason" type="text" maxlength="200" value="{{ filter_reason or '' }}" placeholder="왜 열람하나요? (감사 로그에 기록)"></label>
     <button type="submit">조회</button>
     <a href="/admin/logs">필터 초기화</a>
   </form>
