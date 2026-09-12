@@ -44,6 +44,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: 프론트 JS 난독화 빌드 도구 의존성
+        run: npm ci --prefix tools/js-build
+      - name: 난독화 빌드(산출물) + 문법·계약 검증
+        run: |
+          npm run --prefix tools/js-build build:js -- --in "$GITHUB_WORKSPACE/static/js" --out "$GITHUB_WORKSPACE/artifacts/js"
+          for f in artifacts/js/*.js; do node --check "$f" && echo "✅ 문법 OK: $f"; done
+          # 전역 계약 보존 검증 — 난독화 후에도 form-utils.js가 FormUtils를 런타임에 공개해야 한다
+          # (식별자가 base64 문자열 배열로 이동해도 런타임 계약만 정확하면 통과)
+          node -e "require('$GITHUB_WORKSPACE/artifacts/js/form-utils.js'); if (typeof globalThis.FormUtils?.codepointLength !== 'function') { console.error('❌ FormUtils 전역 계약이 사라졌다'); process.exit(1); }"
+          echo "✅ FormUtils 전역 계약 유지 (런타임 검증)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: obfuscated-js
+          path: artifacts/js
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
