@@ -52,12 +52,15 @@ if _is_sqlite_memory:
 elif _is_sqlite:
     _engine_kwargs.update(connect_args={"check_same_thread": False})
 else:
+    # TCP 연결 타임아웃을 짧게(3초) 잡아 DB 장애 시 /readyz가 수십 초씩 블로킹되지 않게 한다.
+    # 드라이버별 키가 달라 넓은 안전망으로만 적용한다.
     _engine_kwargs.update(
-        connect_args={},
+        connect_args={"connect_timeout": 3},
         pool_size=5,
         max_overflow=10,
         pool_recycle=1800,
         pool_pre_ping=True,
+        pool_timeout=3,
     )
 engine = create_engine(settings.database_url, **_engine_kwargs)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
