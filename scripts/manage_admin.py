@@ -14,11 +14,12 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     if args.operation != 'list' and not args.email:
         parser.error('grant/revoke에는 --email이 필요합니다')
-    from app.database import Base, SessionLocal, engine
+    from app.database import SessionLocal, init_db
     from app.models import AdminGrant
     from app.services.admin import grant_admin, revoke_admin
 
-    Base.metadata.create_all(bind=engine)
+    import app.models  # noqa: F401 — metadata 등록 보장
+    init_db()
     with SessionLocal() as db:
         try:
             if args.operation == 'grant':
