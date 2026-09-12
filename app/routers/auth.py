@@ -168,7 +168,14 @@ async def password_reset_request(
             ),
         ) from None
     except Exception as exc:  # SMTP 연결/인증 오류 — 토큰은 만료되어 자연 무효화된다.
-        log_event(logger, "auth_password_reset_email_failed", error=str(exc), level=logging.ERROR)
+        # Resend 응답 body나 SMTP trace에 발송 API 키부·토큰이 포함될 수 있어
+        # 예외 타입만 기록해 원문 누출을 막는다(#104와 동일 원칙).
+        log_event(
+            logger,
+            "auth_password_reset_email_failed",
+            error=type(exc).__name__,
+            level=logging.ERROR,
+        )
         raise HTTPException(
             status_code=502, detail="재설정 메일 발송에 실패했어요. 잠시 후 다시 시도해 주세요."
         ) from None
