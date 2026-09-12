@@ -20,17 +20,28 @@ CHAT_COMPLETIONS_SUFFIX = "/chat/completions"
 
 
 def normalize_endpoint(url: str) -> str:
-    """전체 엔드포인트 또는 /v1까지 입력할 수 있다."""
+    """전체 엔드포인트 또는 /v1만 입력할 수 있다. 중복 접미사는 정리한다."""
     url = url.strip().rstrip("/")
-    return url if url.endswith(CHAT_COMPLETIONS_SUFFIX) else url + CHAT_COMPLETIONS_SUFFIX
+    suffix = CHAT_COMPLETIONS_SUFFIX
+    while url.endswith(suffix):
+        url = url[: -len(suffix)].rstrip("/")
+    return url + suffix
 
 
 def extract_content(data: dict) -> str:
-    """문자열/텍스트 multipart만 수용한다. 잘못된 응답은 민감 원문 없이 ValueError."""
+    """문자열/텍스트 multipart만 수용한다. 잘못된 응답은 민감 원문 없이 ValueError.
+
+    finish_reason=length(응답이 max_tokens로 잘림)에는 말줄임 표식을 붙여
+    사용자에게 응답이 끊겼음을 알린다(종전에는 조용히 잘린 문자열을 돌려주어
+    다음 문맥이 오염될 수 있었음).
+    """
     try:
-        content = data["choices"][0]["message"]["content"]
+        choice = data["choices"][0]
+        message = choice["message"]
+        finish = str(choice.get("finish_reason") or "")
     except (KeyError, IndexError, TypeError) as exc:
         raise ValueError("AI 응답의 choices/message/content 형식이 올바르지 않습니다.") from exc
+    content = message.get("content", "")
     if isinstance(content, list):
         pieces = []
         for part in content:
@@ -48,6 +59,8 @@ def extract_content(data: dict) -> str:
         content.encode("utf-8")
     except UnicodeEncodeError as exc:
         raise ValueError("AI 응답이 유효한 UTF-8 텍스트가 아닙니다.") from exc
+    if finish == "length":
+        content = content.rstrip() + " …(응답이 길이 제한으로 잘렸어요)"
     return content
 
 
@@ -76,6 +89,14 @@ class OpenAICompatClient(AIProvider):
         self.model = model
         self.timeout_sec = timeout_sec
         self.max_retries = max_retries
+        # 전체 예산 안에서 개별 시도(연결+읽기)의 시간 상한을 둔다.
+        # 재시도 대기(0.5s)까지 포함한 전체 상한은 바깥 asyncio.timeout이 보장한다.
+        self._per_attempt_timeout = httpx.Timeout(
+            connect=min(10.0, timeout_sec),
+            read=timeout_sec,
+            write=min(10.0, timeout_sec),
+            pool=min(5.0, timeout_sec),
+        )
 
     def build_payload(self, messages: list[dict]) -> dict:
         """요청 본문 — 응답 길이·온도를 서버 정책으로 고정(미설정 시 제공사 기본값 노출 방지)."""
@@ -87,6 +108,8 @@ class OpenAICompatClient(AIProvider):
         }
 
     async def generate(self, messages: list[dict]) -> str:
+        # 전체 시간 예산은 이 바깥 타임아웃이 1회만 보장한다. httpx 내부 timeout과 이중으로
+        # 걸지 않음 — 이중 설정 시 재시도 경로에서 예산이 누적되어 상한을 깨뜨릴 수 있다.
         try:
             async with asyncio.timeout(self.timeout_sec):
                 return await self._attempts(messages)
@@ -94,12 +117,20 @@ class OpenAICompatClient(AIProvider):
             raise AITimeoutError("AI 호출 시간 예산을 초과했습니다.") from exc
 
     async def _attempts(self, messages: list[dict]) -> str:
-        payload = {"model": self.model, "messages": messages}
+        payload = self.build_payload(messages)
         headers = {"Authorization": f"Bearer {self.api_key}"}
-        async with httpx.AsyncClient(timeout=self.timeout_sec) as client:
+        # 연결 풀·HTTP/2 유지로 단기 다중 요청(TCP 핸드셰이크) 비용을 줄인다.
+        async with httpx.AsyncClient(
+            timeout=self._per_attempt_timeout,
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=5),
+        ) as client:
             previous_error = ""
             for attempt in range(self.max_retries + 1):
                 if attempt > 0:
+                    # 대기 중 전체 예산이 끝나면 바깥 asyncio.timeout이 캔슬시킨다
+                    # → 재시도를 "실제로 시작하지 않은" 것으로 취급한다.
+                    # 그래서 ai_retry 이벤트는 sleep *후*에 기록한다(테스트가 이 의미를 고정).
+                    await asyncio.sleep(0.5)
                     log_event(
                         logger,
                         "ai_retry",
@@ -113,7 +144,7 @@ class OpenAICompatClient(AIProvider):
                     response.raise_for_status()
                     return extract_content(response.json())
                 except httpx.TimeoutException:
-                    raise  # 시간 초과는 재시도하지 않는다.
+                    raise  # 시간 초과는 재시도하지 않는다(전체 예산을 바깥에서 이미 소진 중).
                 except (ValueError, KeyError, IndexError, TypeError) as exc:
                     raise AIError("AI 응답 형식 오류") from exc
                 except httpx.HTTPError as exc:
@@ -125,8 +156,6 @@ class OpenAICompatClient(AIProvider):
                     if not retryable or attempt >= self.max_retries:
                         raise AIError("AI 호출 실패: " + type(exc).__name__) from exc
                     previous_error = type(exc).__name__
-                    # 대기 중 전체 예산이 끝나면 다음 반복/ai_retry 기록에 도달하지 않는다.
-                    await asyncio.sleep(0.5)
         raise AIError("AI 호출이 완료되지 않았습니다.")
 
 

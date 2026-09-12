@@ -24,8 +24,19 @@ def ensure_sqlite_dir(database_url: str) -> None:
 
 ensure_sqlite_dir(settings.database_url)
 
-connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
-engine = create_engine(settings.database_url, connect_args=connect_args)
+_is_sqlite = settings.database_url.startswith("sqlite")
+connect_args = {"check_same_thread": False} if _is_sqlite else {}
+_engine_kwargs: dict = {"connect_args": connect_args}
+if not _is_sqlite:
+    # SQLite는 SingletonThreadPool(pool_size=1 고정)을 쓰므로 풀 관련 인자를 주면 에러.
+    # Postgres/MySQL 전환 시 stale 커넥션 정리와 과도한 동시 접속을 방지한다.
+    _engine_kwargs.update(
+        pool_size=5,
+        max_overflow=10,
+        pool_recycle=1800,
+        pool_pre_ping=True,
+    )
+engine = create_engine(settings.database_url, **_engine_kwargs)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
