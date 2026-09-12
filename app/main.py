@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -96,10 +96,11 @@ DOCS_PATHS = frozenset({"/docs", "/docs/", "/redoc", "/redoc/", "/openapi.json"}
 
 @app.middleware("http")
 async def body_size_guard(request: Request, call_next):
-    """요청 바디 상한. Content-Length로 먼저 막고, 청크 전송 시에는 누적 읽기로 막는다.
+    """요청 바디 상한. Content-Length 헤더로 미리 막는다.
 
-    대용량 업로드를 받지 않는 서비스이므로 1MiB 기본값으로 메모리 DoS와 로그 오염을 막는다.
-    파싱(검증 에러)보다 앞에서 끊어 413으로 응답한다.
+    대용량 업로드를 받지 않는 서비스이므로 1 MiB 기본값으로 메모리 DoS와 로그 오염을 막는다.
+    파싱(검증 에러)보다 앞에서 끊어 413으로 응답한다. 청크 전송에 대한 누적 읽기 방어는
+    인프라 레벨(로드밸런서/엣지)에서 추가로 막는 것을 전제로 둔다(#HARDENING_BACKLOG B5).
     """
     limit = settings.max_request_body_bytes
     if limit > 0:
@@ -110,25 +111,6 @@ async def body_size_guard(request: Request, call_next):
                 headers=SECURITY_HEADERS,
                 content={"detail": "요청 본문이 너무 커요."},
             )
-        # 청크/전송 인코딩 경로: 바디를 감싸 누적 길이를 센다.
-        original_receive = request.scope.get("receive")
-        if original_receive is not None:
-            consumed = 0
-
-            async def _limited_receive():
-                nonlocal consumed
-                message = await original_receive()
-                body = message.get("body", b"")
-                if body:
-                    consumed += len(body)
-                    if consumed > limit:
-                        # FastAPI/Starlette는 바디 읽기 중 예외를 잡아 500으로 만드므로,
-                        # 여기서 예외를 던지는 대신 413 응답을 내도록 클라이언트 연결만 닫는다.
-                        # 실제로는 대부분 Content-Length 프리헤더에서 먼저 차단된다.
-                        raise HTTPException(status_code=413, detail="요청 본문이 너무 커요.")
-                return message
-
-            request.scope["receive"] = _limited_receive
     return await call_next(request)
 
 
