@@ -95,3 +95,49 @@ def test_http_error_maps_to_ai_error(monkeypatch):
     monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
     with pytest.raises(AIError):
         asyncio.run(_client().generate([{"role": "user", "content": "hi"}]))
+
+
+def test_build_payload_is_signed_with_server_policy(monkeypatch):
+    """AI 호출 페이로드는 build_payload()를 거쳐 max_tokens/temperature를 반드시 포함해야 한다.
+
+    종래 _attempts 안에서 {model,messages}만 담은 payload를 직접 만들어 정책 파라미터가
+    무의미해지는 회귀(#A-1)가 있었음.
+    """
+    captured = {}
+
+    async def fake_post(self, url, headers=None, json=None):
+        captured["json"] = json
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}]},
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+    answer = asyncio.run(
+        _client(timeout_sec=5, max_retries=0).generate([{"role": "user", "content": "hi"}])
+    )
+    assert answer == "ok"
+    payload = captured["json"]
+    assert payload["model"] == "test-model"
+    assert "max_tokens" in payload, "AI_MAX_TOKENS 정책이 요청에 포함되어야 함"
+    assert "temperature" in payload, "AI_TEMPERATURE 정책이 요청에 포함되어야 함"
+    assert payload["messages"][-1]["content"] == "hi"
+
+
+def test_normalize_endpoint_dedupes_double_suffix():
+    """사용자가 기본값처럼 /v1/chat/completions 를 그대로 적었을 때 중복 접미사를 정리."""
+    assert (
+        normalize_endpoint("https://api.openai.com/v1/chat/completions")
+        == "https://api.openai.com/v1/chat/completions"
+    )
+    assert (
+        normalize_endpoint("https://api.openai.com/v1/chat/completions/")
+        == "https://api.openai.com/v1/chat/completions"
+    )
+
+
+def test_extract_content_flags_length_truncation():
+    """finish_reason=length(응답이 max_tokens로 잘림)에는 말줄임 표식을 붙인다."""
+    data = {"choices": [{"message": {"content": "잘린 답변"}, "finish_reason": "length"}]}
+    assert extract_content(data).endswith("(응답이 길이 제한으로 잘렸어요)")
