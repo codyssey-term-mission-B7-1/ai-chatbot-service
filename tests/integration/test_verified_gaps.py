@@ -19,7 +19,9 @@ from tests.conftest import signup_and_login
     [
         ("가" * 24, 201),
         ("가" * 25, 422),
-        ("a" * 64, 201),
+        # 64 ASCII = 64 bytes — accepted; 동일문자 반복은 흔한 비밀번호로 막히므로
+        # 마지막 자리를 바꾼 64자 패스워드를 사용한다.
+        ("a" * 63 + "B", 201),
     ],
 )
 def test_password_byte_boundary_is_a_validation_error(client, value, expected):
@@ -38,7 +40,7 @@ def test_password_byte_boundary_is_a_validation_error(client, value, expected):
 
 def test_generated_nickname_respects_maximum(client):
     email = "n" * 25 + "@example.com"
-    response = client.post("/api/auth/signup", json={"email": email, "password": "Password123!"})
+    response = client.post("/api/auth/signup", json={"email": email, "password": "StrongP4ss!"})
     assert response.status_code == 201 and len(response.json()["nickname"]) == 20
 
 
@@ -47,7 +49,7 @@ def test_signup_does_not_accept_client_admin_flag(client):
         "/api/auth/signup",
         json={
             "email": "escalation@example.com",
-            "password": "Password123!",
+            "password": "StrongP4ss!",
             "is_admin": True,
         },
     )
@@ -107,7 +109,7 @@ def test_unhandled_500_has_security_headers_and_finished_log(client, monkeypatch
             "/api/auth/signup",
             json={
                 "email": "failure@example.com",
-                "password": "Password123!",
+                "password": "StrongP4ss!",
             },
         )
     assert response.status_code == 500 and "INTERNAL" in response.json()["detail"]

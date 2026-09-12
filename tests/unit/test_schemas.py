@@ -32,17 +32,17 @@ def test_signup_password_min_length_enforced():
 
 
 def test_signup_nickname_defaults_to_email_prefix():
-    body = SignupIn(email="hong@example.com", password="password123")
+    body = SignupIn(email="hong@example.com", password="StrongP4ss!")
     assert body.nickname == "hong"
 
 
 def test_signup_email_normalized_to_lowercase():
-    body = SignupIn(email="  Hong@Example.COM  ", password="password123")
+    body = SignupIn(email="  Hong@Example.COM  ", password="StrongP4ss!")
     assert body.email == "hong@example.com"
 
 
 def test_signup_whitespace_nickname_falls_back_to_prefix():
-    body = SignupIn(email="hong@example.com", password="password123", nickname="   ")
+    body = SignupIn(email="hong@example.com", password="StrongP4ss!", nickname="   ")
     assert body.nickname == "hong"
 
 
