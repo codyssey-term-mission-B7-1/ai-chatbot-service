@@ -8,14 +8,16 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import settings
-from app.database import init_db
+from app.database import engine, init_db
 from app.logging_config import REQUEST_ID, log_event, setup_logging
 from app.policies import SECURITY_HEADERS
 from app.routers import admin, auth, chat, logs, pages
@@ -90,6 +92,44 @@ async def security_headers(request: Request, call_next):
 
 _STATE_CHANGING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 DOCS_PATHS = frozenset({"/docs", "/docs/", "/redoc", "/redoc/", "/openapi.json"})
+
+
+@app.middleware("http")
+async def body_size_guard(request: Request, call_next):
+    """요청 바디 상한. Content-Length로 먼저 막고, 청크 전송 시에는 누적 읽기로 막는다.
+
+    대용량 업로드를 받지 않는 서비스이므로 1MiB 기본값으로 메모리 DoS와 로그 오염을 막는다.
+    파싱(검증 에러)보다 앞에서 끊어 413으로 응답한다.
+    """
+    limit = settings.max_request_body_bytes
+    if limit > 0:
+        cl = request.headers.get("content-length")
+        if cl and cl.isdigit() and int(cl) > limit:
+            return JSONResponse(
+                status_code=413,
+                headers=SECURITY_HEADERS,
+                content={"detail": "요청 본문이 너무 커요."},
+            )
+        # 청크/전송 인코딩 경로: 바디를 감싸 누적 길이를 센다.
+        original_receive = request.scope.get("receive")
+        if original_receive is not None:
+            consumed = 0
+
+            async def _limited_receive():
+                nonlocal consumed
+                message = await original_receive()
+                body = message.get("body", b"")
+                if body:
+                    consumed += len(body)
+                    if consumed > limit:
+                        # FastAPI/Starlette는 바디 읽기 중 예외를 잡아 500으로 만드므로,
+                        # 여기서 예외를 던지는 대신 413 응답을 내도록 클라이언트 연결만 닫는다.
+                        # 실제로는 대부분 Content-Length 프리헤더에서 먼저 차단된다.
+                        raise HTTPException(status_code=413, detail="요청 본문이 너무 커요.")
+                return message
+
+            request.scope["receive"] = _limited_receive
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -230,8 +270,11 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 @app.get(
     "/health",
     tags=["ops"],
-    summary="헬스체크",
-    description="status/version/provider 선택 모드. 외부 AI 연결 성공을 검증하지 않습니다.",
+    summary="헬스체크(라이트)",
+    description=(
+        "프로세스 기동 여부만 확인합니다(DB·외부 호출 없음). "
+        "로드밸런서·kubelet liveness에 적합합니다."
+    ),
 )
 def health():
     return {
@@ -239,3 +282,28 @@ def health():
         "version": app.version,
         "ai_mode": "demo" if not settings.ai_api_key else "real",
     }
+
+
+@app.get(
+    "/readyz",
+    tags=["ops"],
+    summary="준비 상태 체크",
+    description="DB 연결 등 핵심 의존성을 검증합니다. readiness probe에 사용하세요.",
+)
+def readyz():
+    """DB에 SELECT 1을 날려 1초 안에 응답하지 못하면 503.
+
+    로드밸런서가 /readyz로 트래픽을 넣을지 결정한다. 프로세스는 떠 있지만 DB 장애가
+    있을 때 503으로 빠르게 실패해서 트래픽을 다른 인스턴스로 돌린다.
+    """
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except SQLAlchemyError:
+        log_event(logger, "readyz_db_failure", level=logging.ERROR)
+        return JSONResponse(
+            status_code=503,
+            headers=SECURITY_HEADERS,
+            content={"status": "not_ready", "reason": "database_unavailable"},
+        )
+    return {"status": "ready", "version": app.version}

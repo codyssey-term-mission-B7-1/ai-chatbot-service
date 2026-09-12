@@ -21,7 +21,13 @@ from app.services.password_reset import (
     create_reset_token,
     deliver_reset_email,
 )
-from app.services.rate_limit import login_limiter
+from app.services.rate_limit import (
+    client_ip,
+    login_limiter,
+    password_reset_ip_limiter,
+    retry_after_hint,
+    signup_ip_limiter,
+)
 from app.services.security import (
     email_fingerprint,
     hash_password,
@@ -47,7 +53,26 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
         422: {"description": "이메일/비밀번호/닉네임 검증 실패"},
     },
 )
-def signup(body: SignupIn, db: Session = Depends(get_db)):
+def signup(body: SignupIn, request: Request, db: Session = Depends(get_db)):
+    # IP 기반 회원가입 상한 — 봇 대량 계정 생성 최소 방어. CAPTCHA/이메일 인증은 다음 마일스톤.
+    ip = client_ip(request)
+    retry = signup_ip_limiter.try_acquire(f"ip:{ip}")
+    if retry > 0:
+        log_event(
+            logger,
+            "signup_rate_limited",
+            ip_hash=ip[:16],
+            retry_after_sec=retry,
+            level=logging.WARNING,
+        )
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"짧은 시간에 너무 많은 계정을 만들었어요. "
+                f"{retry_after_hint(retry)} 다시 시도해 주세요."
+            ),
+            headers={"Retry-After": str(retry)},
+        )
     try:
         user = create_user(
             db, email=body.email, password_hash=hash_password(body.password), nickname=body.nickname
@@ -84,7 +109,10 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
         )
         raise HTTPException(
             status_code=429,
-            detail="로그인 시도가 많아 일시적으로 잠겼어요. 잠시 후 다시 시도해 주세요.",
+            detail=(
+                f"로그인 시도가 많아 일시적으로 잠겼어요. "
+                f"{retry_after_hint(retry_after)} 다시 시도해 주세요."
+            ),
             headers={"Retry-After": str(retry_after)},
         )
     user = find_by_email(db, body.email)
@@ -144,7 +172,23 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
 async def password_reset_request(
     body: PasswordResetRequestIn, request: Request, db: Session = Depends(get_db)
 ):
-    generic_ok = {"detail": "요청을 받았어요. 이메일이 가입되어 있다면 재설정 안내를 보냈니다."}
+    generic_ok = {"detail": "요청을 받았어요. 이메일이 가입되어 있다면 재설정 안내를 보냈습니다."}
+    # IP 기반 상한 — 분당 N회로 메일 폭탄/계정 존재 열거 속도를 늦춘다.
+    ip = client_ip(request)
+    ip_retry = password_reset_ip_limiter.try_acquire(f"ip:{ip}")
+    if ip_retry > 0:
+        log_event(
+            logger,
+            "auth_password_reset_ip_rate_limited",
+            ip_hash=ip[:16],
+            retry_after_sec=ip_retry,
+            level=logging.WARNING,
+        )
+        raise HTTPException(
+            status_code=429,
+            detail=f"요청이 너무 잦아요. {retry_after_hint(ip_retry)} 다시 시도해 주세요.",
+            headers={"Retry-After": str(ip_retry)},
+        )
     user = find_by_email(db, body.email)
     if user is None:
         # 타이밍 평탄화(#72와 동일 원칙) — 미가입 경로도 bcrypt 비용을 지불한다.
