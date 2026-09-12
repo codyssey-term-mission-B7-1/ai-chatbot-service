@@ -8,7 +8,7 @@ from tests.conftest import signup_and_login
 
 def test_repeated_failures_lock_even_the_correct_password(client, caplog):
     login_limiter.max_events = 3
-    signup_and_login(client, email="lock@example.com", password="Password123!")
+    signup_and_login(client, email="lock@example.com", password="StrongP4ss!")
 
     for _ in range(3):
         response = client.post(
@@ -18,21 +18,23 @@ def test_repeated_failures_lock_even_the_correct_password(client, caplog):
 
     # 잠금 중에는 올바른 비밀번호도 거부 — 공격자가 성공 비밀번호를 찾아도 계속 못 들어온다.
     blocked = client.post(
-        "/api/auth/login", json={"email": "lock@example.com", "password": "Password123!"}
+        "/api/auth/login", json={"email": "lock@example.com", "password": "StrongP4ss!"}
     )
     assert blocked.status_code == 429
     assert int(blocked.headers["Retry-After"]) >= 1
-    assert "잠시 후" in blocked.json()["detail"]
+    # 사람 친화적 대기 안내가 포함되어야 한다("약 N초 후" 또는 "약 M분 S초 후").
+    detail = blocked.json()["detail"]
+    assert "후 다시 시도" in detail and "약 " in detail
     assert any("event=user_login_locked" in r.message for r in caplog.records)
 
 
 def test_successful_login_resets_failure_counter(client):
     login_limiter.max_events = 2
-    signup_and_login(client, email="reset@example.com", password="Password123!")
+    signup_and_login(client, email="reset@example.com", password="StrongP4ss!")
 
     client.post("/api/auth/login", json={"email": "reset@example.com", "password": "nope1234"})
     ok = client.post(
-        "/api/auth/login", json={"email": "reset@example.com", "password": "Password123!"}
+        "/api/auth/login", json={"email": "reset@example.com", "password": "StrongP4ss!"}
     )
     assert ok.status_code == 200
     # 성공으로 카운터가 초기화됐으므로 이후 실패 1건으로는 잠기지 않는다.
@@ -63,7 +65,7 @@ def test_dummy_verification_runs_only_for_unknown_email(client, monkeypatch):
         calls.append(password)
 
     monkeypatch.setattr("app.routers.auth.verify_dummy_password", spy)
-    signup_and_login(client, email="known@example.com", password="Password123!")
+    signup_and_login(client, email="known@example.com", password="StrongP4ss!")
 
     unknown = client.post(
         "/api/auth/login", json={"email": "ghost2@example.com", "password": "typed-guess"}
@@ -80,7 +82,7 @@ def test_dummy_verification_runs_only_for_unknown_email(client, monkeypatch):
 
 
 def test_login_fail_event_does_not_log_email_plaintext(client, caplog):
-    signup_and_login(client, email="secret-user@example.com", password="Password123!")
+    signup_and_login(client, email="secret-user@example.com", password="StrongP4ss!")
     caplog.clear()
     with caplog.at_level(logging.WARNING):
         response = client.post(
@@ -95,16 +97,16 @@ def test_login_fail_event_does_not_log_email_plaintext(client, caplog):
 
 def test_lockout_applies_per_email(client):
     login_limiter.max_events = 1
-    signup_and_login(client, email="first@example.com", password="Password123!")
-    signup_and_login(client, email="second@example.com", password="Password123!")
+    signup_and_login(client, email="first@example.com", password="StrongP4ss!")
+    signup_and_login(client, email="second@example.com", password="StrongP4ss!")
 
     client.post("/api/auth/login", json={"email": "first@example.com", "password": "bad-pass1"})
     blocked = client.post(
-        "/api/auth/login", json={"email": "first@example.com", "password": "Password123!"}
+        "/api/auth/login", json={"email": "first@example.com", "password": "StrongP4ss!"}
     )
     assert blocked.status_code == 429
     # 다른 이메일은 영향을 받지 않는다.
     other = client.post(
-        "/api/auth/login", json={"email": "second@example.com", "password": "Password123!"}
+        "/api/auth/login", json={"email": "second@example.com", "password": "StrongP4ss!"}
     )
     assert other.status_code == 200

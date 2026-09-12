@@ -6,7 +6,13 @@ from typing import Literal
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.config import settings
-from app.policies import MAX_NICKNAME_CHARS, MAX_PASSWORD_BYTES, MAX_PASSWORD_CHARS
+from app.policies import (
+    MAX_EMAIL_LOCAL_CHARS,
+    MAX_NICKNAME_CHARS,
+    MAX_PASSWORD_BYTES,
+    MAX_PASSWORD_CHARS,
+)
+from app.services.password_policy import is_common_password
 
 
 class SignupIn(BaseModel):
@@ -19,8 +25,8 @@ class SignupIn(BaseModel):
         "extra": "forbid",
         "json_schema_extra": {
             "examples": [
-                {"email": "hong@example.com", "password": "password123", "nickname": "홍길동"},
-                {"email": "kim@example.com", "password": "password123"},
+                {"email": "hong@example.com", "password": "HongGild0ng!", "nickname": "홍길동"},
+                {"email": "kim@example.com", "password": "K!mSecure9"},
             ]
         },
     }
@@ -28,7 +34,15 @@ class SignupIn(BaseModel):
     @field_validator("email", mode="before")
     @classmethod
     def normalize_email(cls, value):
-        return value.strip().lower() if isinstance(value, str) else value
+        if not isinstance(value, str):
+            return value
+        value = value.strip().lower()
+        # 로컬파트 길이 제한(RFC 5321) — EmailStr만으로는 잡지 못하는 엣지 케이스.
+        if "@" in value:
+            local = value.split("@", 1)[0]
+            if not local or len(local) > MAX_EMAIL_LOCAL_CHARS:
+                raise ValueError("이메일 형식이 올바르지 않아요.")
+        return value
 
     @field_validator("password")
     @classmethod
@@ -37,6 +51,8 @@ class SignupIn(BaseModel):
             raise ValueError("비밀번호는 공백만으로 구성될 수 없어요.")
         if len(value.encode("utf-8")) > MAX_PASSWORD_BYTES:
             raise ValueError("비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
+        if is_common_password(value):
+            raise ValueError("너무 흔한 비밀번호예요. 다른 비밀번호를 사용해 주세요.")
         return value
 
     @field_validator("nickname", mode="before")
@@ -79,9 +95,13 @@ class PasswordResetCompleteIn(BaseModel):
 
     @field_validator("new_password")
     @classmethod
-    def new_password_not_blank(cls, value: str) -> str:
+    def new_password_policy(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("비밀번호는 공백만으로 구성될 수 없어요.")
+        if len(value.encode("utf-8")) > MAX_PASSWORD_BYTES:
+            raise ValueError("비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.")
+        if is_common_password(value):
+            raise ValueError("너무 흔한 비밀번호예요. 다른 비밀번호를 사용해 주세요.")
         return value
 
 

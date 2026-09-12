@@ -89,3 +89,30 @@ login_limiter = SlidingWindowLimiter(settings.login_max_fails, settings.login_lo
 
 # 채팅 사용자별 분당 요청 상한(#73) — AI 비용 남용 방어. 0이면 비활성화.
 chat_limiter = SlidingWindowLimiter(settings.chat_rate_per_min, 60.0)
+
+# 회원가입 IP별 분당 요청 상한 — 봇 계정 생성 남용 최소 방어(AUDIT_HARDENING B-1 P0).
+signup_ip_limiter = SlidingWindowLimiter(settings.signup_rate_per_ip_per_min, 60.0)
+
+# 비밀번호 재설정 IP별 분당 요청 상한 — 메일 폭탄/계정 존재 열거 속도 제한.
+password_reset_ip_limiter = SlidingWindowLimiter(settings.password_reset_rate_per_ip_per_min, 60.0)
+
+
+def client_ip(request) -> str:
+    """요청을 식별할 IP 키를 반환한다.
+
+    Railway/프록시 환경에서는 X-Forwarded-For가 있을 수 있으나 이를 그대로 쓰면
+    헤더 변조로 우회 가능하므로, 기본은 request.client.host를 쓰고 추후
+    신뢰할 수 있는 프록시 확인 로직을 추가할 때까지 주석으로 남긴다.
+    """
+    if request is None or request.client is None:
+        return "unknown"
+    return request.client.host or "unknown"
+
+
+def retry_after_hint(seconds: int) -> str:
+    """429 응답에 넣을 한국어 대기 안내. 60초 미만은 '약 N초 후', 그 이상은 '약 M분 S초 후'."""
+    seconds = max(0, int(seconds))
+    m, s = divmod(seconds, 60)
+    if m:
+        return f"약 {m}분 {s}초 후"
+    return f"약 {s}초 후"
