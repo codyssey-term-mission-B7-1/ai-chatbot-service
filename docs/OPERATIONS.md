@@ -98,6 +98,34 @@ curl -s -b c.txt -X DELETE <라이브>/api/admin/users/<user_id>
 
 ---
 
+## 로그 조회 API 클라이언트 (DB 접근 없이)
+
+로그 조회는 **API만으로** 가능하다 — `scripts/logs_client.py`가 로그인(세션 쿠키) 후 `GET /api/me/chats`·`GET /api/admin/chats`를 호출한다. DB 파일 접근·SQL 권한이 없는 환경(Railway 웹 셸 외부, 운영 URL만 있는 상황)에서 기록 검증에 쓰라.
+
+```bash
+# 내 대화 로그 최신 50건 (시간은 KST 표기)
+python3 scripts/logs_client.py my --base https://서비스-URL --email me@example.com --password-
+
+# 성공 기록만 2페이지(최대 100건 — before_id 커서 자동 추적)
+python3 scripts/logs_client.py my --base ... --email ... --password- --status success --pages 2
+
+# 스크립트 조합용 원문 JSON
+python3 scripts/logs_client.py my --base ... --email ... --password- --json
+
+# 관리자: 전체 기록 조회 — 열람 사유는 admin_logs_viewed 감사 이벤트에 기록된다
+python3 scripts/logs_client.py all --base ... --email ... --password- --reason "배포 후 영속성 확인"
+
+# 특정 사용자 기록만
+python3 scripts/logs_client.py all --base ... --email ... --password- --user-id 12 --reason "계정 문의 대응"
+```
+
+- 비밀번호는 `--password-`로 표준 입력에서 읽는 것을 권장(커맨드 히스토리에 남지 않음). 세션 쿠키는 디스크에 저장하지 않는다.
+- `my`는 관리자여도 **본인 기록만** 반환한다(서버 계약 — API.md 참고). `all`은 명시적 관리자 권한이 없으면 403.
+- `docs/RAILWAY_DEPLOY.md`의 "영속화·운영 증빙"(재배포 후 질문 유지 확인)은 이 클라이언트의 `--json` 출력과 대조로 수행할 수 있다.
+- 회귀 테스트: `tests/integration/test_logs_client.py` (MockTransport 기반 — 로그인·필터·커서·권한).
+
+---
+
 ## 레거시 폴백 제거 기준 (비밀번호 페퍼 마이그레이션 완료 판정)
 
 페퍼 도입(2026-09-09) 이전 가입자는 **다음 로그인 때 자동 재해싱**된다. 진행률 확인:
