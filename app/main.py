@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import settings
-from app.database import Base, engine
+from app.database import init_db
 from app.logging_config import REQUEST_ID, log_event, setup_logging
 from app.policies import SECURITY_HEADERS
 from app.routers import admin, auth, chat, logs, pages
@@ -44,8 +44,16 @@ AI_TIMEOUT_SEC는 AI 호출 전체 예산(재시도/대기 포함)이며 DB 처�
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    """없는 테이블만 생성한다. 기존 열/FK 변경이나 데이터 삭제는 수행하지 않는다."""
-    Base.metadata.create_all(bind=engine)
+    """스키마 동기화(Alembic 마이그레이션 또는 create_all+stamp).
+
+    테이블이 이미 있으면 누락 마이그레이션만 적용하고, 빈 DB/인메모리는 create_all 후
+    head 스탬프로 최신 상태를 마킹한다. Alembic이 FK·열 변경을 안전하게 처리한다.
+    """
+    # 모든 모델이 Base.metadata에 등록되도록 명시적으로 임포트한다(그렇지 않으면
+    # autogenerate와 create_all이 릴레이션을 찾지 못한다).
+    import app.models  # noqa: F401
+
+    init_db()
     yield
 
 
