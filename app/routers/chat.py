@@ -111,7 +111,12 @@ async def chat(
     # 문맥 조회 트랜잭션을 여기서 닫아 AI 호출(최대 AI_TIMEOUT_SEC) 동안 커넥션을 풀에
     # 반납한다(#73). 조회 결과는 이미 메모리로 뽑았고 저장은 별도 커밋으로 수행한다.
     db.commit()
-    messages = build_messages(SYSTEM_PROMPT, context_pairs, body.question, settings.context_turns)
+    # 사용자 이름은 문맥 턴 수와 무관하게 매 요청 시스템 메시지로 전달한다 —
+    # 직전 Q/A 5쌍만으로는 AI가 대화 상대를 알 수 없고, CONTEXT_TURNS=0이면 이름도 사라진다.
+    system_prompt = SYSTEM_PROMPT
+    if user.nickname:
+        system_prompt += f"\n현재 대화 상대: {user.nickname}님"
+    messages = build_messages(system_prompt, context_pairs, body.question, settings.context_turns)
     log_event(
         logger,
         "ai_call_start",
