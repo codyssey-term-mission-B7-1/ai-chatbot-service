@@ -68,6 +68,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tools/js-build/package-lock.json
+
+      - name: 프론트 JS 난독화 (배포 빌드 — in-place)
+        run: |
+          npm ci --prefix tools/js-build
+          # CI는 소스로 테스트(게이트) — 여기서는 "배포 산출물"만 난독화한다 (ADR-009)
+          npm run --prefix tools/js-build build:js -- --in "$GITHUB_WORKSPACE/static/js"
+          for f in static/js/*.js; do node --check "$f" && echo "✅ 문법 OK: $f"; done
+          wc -c static/js/*.js
+          echo "💡 저장소 소스는 계속 가독 — 난독화되는 것은 배포 산출물만이다 (docs/OBFUSCATION.md)"
+
       - name: 필수 Secrets 검증
         env:
           DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
@@ -180,3 +195,15 @@ jobs:
         run: |
           chmod +x scripts/e2e_smoke.sh
           ./scripts/e2e_smoke.sh "$URL"
+
+      - name: JS 난독화 배포 검증 (산출물이 실제로 올라갔는가)
+        env:
+          URL: ${{ secrets.DEPLOY_URL }}
+        run: |
+          curl -sf "$URL/static/js/chat.js" -o /tmp/deployed-chat.js
+          # 소스 주석이 존재하면 난독화되지 않은 원본이 배포된 것 — 실패로 중단
+          if grep -q "채팅 화면 로직" /tmp/deployed-chat.js; then
+            echo "❌ 난독화되지 않은 원본 JS가 배포됐다 (소스 주석 발견)"; exit 1
+          fi
+          node --check /tmp/deployed-chat.js
+          echo "✅ 운영 JS 난독화 검증 통과 (소스 주석 부재 + 문법 유효)"
