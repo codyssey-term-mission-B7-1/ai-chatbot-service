@@ -37,7 +37,7 @@
 | 10 | 질문·응답 UI | templates/chat.html · evidence 캡처 | [x] |
 | 11 | 서버→AI 호출 | app/services/ai_client.py · **운영 real 모드 실측**(§1) | [x] |
 | 12 | 질문·응답 DB 저장 | app/repositories/chat_logs.py · test_chat_flow.py | [x] |
-| 13 | 관리자 전체 조회 | app/routers/admin.py · test_admin.py · /admin/logs 캡처 | [x] |
+| 13 | 관리자 전체 조회 | app/routers/admin.py · test_admin.py · **docs/evidence/05-admin-logs.png** | [x] |
 | 14 | 타임아웃·예외·생존 | test_ai_http_budget.py | [x] |
 | 15 | 오류 코드·안내 | docs/API.md · form-utils.js | [x] |
 | 16 | 입력 검증 | app/schemas.py · test_schema_edge_cases.py | [x] |
@@ -54,7 +54,7 @@
 | 27 | AI 키 서버측 사용 | app/services/ai_client.py 헤더 · 운영 real 실측 | [x] |
 | 28 | 재시도·대체 정책 | docs/API.md · test_ai_policies.py | [x] |
 | 29 | 로그 목적 매핑 | docs/LOGGING.md | [x] |
-| 30 | 실제 운영 로그 증빙 | 캡처 3종: `auth_password_reset_rate_limited` 트레이스(17:52), `admin_user_deleted`(23건), `ai_call_success`(채팅) | [~] 캡처 파일 패키징만 남음 |
+| 30 | 실제 운영 로그 증빙 | **docs/evidence/06-oplogs.png**(`ai_call_success`→`db_save_success`→`request_finished` 동일 request_id) · `rate_limited` 트레이스 · `admin_user_deleted` | [x] |
 | 31 | 문서·Git·PR 대조 | commit-audit + shortlog + PR 대조표 | [x] |
 
 ## 3. 이슈 종결 근거 (2026-09-10 기준 열린 이슈 3개)
@@ -70,9 +70,9 @@
 ## 4. 제출 전 최종 런북 — 달성 상황
 1. [x] 실 AI: GitHub Secrets(AI_API_KEY/BASE_URL/MODEL) → CD → **real** 확인(2026-09-10 17:41)
 2. [x] 이메일: Railway SMTP 차단 확인(Errno 101) → **Resend HTTPS 전환**(PR #101) → RESEND_API_KEY 등록 → 재배포(10:37Z)
-       → 재설정 메일 발송 테스트: 2026-09-10 실행 — 결과 캡처 보관
-3. [~] 운영 로그: 표준 이벤트 캡처 확보(#30 행) — 패키징만 남음
-4. [~] 백업: 볼륨 `/data` 확인 + `backup_db.py` 1회 + 복원 드릴(무결성/행수/소요초) + RPO/RTO OPERATIONS.md 기록
+       → 재설정 메일 **발송→수신 완주**(2026-09-12, Gmail 수신 — `docs/evidence/04a~d` 4컷)
+3. [x] 운영 로그: `docs/evidence/06-oplogs.png` 확보(#30 행)
+4. [x] 백업: 볼륨 `/data` 실측(`01-volume.png`) + 백업 SHA-256(`02`) + 복원 드릴(`03`, 무결성 ok·<0.1초) + **RPO≤48h/RTO<1초 OPERATIONS.md 기록 완료** — RPO 24h 목표 자동화는 남은 과제
 5. [x] 기여: loader 11커밋(≥10) — shortlog 표 §1
 6. [x] 문서: commit-audit 재배정 이력 정직 유지 + 본 점검표 갱신(이 PR)
 7. [ ] 평가자 접근용: 최종 main SHA·URL·데모 계정 안내 문구 — 제출 당일 마지막 작업
