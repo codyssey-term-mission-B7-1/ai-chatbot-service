@@ -170,6 +170,8 @@ python scripts/capture_local_evidence.py --output artifacts/local-ui
 
 Railway CD는 main push 또는 수동 실행에서 테스트 → Secrets 검증 → 변수 동기화 → 배포 → 헬스 → 스모크 순입니다. **필수 Secrets가 없으면 실패로 중단**하며 성공으로 표시하지 않습니다. 2026-09-09 첫 운영 배포에 성공했습니다(위 실행 기록). 시작 명령은 루트 `Procfile`이 제공합니다.
 
+**운영에 올라가는 프론트 JS는 CD 빌드 시 난독화**됩니다(`tools/js-build`, seed 고정으로 재현 가능) — 저장소 소스는 계속 가독하며, 난독화는 시크릿 보호의 대체가 아니라 UI 로직·구조 힌트의 역공학 장벽입니다. [난독화 정책](docs/OBFUSCATION.md) · [ADR-009](docs/project/06-decision-records.md)
+
 필수: `RAILWAY_TOKEN`, `DEPLOY_URL`, `SESSION_SECRET`, `PASSWORD_PEPPER`.
 
 운영자가 직접 발급·등록해야 하는 P0(AI 키·SMTP·관리자 계정)와 테스트 계정 정리, 레거시 폴백 제거 기준은 **[docs/OPERATIONS.md](docs/OPERATIONS.md)** 를 따른다. 실제 AI용 `AI_API_KEY`는 별도입니다. GitHub PAT는 Railway 토큰이나 AI 키가 아닙니다.
