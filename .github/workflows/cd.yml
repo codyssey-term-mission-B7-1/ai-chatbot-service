@@ -196,14 +196,24 @@ jobs:
           chmod +x scripts/e2e_smoke.sh
           ./scripts/e2e_smoke.sh "$URL"
 
-      - name: JS 난독화 배포 검증 (산출물이 실제로 올라갔는가)
+      - name: JS 난독화 배포 검증 (롤아웃 완료 대기)
         env:
           URL: ${{ secrets.DEPLOY_URL }}
         run: |
-          curl -sf "$URL/static/js/chat.js" -o /tmp/deployed-chat.js
-          # 소스 주석이 존재하면 난독화되지 않은 원본이 배포된 것 — 실패로 중단
-          if grep -q "채팅 화면 로직" /tmp/deployed-chat.js; then
-            echo "❌ 난독화되지 않은 원본 JS가 배포됐다 (소스 주석 발견)"; exit 1
-          fi
-          node --check /tmp/deployed-chat.js
-          echo "✅ 운영 JS 난독화 검증 통과 (소스 주석 부재 + 문법 유효)"
+          # 결정적 빌드(seed 고정) → 로컬 산출물과 배포 산출물은 바이트 단위로 동일해야 한다
+          LOCAL_SHA=$(sha256sum static/js/chat.js | cut -d' ' -f1)
+          # railway up --detach는 새 배포가 실제로 서빙되기 전에 반환한다. 기다리지 않으면
+          # 아직 구버전을 서빙 중인 운영에 검증이 걸려 레이스한다(2026-09-12 17:39 실행 사례).
+          # 새 산출물이 서빙될 때까지 최대 ~10분 대기.
+          for i in $(seq 1 30); do
+            if curl -sf "$URL/static/js/chat.js" -o /tmp/deployed-chat.js && \
+               [ "$(sha256sum /tmp/deployed-chat.js | cut -d' ' -f1)" = "$LOCAL_SHA" ]; then
+              node --check /tmp/deployed-chat.js
+              echo "✅ 운영 JS 난독화 검증 통과 (로컬 산출물과 바이트 일치, ${i}회 시도)"
+              exit 0
+            fi
+            echo "⏳ 새 산출물이 아직 서빙되지 않음 (구버전 서빙 중일 수 있음) — ${i}/30, 20초 후 재시도"
+            sleep 20
+          done
+          echo "❌ 10분 내 배포 산출물이 로컬 산출물과 일치하지 않았다 — Railway 배포 히스토리를 확인해라"
+          exit 1
