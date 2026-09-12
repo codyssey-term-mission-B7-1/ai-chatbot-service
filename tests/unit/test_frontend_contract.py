@@ -110,3 +110,16 @@ def test_auth_form_uses_custom_validation_not_native_tooltip():
     """인증 폼은 novalidate — 브라우저 기본 툴팁이 아니라 앱 안내 문구로 검증한다."""
     html = (ROOT / "templates" / "login.html").read_text()
     assert "novalidate" in html
+
+
+def test_password_confirmation_fields_and_client_guard_present():
+    """회원가입·재설정 화면에 비밀번호 확인 필드와 불일치 가드(제출 차단)가 있어야 한다."""
+    login = (ROOT / "templates/login.html").read_text()
+    reset = (ROOT / "templates/reset-password.html").read_text()
+    # 회원가입 화면에만 확인 필드(로그인 모드는 단일 입력 유지)
+    assert 'id="password-confirm"' in login
+    assert 'id="password-confirm"' in reset
+    auth_js = (ROOT / "static/js/auth.js").read_text()
+    assert "password-confirm" in auth_js and "일치하지 않아요" in auth_js
+    reset_js = (ROOT / "static/js/password-reset.js").read_text()
+    assert "password-confirm" in reset_js and "일치하지 않아요" in reset_js
