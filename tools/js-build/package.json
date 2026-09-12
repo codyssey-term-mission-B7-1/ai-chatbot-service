@@ -1,0 +1,12 @@
+{
+  "name": "ai-chatbot-service-js-build",
+  "private": true,
+  "version": "1.0.0",
+  "description": "프론트 JS 난독화 빌드 도구 (CI/CD 전용 — 저장소 소스는 난독화되지 않는다. docs/OBFUSCATION.md, ADR-009)",
+  "scripts": {
+    "build:js": "node obfuscate.mjs"
+  },
+  "devDependencies": {
+    "javascript-obfuscator": "^4.1.1"
+  }
+}

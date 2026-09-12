@@ -104,6 +104,23 @@
 
 **결정: pytest 중심 + 브라우저 캡처는 스크립트(선택 실행)** — 이유: 백엔드 계약이 과제 채점의 본체다. 프론트 회귀는 ① `test_frontend_contract`(정적 계약 검사)로 최소 방어를 두고 ② Playwright 캡처 스크립트(capture_local_evidence.py)는 증빙 생성용으로 분리했다. 한계 인정: #60 같은 JS 회귀는 CI가 못 잡는다는 사실을 이슈 본문에 명시하고 "머지 직전 develop 재병합 후 삭제 라인 diff 확인"을 PR 절차에 추가했다.
 
+## ADR-009. 프론트 JS 난독화 ❌→✅ (2026-09-12, CD 빌드 시에만)
+
+**배경**: 원 결정(OBFUSCATION.md, 2026-08-30)은 "난독화 미적용" — 평가 가독성·협업 효율을 두고 시크릿은 서버만 가진다는 구조로 보호했다. 2026-09-12 운영 측 요청으로 "실서비스에 올라가는 JS가 그대로 노출된다"는 점을 완화할 것을 요구받아 재심사했다.
+
+| 선택지 | 장점 | 단점·비용 |
+|---|---|---|
+| **(1) CD 빌드 시 난독화 (`tools/js-build`)** | 저장소 소스는 가독 유지(평가·협업·디버깅), 배포 산출물만 보호, seed 고정으로 재현 가능한 빌드, CI/CD 검증 게이트 | CD에 node 빌드 스텝 추가, 장애 디버깅은 소스 대조 필요 |
+| (2) 커밋 시 난독화 | 빌드 스텝 0 | 소스 가독성 상실 — MIT 공개 정책·평가 가독성과 충돌, 팀 디버깅 저해(원 결정을 완전히 번복) |
+| (3) 현상 유지(미적용) | 단순 | 운영 UI 로직·API 구조 힌트가 그대로 가독 —이번 요청이 해결하려는 리스크 |
+
+**결정: (1)** — 이유: "소스는 가독, 산출물은 보호"는 원 결정의 취지(가독성)와 신규 요구(산출물 보호)를 동시에 충족한다.
+
+- 도구: `tools/js-build/obfuscate.mjs` (javascript-obfuscator 4.x) — compact, controlFlowFlattening(0.5), stringArray+base64(0.9), splitStrings, unicodeEscapeSequence. `deadCodeInjection`/`debugProtection`/`selfDefending`은 의도적으로 비활성(UI 스크립트 특성·데모 서비스).
+- **필수 전제**: `renameGlobals=false` + `transformObjectKeys=false` — `form-utils.js`가 `window.FormUtils`를 공개하고 `auth.js`·`chat.js`·`password-reset.js`가 참조하는 파일 간 계약이다. CI `js-build`가 `node --check` + FormUtils 계약 **런타임** 검증으로 보장한다.
+- 검증: CI `js-build`(산출물 문법·계약) + CD 난독화 스텝(배포 전 in-place) + CD "JS 난독화 배포 검증"(배포 후 소스 주석 부재 + 문법). 로컬 Playwright 14체크·페이지 에러 0건으로 기능 동등 확인(2026-09-12).
+- 한계: 난독화는 **장벽이지 암호가 아니다** — "난독화로 시크릿을 숨긴다"는 구조는 원 정책 원칙대로 금지(시크릿은 서버만).
+
 ## 의사결정 색인 (전체)
 
 | ID | 주제 | 문서 | 상태 |
@@ -115,3 +132,4 @@
 | D-19~D-23 | DB·ORM·로깅·계층·시간 | 05-아키텍처데이터 | ✅ |
 | D-24 | 기여 귀속 정정·업무 인수 | 08-기여정정 | ✅ |
 | ADR-001~008 | 배포·AI·타임아웃·문맥·메일·브랜치·CI·테스트 | 본 문서 | ✅ (ADR-005는 ↻ 변경) |
+| ADR-009 | 프론트 JS 난독화 (CD 빌드 시에만) | 본 문서 · docs/OBFUSCATION.md | ↻ (2026-09-12) |

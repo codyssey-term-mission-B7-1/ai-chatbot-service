@@ -27,3 +27,4 @@ artifacts/
 # SQLite WAL 사이드카(*.db 자체는 16행에서 무시됨)
 *.db-shm
 *.db-wal
+node_modules/
