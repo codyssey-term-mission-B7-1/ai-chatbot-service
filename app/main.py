@@ -50,12 +50,23 @@ async def lifespan(application: FastAPI):
 
     테이블이 이미 있으면 누락 마이그레이션만 적용하고, 빈 DB/인메모리는 create_all 후
     head 스탬프로 최신 상태를 마킹한다. Alembic이 FK·열 변경을 안전하게 처리한다.
+    DB 연결 실패로 프로세스 시작 자체가 실패하지 않도록 init_db 오류는 잡아 로그만
+    남긴다 — /readyz가 503으로 가용성 없음을 알려준다.
     """
     # 모든 모델이 Base.metadata에 등록되도록 명시적으로 임포트한다(그렇지 않으면
     # autogenerate와 create_all이 릴레이션을 찾지 못한다).
     import app.models  # noqa: F401
 
-    init_db()
+    try:
+        init_db()
+    except Exception as exc:  # DB 장애 시 프로세스는 뜨고 /readyz가 503을 반환하게
+        log_event(
+            logger,
+            "readyz_db_failure",
+            reason="init_db_failed",
+            error=type(exc).__name__,
+            level=logging.ERROR,
+        )
     yield
 
 
