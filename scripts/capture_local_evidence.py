@@ -59,6 +59,16 @@ async def browser_checks(base: str, output: Path, grant) -> dict:
         checks.append('UTF-8 비밀번호 바이트 제한 안내')
         await capture('09-password-byte-error.png', '한글 25자 비밀번호의 클라이언트 바이트 제한 안내')
         await page.locator('#password').fill('LocalEvidence123!')
+        await page.locator('#password-confirm').fill('한 번 더, 다르게!')
+        await page.locator('#submit-btn').click()
+        mismatch = '비밀번호가 일치하지 않아요. 두 입력을 다시 확인해 주세요.'
+        await page.get_by_text(mismatch).wait_for()
+        checks.append('비밀번호 확인 불일치 클라이언트 가드')
+        await capture(
+            '10-password-confirm-mismatch.png',
+            '가입 화면 비밀번호 확인 불일치 클라이언트 가드; 로컬 실제 앱',
+        )
+        await page.locator('#password-confirm').fill('LocalEvidence123!')
         await page.locator('#nickname').fill('로컬 검증 계정')
         await page.locator('#submit-btn').click()
         await page.wait_for_url('**/login?registered=1')
