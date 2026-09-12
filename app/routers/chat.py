@@ -16,8 +16,8 @@ from app.models import User
 from app.repositories import chat_logs
 from app.schemas import ChatOut, ChatRequest
 from app.services.ai_client import AIError, AIProvider, AITimeoutError, get_ai_provider
-from app.services.context import SYSTEM_PROMPT, build_context
-from app.services.rate_limit import chat_limiter
+from app.services.context import SYSTEM_PROMPT, build_messages
+from app.services.rate_limit import chat_limiter, retry_after_hint
 
 logger = logging.getLogger("app.chat")
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -100,7 +100,10 @@ async def chat(
         )
         raise HTTPException(
             status_code=429,
-            detail="요청이 너무 잦아요. 잠시 후 다시 시도해 주세요. (error: RATE_LIMITED)",
+            detail=(
+                f"요청이 너무 잦아요. {retry_after_hint(retry_after)} 다시 시도해 주세요. "
+                "(error: RATE_LIMITED)"
+            ),
             headers={"Retry-After": str(retry_after)},
         )
     history = chat_logs.successful_context(db, user.id, settings.context_turns)
@@ -108,9 +111,7 @@ async def chat(
     # 문맥 조회 트랜잭션을 여기서 닫아 AI 호출(최대 AI_TIMEOUT_SEC) 동안 커넥션을 풀에
     # 반납한다(#73). 조회 결과는 이미 메모리로 뽑았고 저장은 별도 커밋으로 수행한다.
     db.commit()
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    messages += build_context(context_pairs, settings.context_turns)
-    messages.append({"role": "user", "content": body.question})
+    messages = build_messages(SYSTEM_PROMPT, context_pairs, body.question, settings.context_turns)
     log_event(
         logger,
         "ai_call_start",
