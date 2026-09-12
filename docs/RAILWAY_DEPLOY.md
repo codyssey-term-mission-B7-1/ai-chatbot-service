@@ -56,11 +56,13 @@ Variables: `RAILWAY_SERVICE_NAME` 기본 ai-chatbot-service, `RAILWAY_ENVIRONMEN
 **시작 명령은 루트의 `Procfile`이 제공한다.** Railway의 신규 빌더(Railpack)는 deprecated된 `railway.json`의 `startCommand`를 무시하고 자동 감지를 시도하며, `app/main.py` 구조는 감지 규칙에 없어 빌드가 실패한다(2026-09-09 실측). `Procfile`은 Nixpacks/Railpack 공통으로 인식되므로 저장소에서 시작 명령을 계속 관리한다. `railway.json`은 헬스체크/재시작 정책의 의도 문서로 유지한다.
 
 1. ruff·pytest 게이트
-2. 필수 Secrets 검증 — 실패하면 배포하지 않는다
-3. Railway 변수 동기화(`--skip-deploys`)
-4. `railway up`
-5. `/health` 확인
-6. E2E 스모크
+2. 프론트 JS 난독화(`tools/js-build`, in-place — 배포 산출물만, ADR-009)
+3. 필수 Secrets 검증 — 실패하면 배포하지 않는다
+4. Railway 변수 동기화(`--skip-deploys`)
+5. `railway up`
+6. `/health` 확인
+7. E2E 스모크
+8. JS 난독화 배포 검증(산출물이 실제로 올라갔는가 — 소스 주석 부재 + 문법)
 
 단순 `/health`의 ai_mode=real은 외부 AI 접속 성공을 뜻하지 않는다. 실 AI는 `ai_check.py --require-real`로 별도 검증한다.
 
