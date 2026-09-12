@@ -15,6 +15,10 @@
              autocomplete="{{ 'new-password' if mode == 'signup' else 'current-password' }}">
     </label>
     {% if mode == 'signup' %}
+    <label>비밀번호 확인
+      <input type="password" id="password-confirm" required placeholder="같은 비밀번호를 한 번 더"
+             autocomplete="new-password">
+    </label>
     <p class="muted small">8자 이상 64자 이하, UTF-8 기준 72바이트 이하입니다. 비밀번호를 잘라 저장하지 않습니다.</p>
     <label>닉네임 (선택 · 20자 이하)
       <input type="text" id="nickname" placeholder="표시될 이름" autocomplete="nickname">

@@ -85,3 +85,29 @@ def test_my_chats_negative_limit_does_not_bypass_cap(client):
     assert len(client.get("/api/me/chats").json()) == 3
     assert len(client.get("/api/me/chats?limit=-1").json()) == 1
     assert len(client.get("/api/me/chats?limit=0").json()) == 1
+
+
+def test_chat_system_message_carries_nickname(client, fake_ai):
+    """사용자 이름은 문맥 턴 수와 무관하게 매 요청 시스템 메시지로 전달된다."""
+    client.post(
+        "/api/auth/signup",
+        json={"email": "named@example.com", "password": "Test1234!", "nickname": "지연"},
+    )
+    client.post("/api/auth/login", json={"email": "named@example.com", "password": "Test1234!"})
+
+    r = client.post("/api/chat", json={"question": "내 이름이 뭐야?"})
+    assert r.status_code == 200
+    system = [m for m in fake_ai.last_messages if m["role"] == "system"]
+    assert len(system) == 1
+    assert "지연" in system[0]["content"]
+    assert "현재 대화 상대" in system[0]["content"]
+
+
+def test_chat_uses_autoderived_nickname_when_unset(client, fake_ai):
+    """닉네임 미설정 시 이메일에서 자동 파생된 이름도 시스템 메시지로 전달된다."""
+    signup_and_login(client)  # tester@example.com → 자동 닉네임 'tester'
+
+    client.post("/api/chat", json={"question": "안녕"})
+    system = [m for m in fake_ai.last_messages if m["role"] == "system"]
+    assert len(system) == 1
+    assert "현재 대화 상대: tester님" in system[0]["content"]
