@@ -29,6 +29,10 @@ authForm.addEventListener('submit', async (event) => {
     if (FormUtils.utf8Length(body.password) > 72) {
       return showAuthMessage('비밀번호는 UTF-8 기준 72바이트 이하여야 해요.');
     }
+    const confirmInput = document.getElementById('password-confirm');
+    if (confirmInput && confirmInput.value !== body.password) {
+      return showAuthMessage('비밀번호가 일치하지 않아요. 두 입력을 다시 확인해 주세요.');
+    }
     body.nickname = document.getElementById('nickname').value.trim();
     if (FormUtils.codepointLength(body.nickname) > 20) {
       return showAuthMessage('닉네임은 20자 이하여야 해요.');
