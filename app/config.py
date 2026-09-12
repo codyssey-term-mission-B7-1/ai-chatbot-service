@@ -72,6 +72,9 @@ class Settings(BaseSettings):
     # 앱
     app_name: str = "AI Chatbot Service"
     debug: bool = False
+    # 배포 지문: CD가 커밋 SHA를 BUILD_SHA 환경변수로 주입하면 /health.build가 반환한다.
+    # CD가 이 필드로 "새 배포가 실제로 서빙 중인지" 확인한다(#120). 개발/미주입 시 빈 문자열.
+    build_sha: str = ""
 
     # DB (SQLite 권장)
     database_url: str = "sqlite:///./app.db"

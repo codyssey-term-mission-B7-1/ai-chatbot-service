@@ -266,7 +266,8 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     summary="헬스체크(라이트)",
     description=(
         "프로세스 기동 여부만 확인합니다(DB·외부 호출 없음). "
-        "로드밸런서·kubelet liveness에 적합합니다."
+        "로드밸런서·kubelet liveness에 적합합니다. "
+        "build는 CD가 주입한 배포 지문(커밋 SHA)으로, 실제로 서빙 중인 배포를 식별합니다."
     ),
 )
 def health():
@@ -274,6 +275,7 @@ def health():
         "status": "ok",
         "version": app.version,
         "ai_mode": "demo" if not settings.ai_api_key else "real",
+        "build": settings.build_sha,
     }
 
 

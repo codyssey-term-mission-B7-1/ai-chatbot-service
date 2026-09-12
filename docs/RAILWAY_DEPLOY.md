@@ -58,11 +58,12 @@ Variables: `RAILWAY_SERVICE_NAME` 기본 ai-chatbot-service, `RAILWAY_ENVIRONMEN
 1. ruff·pytest 게이트
 2. 프론트 JS 난독화(`tools/js-build`, in-place — 배포 산출물만, ADR-009)
 3. 필수 Secrets 검증 — 실패하면 배포하지 않는다
-4. Railway 변수 동기화(`--skip-deploys`)
+4. Railway 변수 동기화(`--skip-deploys`) — `BUILD_SHA`(=커밋 SHA, Secret 아님)도 포함
 5. `railway up`
-6. `/health` 확인
+6. 새 배포 롤아웃 대기 — `/health.build`가 이번 커밋과 일치할 때까지 최대 10분
+   (health·스모크가 구버전 인스턴스에 통과하는 눈먼 구간 제거, #120)
 7. E2E 스모크
-8. JS 난독화 배포 검증(산출물이 실제로 올라갔는가 — 소스 주석 부재 + 문법)
+8. JS 난독화 배포 검증(로컬 결정적 산출물과 바이트 일치, 최대 10분 + 문법)
 
 단순 `/health`의 ai_mode=real은 외부 AI 접속 성공을 뜻하지 않는다. 실 AI는 `ai_check.py --require-real`로 별도 검증한다.
 

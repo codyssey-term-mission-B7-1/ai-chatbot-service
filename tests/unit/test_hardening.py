@@ -67,3 +67,18 @@ def test_health_and_readyz_are_unauthenticated():
     with TestClient(app) as c:
         assert c.get("/health").status_code == 200
         assert c.get("/readyz").status_code == 200
+
+
+def test_health_exposes_build_fingerprint(monkeypatch):
+    """/health.build가 배포 지문(CD 주입 커밋 SHA)을 노출한다(#120).
+
+    CD는 이 필드가 이번 커밋과 일치할 때까지 폴링하여
+    '구버전 인스턴스에 새 배포가 통과한 것처럼 보이는' 눈먼 구간을 제거한다.
+    """
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "build_sha", "abc123def456")
+    with TestClient(app) as c:
+        body = c.get("/health").json()
+    assert body["build"] == "abc123def456"
+    assert body["status"] == "ok"
