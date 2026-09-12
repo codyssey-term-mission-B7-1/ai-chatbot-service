@@ -94,6 +94,10 @@ class Settings(BaseSettings):
     # /docs·/redoc·/openapi.json 노출(#75). 로컬/검증은 true, 운영 CD는 false로 동기화
     docs_enabled: bool = True
 
+    # 요청 바디 크기 상한(바이트). 너무 크면 메모리 DoS — 채팅 질문과 회원가입/로그인은
+    # 수 KB면 충분하다. 기본 1MiB. 0이면 상한 없음(운영에서 끄지 말 것).
+    max_request_body_bytes: int = Field(default=1_048_576, ge=0)
+
     # 챗 파이프라인
     context_turns: int = Field(default=5, ge=0, le=MAX_CONTEXT_TURNS)  # 0이면 문맥 비활성화
     max_question_length: int = Field(default=1000, ge=1, le=100000)  # 입력 검증: 길이 제한
@@ -104,6 +108,14 @@ class Settings(BaseSettings):
 
     # 채팅 비용 남용 방어(#73) — 사용자별 분당 요청 상한. 0이면 비활성화
     chat_rate_per_min: int = Field(default=10, ge=0)
+
+    # 봇 계정 생성 남용 방어(하드닝 B-1의 P0 최소 버전) — IP별 분당 회원가입 상한.
+    # 0=비활성화. 다중 워커/프록시 환경에서는 IP가 X-Forwarded-For를 보는 것 등 보완이 필요.
+    signup_rate_per_ip_per_min: int = Field(default=5, ge=0)
+
+    # 비밀번호 재설정은 이미 PASSWORD_RESET_MAX_REQUESTS 창 제한이 있으나, IP별
+    # 요청 폭주(계정 존재 열거/메일 폭탄) 방어를 위해 추가 상한을 둔다.
+    password_reset_rate_per_ip_per_min: int = Field(default=5, ge=0)
 
     # 이메일 기반 비밀번호 재설정 — SMTP 미설정 시 DEBUG=true면 링크를 서버 로그로만 출력
     smtp_host: str = ""  # 비어 있으면 메일 발송 불가(운영 503, 개발 로그 출력)

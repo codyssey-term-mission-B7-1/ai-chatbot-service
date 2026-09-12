@@ -19,13 +19,13 @@ def test_signup_login_me_logout_flow(client):
     # 회원가입
     r = client.post(
         "/api/auth/signup",
-        json={"email": "a@test.com", "password": "password123", "nickname": "홍"},
+        json={"email": "a@test.com", "password": "Test1234!", "nickname": "홍"},
     )
     assert r.status_code == 201
     assert r.json()["nickname"] == "홍"
 
     # 로그인 → 세션 쿠키 발급
-    r = client.post("/api/auth/login", json={"email": "a@test.com", "password": "password123"})
+    r = client.post("/api/auth/login", json={"email": "a@test.com", "password": "Test1234!"})
     assert r.status_code == 200
 
     # 내 정보
@@ -39,13 +39,13 @@ def test_signup_login_me_logout_flow(client):
 
 
 def test_duplicate_signup_returns_409(client):
-    body = {"email": "dup@test.com", "password": "password123"}
+    body = {"email": "dup@test.com", "password": "Test1234!"}
     assert client.post("/api/auth/signup", json=body).status_code == 201
     assert client.post("/api/auth/signup", json=body).status_code == 409
 
 
 def test_wrong_password_returns_401(client):
-    client.post("/api/auth/signup", json={"email": "b@test.com", "password": "password123"})
+    client.post("/api/auth/signup", json={"email": "b@test.com", "password": "Test1234!"})
     r = client.post("/api/auth/login", json={"email": "b@test.com", "password": "wrong-pass"})
     assert r.status_code == 401
 
@@ -79,14 +79,14 @@ def test_stale_session_after_reseed_returns_401(client, db):
 
 def test_email_case_insensitive_signup_login(client):
     """대소문자 달라도 동일 계정 — 정규화 후 중복 409 + 교차 로그인 (#4)."""
-    r = client.post("/api/auth/signup", json={"email": "Case@Test.com", "password": "password123"})
+    r = client.post("/api/auth/signup", json={"email": "Case@Test.com", "password": "Test1234!"})
     assert r.status_code == 201
     assert r.json()["email"] == "case@test.com"
 
-    r = client.post("/api/auth/signup", json={"email": "case@test.com", "password": "password123"})
+    r = client.post("/api/auth/signup", json={"email": "case@test.com", "password": "Test1234!"})
     assert r.status_code == 409  # 정규화 후 중복
 
-    r = client.post("/api/auth/login", json={"email": "CASE@TEST.COM", "password": "password123"})
+    r = client.post("/api/auth/login", json={"email": "CASE@TEST.COM", "password": "Test1234!"})
     assert r.status_code == 200
 
 

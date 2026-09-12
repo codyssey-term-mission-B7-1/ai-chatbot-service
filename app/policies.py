@@ -4,6 +4,8 @@ MAX_PASSWORD_BYTES = 72  # bcrypt 입력 한계; 비밀번호를 조용히 자�
 MAX_PASSWORD_CHARS = 64
 MIN_PASSWORD_CHARS = 8
 MAX_NICKNAME_CHARS = 20
+# RFC 5321: 로컬파트 최대 64옥텟. 너무 긴 로컬파트는 공급자도 대부분 거절한다.
+MAX_EMAIL_LOCAL_CHARS = 64
 MAX_CONTEXT_TURNS = 200
 MAX_LOG_PAGE_SIZE = 200
 # XSS 2차 방어선(#75). 인라인 script/핸들러를 쓰지 않는 전제 — 외부 파일 스크립트만 허용.
