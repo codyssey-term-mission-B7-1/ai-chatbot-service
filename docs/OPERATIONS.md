@@ -140,3 +140,15 @@ curl -s -b c.txt <라이브>/api/admin/security/password-hashes
 - 레거시 사용자가 남은 채 폴백을 제거하면 해당 계정은 로그인할 수 없게 되므로
   **반드시 0을 확인한 뒤에만** 제거한다.
 - 마이그레이션이 끝나지 않은 사용자에게는 비밀번호 재설정(메일)로 스스로 갱신하게 할 수 있다.
+
+## 백업/복원 실측 기록 (2026-09-12)
+
+- 백업 실행: 1회차 2026-09-10 11:04 UTC, 2회차 2026-09-12 13:31 UTC —
+  `python scripts/backup_db.py /data/app.db --backup-dir /data/backups --keep 7`
+  출력: `integrity=ok sha256=e6d8b40c…`, keep=7 (캡처 `docs/evidence/02-backup-sha256.png`)
+- **RPO 실측**: 수동 실행 간격 최대 2일 → 현재 RPO ≤ 48시간.
+  목표 24h(BACKUP_RESTORE.md) 대비 미달 — 일 1회 자동화(스케줄러)를 남은 과제로 명시한다.
+- **복원 드릴 실측**: 최신 백업을 `/tmp` 사본으로 복원·검증 — 무결성 `ok`,
+  users 24행 / chat_logs 91행 확인, 소요 **0.1초 미만**(사본 복원·검증 기준).
+  전체 절차(서비스 중지→사전 백업→교체→재기동) 포함해도 목표 RTO 1시간 이내 여유.
+  (캡처 `docs/evidence/03-restore-drill.png`, 볼륨 마운트 `01-volume.png`)

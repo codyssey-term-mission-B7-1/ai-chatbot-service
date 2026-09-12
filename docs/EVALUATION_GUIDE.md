@@ -67,20 +67,21 @@
 - 재설정 메일 테스트 중 **요청 상한(15분/3회)에 걸린 기록도 증거로 보존**(삭제하지 않음 — 실패→수정→성공 흐름이 운영 학습의 증거).
 - 캡처 증거는 §4의 체크리스트로 계속 보강 중(실시간 갱신).
 
-## 4. 캡처 증거 체크리스트 → 배치 위치
+## 4. 캡처 증거 — ✅ 전 항목 확보 (2026-09-12, `docs/evidence/`)
 
-| 파일명 | 캡처 내용 | 입증 항목 | 배치 |
-|---|---|---|---|
-| `01-volume.png` | Shell `df -h /data && ls -la /data` | 볼륨 영속(#35/#12) | docs/evidence/ |
-| `02-backup-sha256.png` | backup_db.py 출력(SHA-256)+backups 목록 | 백업 가능성 | docs/evidence/ |
-| `03-restore-drill.png` | 드릴 출력(무결성 ok·행수·소요초=RTO) | 복원 가능성·RTO | docs/evidence/ |
-| `04-reset-email.png` | 재설정 메일 수신 화면 | Resend E2E | docs/evidence/ |
-| `05-admin-logs.png` | /admin/logs 화면 | 관리자 조회(#13) | docs/evidence/ |
-| `06-oplogs.png` | 운영 로그 3종 이벤트 | 운영 로그(#30) | docs/evidence/ |
-| `07-cd-success.png` | Actions CD 초록불 | CD 검증 | docs/evidence/ |
-| `08-health-real.png` | 주소줄 포함 /health real | 실AI 운영(#11/#27) | docs/evidence/ |
+| 파일 | 내용 | 입증 항목 |
+|---|---|---|
+| `01-volume.png` | Shell `df -h /data && ls -la /data` — `/dev/zd1520` 전용 디바이스+`app.db` | 볼륨 영속(#35/#12) |
+| `02-backup-sha256.png` | backup_db.py 출력(`integrity=ok sha256=e6d8b40c…`, keep=7)+backups 목록 | 백업 |
+| `03-restore-drill.png` | 드릴: 무결성 ok·users 24·chat_logs 91·소요 <0.1초 | 복원·RTO |
+| `04a~d-*.png` | /forgot-password 요청→202 안내→**Gmail 수신(onboarding@resend.dev, 재설정 링크)**→새 비밀번호 페이지 | **Resend E2E 완주** |
+| `05-admin-logs.png` | /admin/logs 관리자 조회(관리자 배지·필터) | 관리자 조회(#13) |
+| `06-oplogs.png` | 운영 로그: `ai_call_success`→`db_save_success`→`request_finished`(같은 request_id) | 운영 로그(#30) |
+| `07-cd-success.png` | Actions CD 초록불(main, 7:59 PM ×2) | CD 검증 |
+| `08-health-real.png` | 주소줄 포함 `/health` = `ai_mode:"real"` | 실AI 운영(#11/#27) |
 
-수치 기록: 백업 후 `docs/OPERATIONS.md`에 RPO(주기)/RTO(드릴 소요초) 실측 추가 — 담당자 커밋.
+RPO/RTO 실측은 `docs/OPERATIONS.md` "백업/복원 실측 기록(2026-09-12)"에 기록 완료:
+RPO ≤ 48h(수동 간격 — 일 자동화가 남은 과제), 드릴 RTO < 1초(목표 1h 대비 여유).
 
 ## 5. 평가자 안내 (제출 시 최종본으로 갱신)
 
