@@ -28,6 +28,10 @@ if (form) {
       if (FormUtils.utf8Length(password) > 72) {
         return showMessage('비밀번호는 UTF-8 기준 72바이트 이하여야 해요.');
       }
+      const confirmInput = document.getElementById('password-confirm');
+      if (confirmInput && confirmInput.value !== password) {
+        return showMessage('비밀번호가 일치하지 않아요. 두 입력을 다시 확인해 주세요.');
+      }
       url = '/api/auth/password/reset';
       body = { token: document.getElementById('token').value, new_password: password };
     }
