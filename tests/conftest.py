@@ -30,23 +30,23 @@ def _isolated_rate_limiters():
     잠금/제한 전용 테스트는 낮은 한도를 직접 지정해 확인한다. 기본값 그대로면
     우연히 겹치는 키를 쓰는 다른 테스트가 서로 오염시킬 수 있다.
     """
-    from app.services.rate_limit import chat_limiter, login_limiter
-
-    saved = (
-        (login_limiter.max_events, login_limiter.window_seconds),
-        (chat_limiter.max_events, chat_limiter.window_seconds),
+    from app.services.rate_limit import (
+        chat_limiter,
+        login_limiter,
+        password_reset_ip_limiter,
+        signup_ip_limiter,
     )
-    login_limiter.max_events = 10_000
-    chat_limiter.max_events = 10_000
-    login_limiter.reset()
-    chat_limiter.reset()
+
+    limiters = (login_limiter, chat_limiter, signup_ip_limiter, password_reset_ip_limiter)
+    saved = [(lim.max_events, lim.window_seconds) for lim in limiters]
+    for lim in limiters:
+        lim.max_events = 10_000
+        lim.reset()
     yield
-    (
-        (login_limiter.max_events, login_limiter.window_seconds),
-        (chat_limiter.max_events, chat_limiter.window_seconds),
-    ) = saved
-    login_limiter.reset()
-    chat_limiter.reset()
+    for lim, (mev, win) in zip(limiters, saved):
+        lim.max_events = mev
+        lim.window_seconds = win
+        lim.reset()
 
 
 TestingSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)

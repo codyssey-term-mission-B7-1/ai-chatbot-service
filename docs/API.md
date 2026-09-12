@@ -37,7 +37,7 @@ HTML `/`, `/logs`, `/admin/logs`는 비로그인일 때 `/login`으로 302 이�
 POST /api/auth/signup
 Content-Type: application/json
 
-{"email":"hong@example.com","password":"Password123!","nickname":"홍길동"}
+{"email":"hong@example.com","password":"HongG!ld0ng","nickname":"홍길동"}
 ```
 ```json
 {"email":"hong@example.com","nickname":"홍길동","is_admin":false}
@@ -54,7 +54,7 @@ Content-Type: application/json
 POST /api/auth/login
 Content-Type: application/json
 
-{"email":"hong@example.com","password":"Password123!"}
+{"email":"hong@example.com","password":"HongG!ld0ng"}
 ```
 ```json
 {"email":"hong@example.com","nickname":"홍길동","is_admin":false}
