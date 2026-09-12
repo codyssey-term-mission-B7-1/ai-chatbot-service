@@ -121,6 +121,7 @@ Cookie: session=<실제 요청에서만 사용, 증빙에서는 마스킹>
 - `status`: 생략 / `success` / `ai_error`. 필터를 적용한 **뒤** limit을 적용한다.
 - limit은 1~200으로 제한(음수·0은 1). 최신 ID 순. `before_id`는 양수의 이전 페이지 커서.
 - UI 복원은 `status=success&limit=N`을 요청하고 뒤집어 오래된 순으로 표시한다.
+- **CLI 클라이언트**: `scripts/logs_client.py` — 로그인 후 이 API를 호출해 조회·페이지네이션·JSON 출력을 자동화한다 (사용법: [OPERATIONS.md](OPERATIONS.md) "로그 조회 API 클라이언트").
 
 ## 관리자 기록
 
