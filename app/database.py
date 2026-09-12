@@ -1,8 +1,20 @@
-"""SQLAlchemy 엔진/세션 — SQLite."""
+"""DB 엔진/세션 — SQLite 기본, PostgreSQL/MySQL 전환 가능.
+
+스키마 관리는 Alembic이 담당한다(alembic/versions/). 앱 시작 시 create_all은
+테스트/빈 DB에만 사용하고, 기존 DB는 `alembic upgrade head`로 누락 마이그레이션만
+적용한다. SQLite 특정 PRAGMA는 SQLite일 때만 붙인다.
+
+연결 풀 정책:
+- SQLite 파일 DB: 기본 SingletonThreadPool(단일 연결 재사).
+- SQLite 인메모리(``sqlite://`` / ``sqlite:///:memory:``): StaticPool + check_same_thread=False.
+  없으면 연결마다 새 인메모리 DB가 생겨 create_all로 만든 테이블이 요청 처리 시점에
+  보이지 않는다 (테스트 환경의 흔한 함정).
+- Postgres/MySQL: QueuePool + pool_pre_ping + pool_recycle.
+"""
 
 from pathlib import Path
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, inspect
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import settings
@@ -25,12 +37,23 @@ def ensure_sqlite_dir(database_url: str) -> None:
 ensure_sqlite_dir(settings.database_url)
 
 _is_sqlite = settings.database_url.startswith("sqlite")
-connect_args = {"check_same_thread": False} if _is_sqlite else {}
-_engine_kwargs: dict = {"connect_args": connect_args}
-if not _is_sqlite:
-    # SQLite는 SingletonThreadPool(pool_size=1 고정)을 쓰므로 풀 관련 인자를 주면 에러.
-    # Postgres/MySQL 전환 시 stale 커넥션 정리와 과도한 동시 접속을 방지한다.
+_is_sqlite_memory = _is_sqlite and settings.database_url in ("sqlite://", "sqlite:///:memory:")
+
+_engine_kwargs: dict = {}
+if _is_sqlite_memory:
+    # 인메모리 DB는 모든 연결이 같은 DB를 가리켜야 한다(테스트 lifespan에서 create_all 한
+    # 테이블이 요청 처리 연결에서도 보여야).
+    from sqlalchemy.pool import StaticPool
+
     _engine_kwargs.update(
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+elif _is_sqlite:
+    _engine_kwargs.update(connect_args={"check_same_thread": False})
+else:
+    _engine_kwargs.update(
+        connect_args={},
         pool_size=5,
         max_overflow=10,
         pool_recycle=1800,
@@ -44,23 +67,48 @@ def _sqlite_pragmas_on_connect(dbapi_conn, _conn_record):
     """SQLite는 연결마다 설정이 초기화된다. 매 연결에서 다시 켠다.
 
     - foreign_keys=ON: FK 검증과 ON DELETE CASCADE가 실제로 작동하게 (#51).
-    - journal_mode=WAL: 읽기-쓰기 동시성 개선(A-3 — 쓰기 잠금 경합을 늦춘다).
-      파일 DB에만 유효(:memory:는 무시됨). WAL은 DB 파일 옆에 -wal/-shm을 만들며,
-      백업 스크립트의 온라인 백업 경로와 무관하게 일관성 있는 스냅샷을 보장한다.
-    - busy_timeout: 쓰기 잠금 경합 시 즉시 'database is locked'로 실패하지 않고
-      최대 5초까지 대기(A-2의 db_save_fail 원인 중 잠금 경합 축소).
+    - journal_mode=WAL: 읽기-쓰기 동시성 개선. 파일 DB에만 적용.
+    - busy_timeout: 잠금 경합 시 최대 5초 대기.
     """
-    if settings.database_url.startswith("sqlite"):
-        cur = dbapi_conn.cursor()
-        cur.execute("PRAGMA foreign_keys=ON")
-        cur.execute("PRAGMA busy_timeout=5000")
-        if settings.database_url not in ("sqlite://", "sqlite:///:memory:"):
-            cur.execute("PRAGMA journal_mode=WAL")
-        cur.close()
+    cur = dbapi_conn.cursor()
+    cur.execute("PRAGMA foreign_keys=ON")
+    cur.execute("PRAGMA busy_timeout=5000")
+    if settings.database_url not in ("sqlite://", "sqlite:///:memory:"):
+        cur.execute("PRAGMA journal_mode=WAL")
+    cur.close()
 
 
-if settings.database_url.startswith("sqlite"):
+if _is_sqlite:
     event.listens_for(engine, "connect")(_sqlite_pragmas_on_connect)
+
+
+def _has_any_table() -> bool:
+    """DB에 어떤 테이블이라도 있는지 — 빈 DB 판단용."""
+    with engine.connect() as conn:
+        return bool(inspect(conn).get_table_names())
+
+
+def init_db() -> None:
+    """앱 시작 시 스키마를 동기화.
+
+    - 인메모리/테스트/완전히 빈 파일 DB: Base.metadata.create_all로 테이블을 만들고
+      alembic stamp head로 최신 리비전을 마킹.
+    - 기존 DB: ``alembic upgrade head``로 누락 마이그레이션만 적용.
+    """
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+
+    in_memory = settings.database_url in ("sqlite://", "sqlite:///:memory:")
+    is_test = os.environ.get("TESTING") == "1"
+    ini_path = Path(__file__).resolve().parent.parent / "alembic.ini"
+    alembic_cfg = Config(str(ini_path))
+    if in_memory or is_test or not _has_any_table():
+        Base.metadata.create_all(bind=engine)
+        command.stamp(alembic_cfg, "head")
+        return
+    command.upgrade(alembic_cfg, "head")
 
 
 def get_db():

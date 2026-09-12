@@ -15,10 +15,11 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--email", required=True, help="세션을 폐기할 계정의 이메일")
     args = parser.parse_args(argv)
-    from app.database import Base, SessionLocal, engine
+    from app.database import SessionLocal, init_db
     from app.services.sessions import revoke_sessions_by_email
 
-    Base.metadata.create_all(bind=engine)
+    import app.models  # noqa: F401
+    init_db()
     with SessionLocal() as db:
         try:
             user = revoke_sessions_by_email(db, args.email)

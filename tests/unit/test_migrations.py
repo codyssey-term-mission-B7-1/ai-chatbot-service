@@ -1,0 +1,91 @@
+"""마이그레이션(Alembic) 단위 테스트.
+
+Alembic이 빈 DB에서 `upgrade head`로 전체 스키마를 만들고, 모델 metadata와
+테이블 집합이 동일한지 검증한다. 앱 config를 거치지 않고 Alembic 자체 engine으로
+마이그레이션을 실행해 환경변수/전역 engine 의존성을 피한다.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+from sqlalchemy import create_engine, event, inspect
+
+from alembic import command
+from alembic.config import Config
+
+ALEMBIC_INI = Path(__file__).resolve().parent.parent.parent / "alembic.ini"
+
+
+def _alembic_config(db_url: str) -> Config:
+    cfg = Config(str(ALEMBIC_INI))
+    # 환경변수/앱 settings를 덮어쓰도록 sqlalchemy.url을 명시 설정.
+    cfg.set_main_option("sqlalchemy.url", db_url)
+    cfg.set_main_option("script_location", str(ALEMBIC_INI.parent / "alembic"))
+    return cfg
+
+
+def _sqlite_pragmas(dbapi_conn, _rec):
+    cur = dbapi_conn.cursor()
+    cur.execute("PRAGMA foreign_keys=ON")
+    cur.execute("PRAGMA busy_timeout=5000")
+    cur.close()
+
+
+@pytest.fixture()
+def fresh_sqlite_url(tmp_path):
+    """매 테스트마다 빈 SQLite 파일 DB URL을 제공."""
+    db_path = tmp_path / "fresh.db"
+    db_path.touch()
+    yield f"sqlite:///{db_path.resolve()}"
+
+
+def test_upgrade_head_creates_all_tables(fresh_sqlite_url):
+    cfg = _alembic_config(fresh_sqlite_url)
+    command.upgrade(cfg, "head")
+
+    engine = create_engine(fresh_sqlite_url)
+    event.listens_for(engine, "connect")(_sqlite_pragmas)
+    try:
+        tables = sorted(inspect(engine).get_table_names())
+    finally:
+        engine.dispose()
+
+    assert "alembic_version" in tables
+    for expected in (
+        "users",
+        "chat_logs",
+        "admin_grants",
+        "session_revocations",
+        "password_resets",
+    ):
+        assert expected in tables, f"테이블 {expected}가 마이그레이션으로 생성되어야 한다."
+
+
+def test_models_metadata_matches_head(fresh_sqlite_url):
+    """Base.metadata와 마이그레이션 결과의 테이블 집합이 일치한다."""
+    # 모델을 임포트해 metadata를 채운다. 전역 DATABASE_URL에 의존하지 않는다.
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from app.database import Base  # noqa: PLC0415
+
+    cfg = _alembic_config(fresh_sqlite_url)
+    command.upgrade(cfg, "head")
+
+    engine = create_engine(fresh_sqlite_url)
+    event.listens_for(engine, "connect")(_sqlite_pragmas)
+    try:
+        migrated = set(inspect(engine).get_table_names())
+    finally:
+        engine.dispose()
+
+    model_tables = {t.name for t in Base.metadata.sorted_tables}
+    assert (model_tables - migrated) == set(), "모델에 정의된 테이블이 마이그레이션에 누락됨"
+    extra_in_db = {
+        n
+        for n in (migrated - model_tables - {"alembic_version"})
+        if not n.startswith("sqlite_autoindex_")
+    }
+    assert extra_in_db == set(), f"마이그레이션이 모델에 없는 테이블을 만듦: {extra_in_db}"

@@ -96,10 +96,23 @@ JWT가 아니라 `SessionMiddleware`의 서명 쿠키입니다. 로그인은 이
 
 ## 6. DB와 추적
 
+스키마 관리는 **Alembic 마이그레이션**(`alembic/`)으로 한다. 앱 시작 시 자동으로 `alembic upgrade head`가 실행되어 누락 마이그레이션이 적용되므로 별도 수동 작업이 필요 없다. 스키마 변경 시:
+
+```bash
+# 모델(Base.metadata)을 바꾼 뒤 자동 리비전 생성
+alembic revision --autogenerate -m "변경 요약"
+# 리비전 파일을 검토·수정한 뒤 apply
+alembic upgrade head
+```
+
+기존 개발 DB 파일(`app.db`)에 마이그레이션이 적용돼 있지 않으면 앱 시작 시 자동 업그레이드가 시도된다. 문제가 생기면 DB를 백업하고 재시작하거나 `alembic downgrade -1`로 롤백할 수 있다. DB 엔진은 SQLite가 기본이지만 동일 코드로 PostgreSQL/MySQL을 사용할 수 있다 — `docs/POSTGRES_MIGRATION.md` 참고.
+
 ```mermaid
 erDiagram
   users ||--o{ chat_logs : owns
   users ||--o| admin_grants : explicitly_granted
+  users ||--o{ session_revocations : revokes
+  users ||--o{ password_resets : requests
   users { int id PK
     string email UK
     string password_hash
