@@ -12,6 +12,7 @@ permissions:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    timeout-minutes: 30  # P4: 걸림 방지 (기본 360분 → 30분)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -42,6 +43,7 @@ jobs:
 
   browser:
     runs-on: ubuntu-latest
+    timeout-minutes: 30  # P4: 걸림 방지 (chromium 다운로드 포함 상한)
     steps:
       - uses: actions/checkout@v4
       - name: 프론트 JS 난독화 빌드 도구 의존성

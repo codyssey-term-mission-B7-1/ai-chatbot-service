@@ -1,7 +1,8 @@
 # CD — main 병합 시 Railway 자동 배포 + E2E 스모크
 #
 # 흐름: 테스트 게이트(ruff+pytest) → Secrets→Railway 변수 동기화 → railway up
-#       → /health 폴링 → e2e_smoke.sh
+#       → build 지문 일치 대기(새 배포가 실제로 서빙될 때까지)
+#       → e2e_smoke.sh → JS 난독화 바이트 검증
 # 상세 절차: docs/RAILWAY_DEPLOY.md
 #
 # 필수 Secrets (Settings → Secrets and variables → Actions):
@@ -32,6 +33,9 @@ on:
     branches: [main]
   workflow_dispatch: {}  # 수동 재배포
 
+permissions:
+  contents: read  # 배포는 Railway 토큰 사용 — GITHUB_TOKEN은 읽기만(P3, 최소 권한)
+
 concurrency:
   group: production-deploy
   cancel-in-progress: false  # 배포 중 overlapping 방지 (순서대로 실행)
@@ -40,6 +44,7 @@ jobs:
   gate:
     name: 배포 게이트 (ruff + pytest)
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # P4: 걸림 방지 (기본 360분 → 15분)
     steps:
       - uses: actions/checkout@v4
 
@@ -63,6 +68,7 @@ jobs:
     name: Railway 배포 + 스모크
     runs-on: ubuntu-latest
     needs: gate
+    timeout-minutes: 45  # P4: 걸림 방지 (빌드+롤아웃+검증 포함 상한)
     env:
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
     steps:
@@ -101,7 +107,7 @@ jobs:
           echo "✅ 필수 Secrets 확인"
 
       - name: Railway CLI 설치
-        run: npm install -g @railway/cli
+        run: npm install -g @railway/cli@5.54.0  # P2: 버전 고정 — major breaking change가 파이프라인을 조용히 깨는 것 방지
 
       - name: Secrets → Railway 변수 동기화
         env:
@@ -132,6 +138,7 @@ jobs:
           PASSWORD_RESET_WINDOW_MINUTES: ${{ secrets.PASSWORD_RESET_WINDOW_MINUTES }}
           SERVICE: ${{ vars.RAILWAY_SERVICE_NAME }}
           RAIL_ENV: ${{ vars.RAILWAY_ENVIRONMENT }}
+          BUILD_SHA: ${{ github.sha }}  # P1: 배포 지문 — Secret이 아니라 GitHub 컨텍스트(커밋 SHA)
         run: |
           SERVICE="${SERVICE:-ai-chatbot-service}"
           RAIL_ENV="${RAIL_ENV:-production}"
@@ -141,6 +148,7 @@ jobs:
             echo "  · $1: 동기화 완료"
           }
           echo "🔄 GitHub Secrets → Railway 변수 (source of truth: Secrets)"
+          set_var BUILD_SHA "$BUILD_SHA" ""
           set_var AI_API_KEY "$AI_API_KEY" ""
           [ -n "$AI_API_KEY" ] || echo "  ⚠️ AI_API_KEY 없음 → 빈 값으로 동기화하며 데모 모드로 배포합니다"
           set_var AI_BASE_URL "$AI_BASE_URL" "https://api.openai.com/v1/chat/completions"
@@ -179,15 +187,26 @@ jobs:
           RAIL_ENV="${RAIL_ENV:-production}"
           railway up --detach --service "$SERVICE" --environment "$RAIL_ENV"
 
-      - name: /health 폴링 (최대 5분)
+      - name: 새 배포 롤아웃 대기 (build 지문 일치, 최대 10분)
         env:
           URL: ${{ secrets.DEPLOY_URL }}
         run: |
+          # P1: railway up --detach는 새 배포가 서빙되기 전에 반환한다. health·스모크가
+          # 아직 "구버전" 인스턴스에 통과할 수 있어(Python 로직 변경 기동 실패 시
+          # 구코드가 계속 돌면서 CD는 초록 — 2026-09-12 11:30KST 사례).
+          # app이 /health.build로 커밋 SHA를 반환하므로, 이번 커밋이 실제로
+          # 서빙될 때까지 대기한다.
           for i in $(seq 1 60); do
-            if curl -sf "$URL/health" > /dev/null; then echo "✅ 헬스체크 통과"; exit 0; fi
-            sleep 5
+            BUILD=$(curl -sf "$URL/health" 2>/dev/null | jq -r '.build // empty') || BUILD=""
+            if [ "$BUILD" = "$GITHUB_SHA" ]; then
+              echo "✅ 새 배포 서빙 확인 (build=$BUILD, ${i}회 시도)"
+              exit 0
+            fi
+            echo "⏳ 새 배포 아직 서빙 아님 (build=${BUILD:-없음}) — ${i}/60, 10초 후 재시도"
+            sleep 10
           done
-          echo "❌ 5분 내 헬스체크 실패"; exit 1
+          echo "❌ 10분 내 새 배포 build 지문 확인 실패 — Railway 배포 히스토리를 확인해라"
+          exit 1
 
       - name: E2E 스모크 테스트
         env:
