@@ -8,3 +8,6 @@ itsdangerous>=2.1
 pydantic>=2.6
 pydantic-settings>=2.2
 email-validator>=2.1
+alembic>=1.13
+# Postgres 전환 시 설치: psycopg2-binary>=2.9
+# MySQL 전환 시 설치: pymysql>=1.1

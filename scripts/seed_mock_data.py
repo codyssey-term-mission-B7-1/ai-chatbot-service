@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.database import Base, SessionLocal, engine  # noqa: E402
+from app.database import SessionLocal, engine, init_db  # noqa: E402
 from app.models import ChatLog, User  # noqa: E402
 from app.services.security import hash_password  # noqa: E402
 
@@ -58,7 +58,7 @@ def db_path_hint() -> str:
 
 
 def seed(fresh: bool) -> None:
-    Base.metadata.create_all(bind=engine)
+    init_db()
     db = SessionLocal()
     try:
         if fresh:
