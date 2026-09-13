@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
   <title>{% block title %}AI 챗봇{% endblock %} · AI Chatbot Service</title>
-  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-  <script src="/static/js/theme-init.js"></script>
-  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v={{ asset_v }}">
+  <script src="/static/js/theme-init.js?v={{ asset_v }}"></script>
+  <link rel="stylesheet" href="/static/css/style.css?v={{ asset_v }}">
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <nav class="nav">
@@ -34,9 +34,9 @@
       {% block content %}{% endblock %}
     </main>
   </div>
-  <script src="/static/js/theme.js"></script>
-  <script src="/static/js/form-utils.js"></script>
-  <script src="/static/js/logout.js"></script>
+  <script src="/static/js/theme.js?v={{ asset_v }}"></script>
+  <script src="/static/js/form-utils.js?v={{ asset_v }}"></script>
+  <script src="/static/js/logout.js?v={{ asset_v }}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

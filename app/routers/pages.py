@@ -19,6 +19,9 @@ from app.services.password_reset import is_reset_token_valid
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+# 정적 자산 캐시 버스팅 — 자산 URL에 배포 지문(커밋 SHA 앞 7자)을 붙여 배포 후 브라우저가
+# 항상 새 CSS/JS를 받아오도록 한다(구버전 자산 잔류 방지). BUILD_SHA 없는 로컬은 'dev'.
+templates.env.globals["asset_v"] = settings.build_sha[:7] or "dev"
 router = APIRouter(include_in_schema=False)
 logger = logging.getLogger("app.admin")
 
