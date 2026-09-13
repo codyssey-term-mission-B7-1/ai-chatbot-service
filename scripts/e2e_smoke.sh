@@ -23,6 +23,14 @@ step() { # step <이름> <기대status> <curl인자...>
 }
 
 step "① 헬스체크"            200 "$BASE/health"
+# 스키마 동기화 확인 — 2026-09-13 사고(마이그레이션 미반영 500) 이후 게이트.
+# /health는 200을 유지하므로 schema 필드가 ok가 아닌지 여기서 막는다.
+SCHEMA=$(echo "$LAST_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("schema","missing"))')
+if [ "$SCHEMA" != "ok" ]; then
+  echo "❌ 스키마 동기화 실패 — schema=$SCHEMA (Railway 로그의 init_db/readyz_schema_failure 확인)"
+  exit 1
+fi
+echo "    └ 스키마 동기화: ok"
 step "② 회원가입 ($EMAIL)"    201 -X POST "$BASE/api/auth/signup" -H 'Content-Type: application/json' \
      -d "{\"email\":\"$EMAIL\",\"password\":\"Test1234!\"}"
 step "③ 로그인 (쿠키 발급)"    200 -c "$COOKIE" -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
