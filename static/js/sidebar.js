@@ -134,7 +134,10 @@
       hooks.create(t);
       return;
     }
-    location.href = '/';
+    // 다른 페이지(기록·관리자) — 방금 만든 대화가 아니라 기본 대화로 돌아가면
+    // "세션이 바뀌었다"고 인식될 수 있다. 새 대화가 ?thread=로 열리도록 이동한다.
+    const t = await res.json();
+    location.href = '/?thread=' + t.id;
   }
 
   // 대화 삭제 — 확인 후 DELETE. 채팅 페이지 훅(현재 대화 처리)이 있으면 호출
@@ -154,8 +157,10 @@
       if (hooks.error) hooks.error(errorText(data, res.status));
       return;
     }
-    if (hooks.afterDelete) hooks.afterDelete(id);
+    // 목록을 먼저 갱신(삭제된 대화 소멸)한 뒤 채팅 페이지 훅을 호출 —
+    // 채팅창·현재 대화가 갱신된 목록 기준으로 동기화돼야 컨텍스트 어긋남(꼬임)이 없다.
     await loadThreads();
+    if (hooks.afterDelete) hooks.afterDelete(id);
     closeSidebarIfMobile();
   }
 

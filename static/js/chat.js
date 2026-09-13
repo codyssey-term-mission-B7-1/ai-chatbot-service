@@ -130,6 +130,19 @@ async function send(e) {
 
     loading.remove();
 
+    // 성공·실패 모두 서버가 스레드를 생성/갱신했을 수 있어(AI 오류도 로그는 저장)
+    // 목록을 항상 동기화한다. 안 하면 '마지막 대화 삭제 후 첫 전송' 등에서
+    // 서버에는 대화가 생겼는데 목록이 비어 있는 불일치가 남는다(DB 꼬임 체감의 원인).
+    await SidebarUI.refresh();
+    // 첫 메시지(기본 대화 자동 생성) 이후에는 id를 확보해 이후 전송이 명시적으로 해당 대화로
+    if (currentThreadId === null) {
+      const ts = SidebarUI.threads();
+      if (ts.length) {
+        currentThreadId = Math.min(...ts.map((t) => t.id));
+        SidebarUI.setActive(currentThreadId);
+      }
+    }
+
     if (!res.ok) { // 타임아웃(504)/AI 오류(502) 등 서버 안내 메시지 표시
       addBubble(errorText(data, res.status), 'ai error-bubble');
       return;
@@ -141,16 +154,6 @@ async function send(e) {
       return;
     }
     addBubble(data.answer, 'ai', nowTime());
-    // 제목 자동 생성·활동순 정렬 반영 — 대화 목록 조용히 갱신
-    await SidebarUI.refresh();
-    // 첫 메시지(기본 대화 자동 생성) 이후에는 id를 확보해 이후 전송이 명시적으로 해당 대화로
-    if (currentThreadId === null) {
-      const ts = SidebarUI.threads();
-      if (ts.length) {
-        currentThreadId = Math.min(...ts.map((t) => t.id));
-        SidebarUI.setActive(currentThreadId);
-      }
-    }
   } catch (err) {
     loading.remove();
     showError('네트워크 오류예요. 연결을 확인하고 다시 시도해 주세요.');
@@ -232,11 +235,16 @@ SidebarUI.register({
   },
   afterDelete: (deletedId) => {
     if (deletedId === currentThreadId) {
-      // 남은 대화 중 가장 오래된(id 최소)이 새 기본 대화 — 남은 목록에서 재계산
+      // 현재 대화가 삭제됨 — 남은 대화 중 가장 오래된(id 최소)이 새 기본 대화.
+      // 목록 갱신 후 호출되므로(삭제된 대화는 이미 소멸) 남은 목록에서 재계산하고,
+      // 새 기본 대화의 이력을 불러와 창과 서버 컨텍스트를 동기화한다.
+      // (이걸 안 하면 빈 창에 보낸 질문이 서버쪽은 남은 대화 맥락으로 처리돼 꼬인다)
       clearWindow();
       const ts = SidebarUI.threads().filter((t) => t.id !== deletedId);
       currentThreadId = ts.length ? Math.min(...ts.map((t) => t.id)) : null;
       SidebarUI.setActive(currentThreadId);
+      stickToBottom = true;
+      loadHistory();
     }
   },
   error: showError,
