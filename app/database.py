@@ -97,6 +97,8 @@ def _classify_db_error(exc: Exception) -> str:
     (로그·응답 정책: 원문/파라미터 노출 금지 — 예외 타입+분류만)
     """
     msg = str(exc).lower()
+    if "legacy schema incomplete" in msg:
+        return "legacy_incomplete"
     if "already exists" in msg:
         return "table_exists"
     if "no such table" in msg:
@@ -123,6 +125,23 @@ def _has_any_table(eng) -> bool:
 def _has_alembic_version_table(eng) -> bool:
     with eng.connect() as conn:
         return "alembic_version" in inspect(conn).get_table_names()
+
+
+def _has_version_row(eng) -> bool:
+    """``alembic_version``에 실제 리비전 행이 있는지 — 빈 테이블(0행)은 레거시 상태다.
+
+    alembic ``upgrade``는 버전 테이블을 먼저 만들고 이어서 마이그레이션을 실행한다.
+    실패한 실행은 빈 테이블 껍질만 남기고, 다음 기동에서
+    ``_has_alembic_version_table``이 '테이블 있음'으로 adopt를 스킵하면 root
+    마이그레이션이 다시 돌아 ``table users already exists``가 반복된다.
+    2026-09-13 운영 사고: 이 빈 테이블 잔여 때문에 adopt가 한 번도 실행되지
+    않고 스키마 동기화가 무한 루프였다.
+    """
+    with eng.connect() as conn:
+        try:
+            return conn.execute(text("SELECT 1 FROM alembic_version LIMIT 1")).first() is not None
+        except Exception:
+            return False
 
 
 def _schema_is_current(eng) -> bool:
@@ -178,7 +197,8 @@ def init_db(alembic_cfg=None, eng=None) -> None:
     - 인메모리/테스트/완전히 빈 파일 DB: Base.metadata.create_all로 테이블을 만들고
       alembic stamp head로 최신 리비전을 마킹.
     - 기존 DB: ``alembic upgrade head``로 누락 마이그레이션만 적용.
-    - 레거시 DB(버전 테이블 없음): 리비전 인수(adopt) 후 누락 마이그레이션 적용.
+    - 레거시 DB(버전 테이블이 없거나 빈 테이블): 리비전 인수(adopt) 후 누락
+      마이그레이션 적용. 빈 테이블 = 실패한 upgrade가 남긴 껍질(2026-09-13 사고).
 
     ``alembic_cfg``/``eng``는 테스트 주입용이며 기본값은 모듈 전역(앱)이다.
     """
@@ -201,9 +221,18 @@ def init_db(alembic_cfg=None, eng=None) -> None:
             Base.metadata.create_all(bind=target)
             command.stamp(alembic_cfg, "head")
         else:
-            if not _has_alembic_version_table(target):
+            # 버전 테이블이 없거나 빈 테이블(0행) = 레거시 상태. 실패한 upgrade는
+            # 빈 테이블 껍질만 남기므로(_has_version_row 참조) 그 경우에도 adopt.
+            if not _has_alembic_version_table(target) or not _has_version_row(target):
                 _adopt_legacy_schema(alembic_cfg, target)
             command.upgrade(alembic_cfg, "head")
+            # 레거시 DB가 init(root) 마이그레이션보다 오래전 구조면 root 스탬프로
+            # root가 만든 테이블이 생성되지 않는다 — '나중에 500' 대신 기동 시점 실패.
+            if not _schema_is_current(target):
+                raise RuntimeError(
+                    "Legacy schema incomplete: 스키마가 최신이 아님 — "
+                    "root 이전 구조의 DB는 데이터 백업 후 초기화하세요."
+                )
     except Exception as exc:
         # 실패는 호출 측(lifespan)이 기존처럼 로그로 삼키되, 상태는 노출한다.
         schema_sync.update(status="error", error=_classify_db_error(exc), revision=None)

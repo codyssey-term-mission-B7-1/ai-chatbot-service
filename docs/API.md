@@ -170,7 +170,8 @@ DELETE /api/threads/2      → 200 {"deleted":true}    (그 대화의 기록도 
 `ai_mode=real`은 키가 있어 실 제공자가 선택됐다는 뜻이지, 외부 AI 접속 성공 증거가 아니다.
 
 - `build`: CD가 주입한 배포 지문(커밋 SHA). 빈 값이면 개발·미주입.
-- `schema`: 기동 시 스키마 동기화(alembic) 결과 — `ok` / `error:<예외타입>` / `pending`. **`/health`는 200을 유지**하고 상태만 노출한다(2026-09-13 스키마 미반영 사고 이후 도입). 스키마 변경 배포 후 이 값이 `ok`가 아니라면 스키마를 쓰는 API를 사용하지 마라.
+- `schema`: 기동 시 스키마 동기화(alembic) 결과 — `ok` / `error:<분류코드>` / `pending`. **`/health`는 200을 유지**하고 상태만 노출한다(2026-09-13 스키마 미반영 사고 이후 도입). 스키마 변경 배포 후 이 값이 `ok`가 아니라면 스키마를 쓰는 API를 사용하지 마라.
+  - `error`의 `<분류코드>`는 원문(파라미터·SQL)을 노출하지 않는 짧은 식별자: `table_exists`(재전사용 기존 테이블 — 레거시 스키마 미인수 흔적), `no_such_table`, `no_such_column`, `db_locked`, `db_readonly`, `db_io_error`, `db_full`, `legacy_incomplete`(root 이전 구조의 DB), 그 외에는 예외 타입명.
 - `/readyz`: DB 확인(SELECT 1) **또는** 스키마 동기화 실패 시 503(`reason=schema_sync_failed` + `error`). 로드밸런서는 `/health`를 쓰므로 프로세스는 살아 있으나 스키마가 깨진 인스턴스를 운영자가 즉시 발견할 수 있다.
 
 ## 오류 표
