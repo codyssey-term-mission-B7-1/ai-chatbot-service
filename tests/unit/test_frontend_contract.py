@@ -123,3 +123,49 @@ def test_password_confirmation_fields_and_client_guard_present():
     assert "password-confirm" in auth_js and "일치하지 않아요" in auth_js
     reset_js = (ROOT / "static/js/password-reset.js").read_text()
     assert "password-confirm" in reset_js and "일치하지 않아요" in reset_js
+
+
+def test_theme_toggle_contract():
+    """다크/라이트 수동 토글 — localStorage·no-JS 폴백·FOUC 방지 부트스트랩이 있어야 한다."""
+    init = (ROOT / "static/js/theme-init.js").read_text()
+    theme = (ROOT / "static/js/theme.js").read_text()
+    base = (ROOT / "templates/base.html").read_text()
+    css = (ROOT / "static/css/style.css").read_text()
+    # head에서 스타일시트보다 먼저(첫 페인트 전 data-theme 적용 — FOUC 방지)
+    assert "theme-init.js" in base
+    assert base.index("theme-init.js") < base.index("style.css")
+    assert "data-theme" in init and "prefers-color-scheme: dark" in init
+    # 수동 선택은 localStorage에 저장되어 전 페이지·세션 유지
+    assert "localStorage" in init and "localStorage" in theme
+    assert 'id="theme-toggle"' in base
+    assert "/static/js/theme.js" in base
+    # CSS는 data-theme="dark" 토큰 재지정 + no-JS 폴백(시스템 설정) 모두 지원
+    assert 'data-theme="dark"' in css
+    assert "@media (prefers-color-scheme: dark)" in css
+    # 3상태(시스템→라이트→다크) 순환
+    for mode in ("system", "light", "dark"):
+        assert f'"{mode}"' in theme
+
+
+def test_mobile_first_layout_contract():
+    """모바일 퍼스트 — 기본=모바일, ≥768px에서 데스크톱 조정. 16px 입력·100dvh·터치 힌트 숨김."""
+    css = (ROOT / "static/css/style.css").read_text()
+    assert "min-width: 768px" in css  # 모바일 퍼스트(기본=모바일) 증거
+    assert "100dvh" in css  # 모바일 주소창 고려
+    assert "font-size: 16px" in css  # iOS 포커스 시 자동 줌 방지
+    # 터치 디바이스(hover 없으면)에서 키보드 조합키 힌트 숨김
+    assert "hover: none" in css
+    html = (ROOT / "templates/chat.html").read_text()
+    assert 'class="kbd-only"' in html
+    # 모바일 탭 타깃 44px 유지(기존 계약)
+    assert "min-height: 44px" in css
+
+
+def test_chat_js_autoscroll_and_thread_states():
+    """채팅 하단 고정(읽기 중엔 안 당김) + 대화 목록 비동기 4상태(로드 중/실패/빈/성공)."""
+    code = (ROOT / "static/js/chat.js").read_text()
+    assert "stickToBottom" in code and "pinToBottom" in code
+    assert "threadsLoaded" in code and "threadsLoadError" in code
+    assert "thread-retry" in code  # 실패 상태의 '다시 시도'
+    css = (ROOT / "static/css/style.css").read_text()
+    assert ".thread-state" in css and ".thread-retry" in css
