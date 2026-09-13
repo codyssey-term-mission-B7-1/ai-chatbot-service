@@ -56,11 +56,54 @@ def test_upgrade_head_creates_all_tables(fresh_sqlite_url):
     for expected in (
         "users",
         "chat_logs",
+        "threads",
         "admin_grants",
         "session_revocations",
         "password_resets",
     ):
         assert expected in tables, f"테이블 {expected}가 마이그레이션으로 생성되어야 한다."
+
+
+def test_threads_migration_backfills_legacy_rows(fresh_sqlite_url):
+    """기존 DB(레거시) 업그레이드: 사용자당 '기본 대화' 생성 + 기존 기록을 그 스레드에 귀속."""
+    from sqlalchemy import text
+
+    cfg = _alembic_config(fresh_sqlite_url)
+    command.upgrade(cfg, "9dea740a4bf1")  # threads 없는 옛 스키마
+
+    engine = create_engine(fresh_sqlite_url)
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO users (email, password_hash, nickname, created_at) "
+                "VALUES ('legacy@example.com', 'hash', '레거시', '2026-01-01 00:00:00+00:00')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO chat_logs "
+                "(user_id, question, answer, latency_ms, status, request_id, created_at) "
+                "VALUES (1, '레거시 질문', '레거시 답변', 10, 'success', "
+                "'req1', '2026-01-02 00:00:00+00:00')"
+            )
+        )
+    engine.dispose()
+
+    command.upgrade(cfg, "head")
+
+    engine = create_engine(fresh_sqlite_url)
+    event.listens_for(engine, "connect")(_sqlite_pragmas)
+    try:
+        with engine.connect() as conn:
+            threads = conn.execute(text("SELECT id, user_id, title FROM threads")).fetchall()
+            assert len(threads) == 1 and threads[0][2] == "기본 대화"
+            thread_id = threads[0][0]
+            rows = conn.execute(text("SELECT thread_id FROM chat_logs")).fetchall()
+            assert all(
+                row[0] == thread_id for row in rows
+            ), "레거시 기록이 기본 대화에 귀속되어야 한다."
+    finally:
+        engine.dispose()
 
 
 def test_models_metadata_matches_head(fresh_sqlite_url):

@@ -9,10 +9,19 @@
   </div>
   {% endif %}
 
+  <div class="thread-bar">
+    <button type="button" id="new-thread-btn" class="thread-btn">＋ 새 채팅</button>
+    <button type="button" id="threads-toggle" class="thread-btn" aria-expanded="false">
+      🗂 대화 <span id="thread-count" class="thread-count">0</span>
+    </button>
+    <ul id="thread-list" class="thread-list" hidden></ul>
+  </div>
+
   <div id="chat-window" class="chat-window" data-context-turns="{{ context_turns }}" data-max-question-length="{{ max_question_length }}">
-    <div class="bubble ai welcome">
+    <div class="bubble ai welcome" id="welcome-bubble">
       안녕하세요, {{ nickname }}님! 😊<br>
-      궁금한 걸 물어보세요. 직전 최대 {{ context_turns }}쌍의 성공한 질문·응답을 문맥으로 사용합니다.
+      궁금한 걸 물어보세요. 이 대화의 최근 {{ context_turns }}쌍을 문맥으로 사용해요.
+      새 주제로는 '＋ 새 채팅'을 눌러요.
     </div>
   </div>
 

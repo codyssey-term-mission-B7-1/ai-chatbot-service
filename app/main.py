@@ -20,7 +20,7 @@ from app.config import settings
 from app.database import engine, init_db
 from app.logging_config import REQUEST_ID, log_event, setup_logging
 from app.policies import SECURITY_HEADERS
-from app.routers import admin, auth, chat, logs, pages
+from app.routers import admin, auth, chat, logs, pages, threads
 
 setup_logging()
 logger = logging.getLogger("app")
@@ -253,6 +253,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 app.include_router(auth.router)
 app.include_router(chat.router)
+app.include_router(threads.router)
 app.include_router(logs.router)
 app.include_router(admin.router)
 app.include_router(pages.router)
