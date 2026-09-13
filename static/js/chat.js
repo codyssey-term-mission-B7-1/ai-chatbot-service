@@ -1,14 +1,24 @@
-// 채팅 화면 로직 — 입력 검증(빈 값/길이), 로딩/에러 상태 표시
+// 채팅 화면 로직 — 입력 검증(빈 값/길이), 로딩/에러 상태 표시, 대화(스레드) 전환
 const form = document.getElementById('chat-form');
 const input = document.getElementById('question');
 const window_ = document.getElementById('chat-window');
 const sendBtn = document.getElementById('send-btn');
 const counter = document.getElementById('count');
+const welcomeBubble = document.getElementById('welcome-bubble');
+const newThreadBtn = document.getElementById('new-thread-btn');
+const threadsToggle = document.getElementById('threads-toggle');
+const threadList = document.getElementById('thread-list');
+const threadCount = document.getElementById('thread-count');
 
 const MAX_LEN = parseInt(window_.dataset.maxQuestionLength || '1000', 10);
 
 // 이전 대화 복원 범위 — 서버 CONTEXT_TURNS와 동일 (AI가 기억하는 맥락과 일치)
 const HISTORY_TURNS = parseInt(window_.dataset.contextTurns || '5', 10);
+
+// 현재 대화(스레드) — null이면 서버 기본 대화(첫 채팅 시 자동 생성)
+let currentThreadId = null;
+// 마지막으로 로드한 대화 목록 — active 표시·삭제 처리에 사용
+let threadsCache = [];
 
 input.addEventListener('input', () => {
   input.style.height = 'auto';
@@ -95,10 +105,11 @@ async function send(e) {
   sendBtn.disabled = true;
 
   try {
+    const body = currentThreadId ? { question, thread_id: currentThreadId } : { question };
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question }),
+      body: JSON.stringify(body),
     });
 
     // 401은 로그인 페이지로(비로그인 진입 차단 요구사항)
@@ -124,6 +135,8 @@ async function send(e) {
       return;
     }
     addBubble(data.answer, 'ai', nowTime());
+    // 제목 자동 생성·활동순 정렬 반영 — 대화 목록 조용히 갱신
+    loadThreads();
   } catch (err) {
     loading.remove();
     showError('네트워크 오류예요. 연결을 확인하고 다시 시도해 주세요.');
@@ -140,12 +153,15 @@ function addDivider(text) {
   window_.appendChild(div);
 }
 
-// 이전 대화 복원 — 채팅방에 돌아왔을 때 AI 맥락(직전 N개 성공 Q/A)을 말풍선으로 표시
+// 이전 대화 복원 — 채팅방에 돌아왔을 때 AI 맥락(현재 대화의 직전 N개 성공 Q/A)을 말풍선으로 표시
 async function loadHistory() {
   if (HISTORY_TURNS <= 0) return;
   let logs;
   try {
-    const res = await fetch(`/api/me/chats?status=success&limit=${HISTORY_TURNS}`);
+    const url = currentThreadId
+      ? `/api/me/chats?status=success&limit=${HISTORY_TURNS}&thread_id=${currentThreadId}`
+      : `/api/me/chats?status=success&limit=${HISTORY_TURNS}`;
+    const res = await fetch(url);
     if (res.status === 401) {  // 세션 만료 → 입력 전에 로그인 페이지로 (입력 유실 방지)
       location.href = '/login';
       return;
@@ -166,6 +182,141 @@ async function loadHistory() {
   }
 }
 
+// ---- 대화(스레드) 관리 -------------------------------------------------
+
+// 대화 목록 로드 + 렌더. 401은 로그인으로.
+async function loadThreads() {
+  let res;
+  try {
+    res = await fetch('/api/threads');
+  } catch {
+    return; // 네트워크 오류 → 조용히 스킵
+  }
+  if (res.status === 401) { location.href = '/login'; return; }
+  if (!res.ok) return;
+  threadsCache = await res.json();
+  renderThreadList(threadsCache);
+  // 현재 대화가 목록에서 사라졌다면(삭제) 서버 기본 대화(가장 오래된)로 복귀
+  if (currentThreadId !== null && !threadsCache.some((t) => t.id === currentThreadId)) {
+    currentThreadId = threadsCache.length ? Math.min(...threadsCache.map((t) => t.id)) : null;
+  }
+  if (currentThreadId === null && threadsCache.length) {
+    // 페이지 첫 진입 — /api/chat에 thread_id 미전달 때 서버가 쓰는 기본 대화와 정렬
+    currentThreadId = Math.min(...threadsCache.map((t) => t.id));
+  }
+}
+
+function renderThreadList(threads) {
+  threadCount.textContent = String(threads.length);
+  threadList.textContent = '';
+  for (const t of threads) {
+    const li = document.createElement('li');
+    li.className = 'thread-item' + (t.id === currentThreadId ? ' active' : '');
+
+    const label = document.createElement('button');
+    label.type = 'button';
+    label.className = 'thread-label';
+    label.dataset.id = String(t.id);
+    label.textContent = t.title || '새 대화';
+    label.title = t.title || '새 대화';
+    label.addEventListener('click', () => switchThread(t.id));
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'thread-delete';
+    del.setAttribute('aria-label', '대화 삭제');
+    del.textContent = '×';
+    del.addEventListener('click', () => deleteThread(t.id));
+
+    li.append(label, del);
+    threadList.appendChild(li);
+  }
+}
+
+// 인사말 제외하고 말풍선·구분선 모두 지움
+function clearWindow() {
+  for (const node of [...window_.children]) {
+    if (node !== welcomeBubble) node.remove();
+  }
+}
+
+function closeThreadList() {
+  threadList.hidden = true;
+  threadsToggle.setAttribute('aria-expanded', 'false');
+}
+
+// 대화 전환 — 창 비우고 해당 대화의 이전 대화만 복원
+function switchThread(id) {
+  if (id === currentThreadId) return;
+  currentThreadId = id;
+  clearWindow();
+  renderThreadList(threadsCache);  // active 표시 갱신
+  loadHistory();
+  closeThreadList();
+}
+
+// 새 채팅 — 빈 기록의 대화 만들고 바로 전환
+async function newThread() {
+  let res;
+  try {
+    res = await fetch('/api/threads', { method: 'POST' });
+  } catch {
+    showError('네트워크 오류예요. 연결을 확인하고 다시 시도해 주세요.');
+    return;
+  }
+  if (res.status === 401) { location.href = '/login'; return; }
+  if (!res.ok) {
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* ignore */ }
+    showError(errorText(data, res.status));
+    return;
+  }
+  const t = await res.json();
+  currentThreadId = t.id;
+  clearWindow();
+  await loadThreads();
+  closeThreadList();
+  input.focus();
+}
+
+// 대화 삭제 — 확인 후 DELETE, 지운 게 현재면 남은 것 중 기본 대화로 복귀
+async function deleteThread(id) {
+  if (!confirm('이 대화와 그 기록을 삭제할까요? 되돌릴 수 없어요.')) return;
+  let res;
+  try {
+    res = await fetch(`/api/threads/${id}`, { method: 'DELETE' });
+  } catch {
+    showError('네트워크 오류예요. 연결을 확인하고 다시 시도해 주세요.');
+    return;
+  }
+  if (res.status === 401) { location.href = '/login'; return; }
+  if (!res.ok) {
+    let data = null;
+    try { data = await res.json(); } catch (e) { /* ignore */ }
+    showError(errorText(data, res.status));
+    return;
+  }
+  if (id === currentThreadId) {
+    // 남은 대화 중 가장 오래된(id 최소)이 새 기본 대화 — loadThreads에서 재계산된다.
+    clearWindow();
+  }
+  await loadThreads();
+  loadHistory();
+  closeThreadList();
+}
+
+newThreadBtn.addEventListener('click', newThread);
+threadsToggle.addEventListener('click', () => {
+  threadList.hidden = !threadList.hidden;
+  threadsToggle.setAttribute('aria-expanded', String(!threadList.hidden));
+});
+
+// ---- 초기화 -----------------------------------------------------------
+async function init() {
+  await loadThreads();
+  await loadHistory();
+}
+
 // 데모 모드 배너 — 현재 세션에서만 닫을 수 있다(새 세션에서는 재표시)
 const banner = document.getElementById('demo-banner');
 const bannerClose = document.getElementById('banner-close');
@@ -178,7 +329,7 @@ if (banner && bannerClose) {
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', loadHistory);
+  document.addEventListener('DOMContentLoaded', init);
 } else {
-  loadHistory();
+  init();
 }
