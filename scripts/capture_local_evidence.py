@@ -164,6 +164,9 @@ async def browser_checks(base: str, output: Path, grant) -> dict:
         await capture('08-mobile-chat.png', '390px 로컬 Chromium 뷰포트; 실기기 검증과 구분')
         assert await page.evaluate('document.documentElement.scrollWidth <= innerWidth')
         checks.append('390px 뷰포트 가로 넘침 없음')
+        # 모바일 채팅: 로그아웃은 사이드바(드로어) 하단에 — 드로어를 연 뒤 클릭
+        await page.click('#menu-toggle')
+        await page.wait_for_timeout(350)  # 드로어 슬라이드 트랜지션(0.22s) 대기
         await page.get_by_role('button', name='로그아웃').click()
         await page.wait_for_url('**/login')
         await page.goto(base + '/logs')
