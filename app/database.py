@@ -85,32 +85,94 @@ if _is_sqlite:
     event.listens_for(engine, "connect")(_sqlite_pragmas_on_connect)
 
 
-def _has_any_table() -> bool:
+def _has_any_table(eng) -> bool:
     """DB에 어떤 테이블이라도 있는지 — 빈 DB 판단용."""
-    with engine.connect() as conn:
+    with eng.connect() as conn:
         return bool(inspect(conn).get_table_names())
 
 
-def init_db() -> None:
+def _has_alembic_version_table(eng) -> bool:
+    with eng.connect() as conn:
+        return "alembic_version" in inspect(conn).get_table_names()
+
+
+def _schema_is_current(eng) -> bool:
+    """현재 DB가 모델이 요구하는 모든 테이블·컬럼을 포함하는지."""
+    with eng.connect() as conn:
+        insp = inspect(conn)
+        have_tables = set(insp.get_table_names())
+        for name, table in Base.metadata.tables.items():
+            if name not in have_tables:
+                return False
+            have_cols = {c["name"] for c in insp.get_columns(name)}
+            if not {c.name for c in table.columns} <= have_cols:
+                return False
+    return True
+
+
+def _adopt_legacy_schema(alembic_cfg, eng) -> None:
+    """``alembic_version``이 없는 레거시 DB에 리비전 마크를 부여한다.
+
+    alembic 도입(ceed2b7) 전 create_all로 만들어진 DB는 버전 테이블이 없다.
+    이 상태로 ``upgrade head``를 돌리면 '아무것도 안 적용된' DB로 오인해 init
+    마이그레이션을 처음부터 재실행하고, ``table users already exists``로 항상
+    실패한다. lifespan이 그 오류를 삼키므로(프로세스는 기동) 스키마가 조용히
+    갱신되지 않았다 — 2026-09-13 운영에서 threads 마이그레이션이 반영되지
+    않아 신규 API 500이 난 사고의 원인.
+
+    스키마가 이미 최신이면 head 스탬프만. 아니면 이 DB의 상태는 base(init)
+    스키마(create_all과 init 마이그레이션이 같은 모델에서 생성)이므로 base
+    리비션을 스탬프하고, 호출 측이 남은 마이그레이션을 upgrade로 적용한다.
+    """
+    from alembic import command
+    from alembic.script import ScriptDirectory
+
+    if _schema_is_current(eng):
+        command.stamp(alembic_cfg, "head")
+        return
+    # base(루트) 리비전 = down_revision이 없는 것 — 분기 히스토리에서는 둘 이상.
+    roots = [
+        rev
+        for rev in ScriptDirectory.from_config(alembic_cfg).walk_revisions()
+        if rev.down_revision is None
+    ]
+    if len(roots) != 1:
+        raise RuntimeError(
+            f"레거시 DB 인수(adopt)은 단일 루트 리비전을 전제로 한다 (검출: {len(roots)}개)."
+        )
+    command.stamp(alembic_cfg, roots[0].revision)
+
+
+def init_db(alembic_cfg=None, eng=None) -> None:
     """앱 시작 시 스키마를 동기화.
 
     - 인메모리/테스트/완전히 빈 파일 DB: Base.metadata.create_all로 테이블을 만들고
       alembic stamp head로 최신 리비전을 마킹.
     - 기존 DB: ``alembic upgrade head``로 누락 마이그레이션만 적용.
+    - 레거시 DB(버전 테이블 없음): 리비전 인수(adopt) 후 누락 마이그레이션 적용.
+
+    ``alembic_cfg``/``eng``는 테스트 주입용이며 기본값은 모듈 전역(앱)이다.
     """
     import os
 
+    import app.models  # noqa: F401 — Base.metadata에 모든 모델이 등록되도록
     from alembic import command
     from alembic.config import Config
 
-    in_memory = settings.database_url in ("sqlite://", "sqlite:///:memory:")
+    target = engine if eng is None else eng
+    if alembic_cfg is None:
+        ini_path = Path(__file__).resolve().parent.parent / "alembic.ini"
+        alembic_cfg = Config(str(ini_path))
+
+    # "sqlite://"은 SQLAlchemy가 "sqlite:///"으로 정규화 — 인메모리 판별에 두 표기 모두.
+    in_memory = str(target.url) in ("sqlite://", "sqlite:///", "sqlite:///:memory:")
     is_test = os.environ.get("TESTING") == "1"
-    ini_path = Path(__file__).resolve().parent.parent / "alembic.ini"
-    alembic_cfg = Config(str(ini_path))
-    if in_memory or is_test or not _has_any_table():
-        Base.metadata.create_all(bind=engine)
+    if in_memory or is_test or not _has_any_table(target):
+        Base.metadata.create_all(bind=target)
         command.stamp(alembic_cfg, "head")
         return
+    if not _has_alembic_version_table(target):
+        _adopt_legacy_schema(alembic_cfg, target)
     command.upgrade(alembic_cfg, "head")
 
 
