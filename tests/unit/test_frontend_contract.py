@@ -169,3 +169,29 @@ def test_chat_js_autoscroll_and_thread_states():
     assert "thread-retry" in code  # 실패 상태의 '다시 시도'
     css = (ROOT / "static/css/style.css").read_text()
     assert ".thread-state" in css and ".thread-retry" in css
+
+
+def test_sidebar_hamburger_contract():
+    """채팅 화면 — 햄버거 버튼으로 사이드바(대화 목록) 토글. 모바일 드로어/데스크톱 상시+접기."""
+    base = (ROOT / "templates/base.html").read_text()
+    chat = (ROOT / "templates/chat.html").read_text()
+    css = (ROOT / "static/css/style.css").read_text()
+    code = (ROOT / "static/js/chat.js").read_text()
+    # 템플릿 — 체인 구조 + 햄버거(인라인 핸들러 금지, 기존 계약)
+    assert "page-shell" in base and "block menu_toggle" in base and "block sidebar" in base
+    assert 'id="menu-toggle"' in chat and 'id="sidebar"' in chat
+    assert 'class="sidebar-backdrop"' in chat and "chat-layout" in chat and "chat-page" in chat
+    assert 'id="new-thread-btn"' in chat  # 새 채팅은 사이드바에
+    # CSS — 뷰포트 전체 채움(calc 추정 없이), 드로어(translateX) + 데스크톱 접기
+    assert "body.chat-page" in css and "translateX" in css
+    assert "sidebar-collapsed" in css and "min-width: 768px" in css
+    assert "calc(100dvh - " not in css  # 네비 높이 추정 calc 제거(입력창 아래 빈 공간 원인)
+    # JS — 토글 상태(모바일 open / 데스크톱 collapsed) + 저장 + Esc/백드롭 닫기
+    for token in (
+        "sidebar-open",
+        "sidebar-collapsed",
+        "setSidebar",
+        "closeSidebarIfMobile",
+        "sidebarBackdrop",
+    ):
+        assert token in code

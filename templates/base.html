@@ -9,9 +9,12 @@
   <script src="/static/js/theme-init.js"></script>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
   <nav class="nav">
-    <a class="brand" href="/">🤖 AI 챗봇</a>
+    <div class="nav-left">
+      {% block menu_toggle %}{% endblock %}
+      <a class="brand" href="/">🤖 AI 챗봇</a>
+    </div>
     <div class="nav-right">
       <button type="button" id="theme-toggle" class="theme-toggle" aria-label="테마 전환"></button>
       {% if nickname %}
@@ -25,9 +28,12 @@
       {% endif %}
     </div>
   </nav>
-  <main class="container">
-    {% block content %}{% endblock %}
-  </main>
+  <div class="page-shell{% block page_class %}{% endblock %}">
+    {% block sidebar %}{% endblock %}
+    <main class="container">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
   <script src="/static/js/theme.js"></script>
   <script src="/static/js/form-utils.js"></script>
   <script src="/static/js/logout.js"></script>
