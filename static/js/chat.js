@@ -1,20 +1,11 @@
 // 채팅 화면 로직 — 입력 검증(빈 값/길이), 로딩/에러 상태 표시, 대화(스레드) 전환
+// 대화 목록·사이드바 열림/닫기는 전역 sidebar.js가 담당 — 여기서는 window.SidebarUI 훅으로 연동
 const form = document.getElementById('chat-form');
 const input = document.getElementById('question');
 const window_ = document.getElementById('chat-window');
 const sendBtn = document.getElementById('send-btn');
 const counter = document.getElementById('count');
 const welcomeBubble = document.getElementById('welcome-bubble');
-const newThreadBtn = document.getElementById('new-thread-btn');
-const threadList = document.getElementById('thread-list');
-const threadCount = document.getElementById('thread-count');
-
-// 사이드바(대화 메뉴) — 모바일: 오프캔버스 드로어 / 데스크톱: 상시 표시 + ☰ 접기
-const menuToggle = document.getElementById('menu-toggle');
-const sidebarEl = document.getElementById('sidebar');
-const sidebarBackdrop = document.getElementById('sidebar-backdrop');
-const sidebarClose = document.getElementById('sidebar-close');
-const desktopMQ = window.matchMedia('(min-width: 768px)');
 
 const MAX_LEN = parseInt(window_.dataset.maxQuestionLength || '1000', 10);
 
@@ -23,8 +14,6 @@ const HISTORY_TURNS = parseInt(window_.dataset.contextTurns || '5', 10);
 
 // 현재 대화(스레드) — null이면 서버 기본 대화(첫 채팅 시 자동 생성)
 let currentThreadId = null;
-// 마지막으로 로드한 대화 목록 — active 표시·삭제 처리에 사용
-let threadsCache = [];
 
 input.addEventListener('input', () => {
   input.style.height = 'auto';
@@ -97,7 +86,7 @@ function errorText(data, status) {
 
 // 검증·네트워크 오류도 채팅창 안에 말풍선으로 표시한다.
 // 폼 아래 별도 박스를 쓰면 나타날 때 입력 영역이 위로 밀려나 레이아웃이 흔들린다(약 52~70px 실측).
-// 창 안 말풍선은 서버 오류(error-bubble)와 동일한 패턴이라 시각적으로도 일관된다.
+// 창 안 말풍선은 서버 오류(error-bubble)과 동일한 패턴이라 시각적으로도 일관된다.
 function showError(text) {
   const bubble = addBubble(text, 'ai error-bubble');
   bubble.setAttribute('role', 'alert');
@@ -153,7 +142,15 @@ async function send(e) {
     }
     addBubble(data.answer, 'ai', nowTime());
     // 제목 자동 생성·활동순 정렬 반영 — 대화 목록 조용히 갱신
-    loadThreads();
+    await SidebarUI.refresh();
+    // 첫 메시지(기본 대화 자동 생성) 이후에는 id를 확보해 이후 전송이 명시적으로 해당 대화로
+    if (currentThreadId === null) {
+      const ts = SidebarUI.threads();
+      if (ts.length) {
+        currentThreadId = Math.min(...ts.map((t) => t.id));
+        SidebarUI.setActive(currentThreadId);
+      }
+    }
   } catch (err) {
     loading.remove();
     showError('네트워크 오류예요. 연결을 확인하고 다시 시도해 주세요.');
@@ -199,99 +196,7 @@ async function loadHistory() {
   }
 }
 
-// ---- 대화(스레드) 관리 -------------------------------------------------
-
-// 비동기 상태 플래그 — 목록 렌더가 4상태(로드 중/실패/빈/성공)로 나뉘게 한다
-let threadsLoaded = false;
-let threadsLoadError = false;
-
-// 대화 목록 로드 + 렌더. 401은 로그인으로.
-// 첫 로드가 실패하면 '실패 + 다시 시도' 상태를 표시하고, 그 뒤의 실패는 기존 목록을 유지한다.
-async function loadThreads() {
-  let res;
-  try {
-    res = await fetch('/api/threads');
-  } catch {
-    if (!threadsLoaded) threadsLoadError = true;
-    renderThreadList(threadsCache);
-    return; // 네트워크 오류 → 조용히 스킵
-  }
-  if (res.status === 401) { location.href = '/login'; return; }
-  if (!res.ok) {
-    if (!threadsLoaded) threadsLoadError = true;
-    renderThreadList(threadsCache);
-    return;
-  }
-  threadsLoadError = false;
-  threadsCache = await res.json();
-  threadsLoaded = true;
-  renderThreadList(threadsCache);
-  // 현재 대화가 목록에서 사라졌다면(삭제) 서버 기본 대화(가장 오래된)로 복귀
-  if (currentThreadId !== null && !threadsCache.some((t) => t.id === currentThreadId)) {
-    currentThreadId = threadsCache.length ? Math.min(...threadsCache.map((t) => t.id)) : null;
-  }
-  if (currentThreadId === null && threadsCache.length) {
-    // 페이지 첫 진입 — /api/chat에 thread_id 미전달 때 서버가 쓰는 기본 대화와 정렬
-    currentThreadId = Math.min(...threadsCache.map((t) => t.id));
-  }
-}
-
-function renderThreadState(message) {
-  const li = document.createElement('li');
-  li.className = 'thread-state';
-  li.textContent = message;
-  return li;
-}
-
-function renderThreadList(threads) {
-  threadCount.textContent = String(threads.length);
-  threadList.textContent = '';
-
-  // 비동기 상태 — 404/오류가 아닌 '로드 중'·'실패'·'빈' 상태도 명시적으로 표시
-  if (!threadsLoaded) {
-    if (threadsLoadError) {
-      const li = renderThreadState('대화 목록을 불러오지 못했어요. 연결을 확인해 주세요.');
-      const retry = document.createElement('button');
-      retry.type = 'button';
-      retry.className = 'thread-retry';
-      retry.textContent = '다시 시도';
-      retry.addEventListener('click', () => loadThreads());
-      li.appendChild(document.createElement('br'));
-      li.appendChild(retry);
-      threadList.appendChild(li);
-    } else {
-      threadList.appendChild(renderThreadState('대화 목록을 불러오는 중…'));
-    }
-    return;
-  }
-  if (threads.length === 0) {
-    threadList.appendChild(renderThreadState("아직 대화가 없어요. '＋ 새 채팅'으로 시작해 보세요."));
-    return;
-  }
-
-  for (const t of threads) {
-    const li = document.createElement('li');
-    li.className = 'thread-item' + (t.id === currentThreadId ? ' active' : '');
-
-    const label = document.createElement('button');
-    label.type = 'button';
-    label.className = 'thread-label';
-    label.dataset.id = String(t.id);
-    label.textContent = t.title || '새 대화';
-    label.title = t.title || '새 대화';
-    label.addEventListener('click', () => switchThread(t.id));
-
-    const del = document.createElement('button');
-    del.type = 'button';
-    del.className = 'thread-delete';
-    del.setAttribute('aria-label', '대화 삭제');
-    del.textContent = '×';
-    del.addEventListener('click', () => deleteThread(t.id));
-
-    li.append(label, del);
-    threadList.appendChild(li);
-  }
-}
+// ---- 대화(스레드) 전환 — 목록 UI는 sidebar.js, 여기는 창(content) 책임 -------
 
 // 인사말 제외하고 말풍선·구분선 모두 지움
 function clearWindow() {
@@ -300,137 +205,56 @@ function clearWindow() {
   }
 }
 
-function isDesktop() {
-  return desktopMQ.matches;
-}
-
-// 사이드바 열림/접힘 — 모바일: body.sidebar-open(드로어+백드롭), 데스크톱: body.sidebar-collapsed(저장 유지)
-function setSidebar(open) {
-  if (isDesktop()) {
-    document.body.classList.toggle('sidebar-collapsed', !open);
-    try { localStorage.setItem('sidebar-collapsed', open ? '0' : '1'); } catch (e) { /* 무시 */ }
-  } else {
-    document.body.classList.toggle('sidebar-open', open);
-    if (sidebarBackdrop) sidebarBackdrop.hidden = !open;
-  }
-  if (menuToggle) {
-    menuToggle.setAttribute('aria-expanded', String(open));
-    menuToggle.setAttribute('aria-label', open ? '대화 메뉴 닫기' : '대화 메뉴 열기');
-  }
-}
-
-function sidebarOpenNow() {
-  return isDesktop()
-    ? !document.body.classList.contains('sidebar-collapsed')
-    : document.body.classList.contains('sidebar-open');
-}
-
-// 모바일 드로어에서 대화를 고른 뒤에는 자동으로 닫힌다(데스크톱은 유지)
-function closeSidebarIfMobile() {
-  if (!isDesktop() && document.body.classList.contains('sidebar-open')) setSidebar(false);
-}
-
 // 대화 전환 — 창 비우고 해당 대화의 이전 대화만 복원
 function switchThread(id) {
   if (id === currentThreadId) {
-    closeSidebarIfMobile();  // 이미 열려 있는 대화 탭 — 모바일 드로어만 닫고 종료
+    SidebarUI.closeIfMobile();  // 이미 열려 있는 대화 탭 — 모바일 드로어만 닫고 종료
     return;
   }
   currentThreadId = id;
   clearWindow();
   stickToBottom = true;  // 대화 전환 = 최신 메시지부터 보기(의도적)
-  renderThreadList(threadsCache);  // active 표시 갱신
+  SidebarUI.setActive(id);  // active 표시 갱신
   loadHistory();
-  closeSidebarIfMobile();
+  SidebarUI.closeIfMobile();
 }
 
-// 새 채팅 — 빈 기록의 대화 만들고 바로 전환
-async function newThread() {
-  let res;
-  try {
-    res = await fetch('/api/threads', { method: 'POST' });
-  } catch {
-    showError('네트워크 오류예요. 연결을 확인하고 다시 시도해 주세요.');
-    return;
-  }
-  if (res.status === 401) { location.href = '/login'; return; }
-  if (!res.ok) {
-    let data = null;
-    try { data = await res.json(); } catch (e) { /* ignore */ }
-    showError(errorText(data, res.status));
-    return;
-  }
-  const t = await res.json();
-  currentThreadId = t.id;
-  clearWindow();
-  await loadThreads();
-  closeSidebarIfMobile();
-  input.focus();
-}
-
-// 대화 삭제 — 확인 후 DELETE, 지운 게 현재면 남은 것 중 기본 대화로 복귀
-async function deleteThread(id) {
-  if (!confirm('이 대화와 그 기록을 삭제할까요? 되돌릴 수 없어요.')) return;
-  let res;
-  try {
-    res = await fetch(`/api/threads/${id}`, { method: 'DELETE' });
-  } catch {
-    showError('네트워크 오류예요. 연결을 확인하고 다시 시도해 주세요.');
-    return;
-  }
-  if (res.status === 401) { location.href = '/login'; return; }
-  if (!res.ok) {
-    let data = null;
-    try { data = await res.json(); } catch (e) { /* ignore */ }
-    showError(errorText(data, res.status));
-    return;
-  }
-  if (id === currentThreadId) {
-    // 남은 대화 중 가장 오래된(id 최소)이 새 기본 대화 — loadThreads에서 재계산된다.
+// ---- 사이드바 훅 등록 ------------------------------------------------------
+SidebarUI.register({
+  pick: switchThread,
+  create: (t) => {  // 새 채팅 — 빈 기록의 대화 만들고 바로 전환
+    currentThreadId = t.id;
     clearWindow();
-  }
-  await loadThreads();
-  loadHistory();
-  closeSidebarIfMobile();
-}
-
-newThreadBtn.addEventListener('click', newThread);
-
-// ---- 사이드바(대화 메뉴) 토글 — 햄버거 버튼 ---------------------------------
-// 초기 상태: 모바일=항상 닫힘(드로어), 데스크톱=저장값 복원(기본 열림). 반응형 전환 시에도 일관.
-if (menuToggle) {
-  let open = false;
-  if (isDesktop()) {
-    let collapsed = '0';
-    try { collapsed = localStorage.getItem('sidebar-collapsed') || '0'; } catch (e) { /* 무시 */ }
-    open = collapsed !== '1';
-  }
-  setSidebar(open);
-  menuToggle.addEventListener('click', () => setSidebar(!sidebarOpenNow()));
-}
-if (sidebarClose) sidebarClose.addEventListener('click', () => setSidebar(false));
-if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', () => setSidebar(false));
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !isDesktop() && document.body.classList.contains('sidebar-open')) {
-    setSidebar(false);
-  }
-});
-if (desktopMQ.addEventListener) {
-  desktopMQ.addEventListener('change', (e) => {
-    if (e.matches) {
-      // 데스크톱으로 전환 — 드로어 상태 정리, 접힘 여부는 저장값(기본 열림)
-      document.body.classList.remove('sidebar-open');
-      if (sidebarBackdrop) sidebarBackdrop.hidden = true;
-      setSidebar(!document.body.classList.contains('sidebar-collapsed'));
-    } else {
-      setSidebar(false);  // 모바일로 전환 — 드로어 닫힘
+    SidebarUI.setActive(t.id);
+    SidebarUI.refresh();
+    SidebarUI.closeIfMobile();
+    input.focus();
+  },
+  afterDelete: (deletedId) => {
+    if (deletedId === currentThreadId) {
+      // 남은 대화 중 가장 오래된(id 최소)이 새 기본 대화 — 남은 목록에서 재계산
+      clearWindow();
+      const ts = SidebarUI.threads().filter((t) => t.id !== deletedId);
+      currentThreadId = ts.length ? Math.min(...ts.map((t) => t.id)) : null;
+      SidebarUI.setActive(currentThreadId);
     }
-  });
-}
+  },
+  error: showError,
+});
 
 // ---- 초기화 -----------------------------------------------------------
 async function init() {
-  await loadThreads();
+  // 첫 목록 로드(전역 sidebar.js) 후 현재 대화 결정:
+  //  1) URL ?thread=<id> (다른 페이지의 사이드바에서 대화 고른 경우)
+  //  2) 그게 아니면 가장 오래된 대화(기본 대화 — /api/chat 미전달 때 서버와 정렬)
+  const threads = await SidebarUI.ready();
+  const urlId = Number(new URLSearchParams(location.search).get('thread') || 0);
+  if (threads.some((t) => t.id === urlId)) {
+    currentThreadId = urlId;
+  } else if (threads.length) {
+    currentThreadId = Math.min(...threads.map((t) => t.id));
+  }
+  SidebarUI.setActive(currentThreadId);
   await loadHistory();
 }
 

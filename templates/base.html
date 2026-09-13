@@ -9,29 +9,47 @@
   <script src="/static/js/theme-init.js?v={{ asset_v }}"></script>
   <link rel="stylesheet" href="/static/css/style.css?v={{ asset_v }}">
 </head>
-<body class="{% block body_class %}{% endblock %}">
+<body class="{% if nickname %}app-page {% endif %}{% block body_class %}{% endblock %}">
   <nav class="nav">
     <div class="nav-left">
-      {% block menu_toggle %}{% endblock %}
+      {% if nickname %}
+      <button type="button" id="menu-toggle" class="menu-toggle"
+              aria-label="대화 메뉴 열기/닫기" aria-controls="sidebar" aria-expanded="false">☰</button>
+      {% endif %}
       <a class="brand" href="/">🤖 AI 챗봇</a>
     </div>
     <div class="nav-right">
-      {% block nav_right %}
+      {% if not nickname %}
       <button type="button" id="theme-toggle" class="theme-toggle" aria-label="테마 전환"></button>
-      {% if nickname %}
-        <span class="user-chip">{{ nickname }}님</span>
-        <a class="nav-link" href="/logs">내 기록</a>
-        {% if is_admin %}<a class="nav-link" href="/admin/logs">관리자 조회</a>{% endif %}
-        <button class="nav-link linklike" id="logout-btn" type="button">로그아웃</button>
-      {% else %}
-        <a class="nav-link" href="/login">로그인</a>
-        <a class="nav-link primary" href="/signup">회원가입</a>
+      <a class="nav-link" href="/login">로그인</a>
+      <a class="nav-link primary" href="/signup">회원가입</a>
       {% endif %}
-      {% endblock %}
+      {# 로그인한 채팅·기록·관리자 페이지: 사용자 메뉴(테마/기록/관리자/로그아웃)는 사이드바 하단으로 #}
     </div>
   </nav>
-  <div class="page-shell{% block page_class %}{% endblock %}">
-    {% block sidebar %}{% endblock %}
+  <div class="page-shell{% block page_class %} app-layout{% endblock %}">
+    {% if nickname %}
+    <aside class="sidebar" id="sidebar" aria-label="대화 목록">
+      <div class="sidebar-head">
+        <span class="sidebar-title">🗂 대화 <span id="thread-count" class="thread-count">0</span></span>
+        <button type="button" id="sidebar-close" class="sidebar-close" aria-label="대화 메뉴 닫기">✕</button>
+      </div>
+      <button type="button" id="new-thread-btn" class="new-thread-btn">＋ 새 채팅</button>
+      <ul id="thread-list" class="thread-list"></ul>
+      <div class="sidebar-foot">
+        <span class="user-chip">{{ nickname }}님</span>
+        <nav class="sidebar-links" aria-label="사용자 메뉴">
+          <a class="side-link" href="/logs">📄 내 기록</a>
+          {% if is_admin %}<a class="side-link" href="/admin/logs">🛡️ 관리자 조회</a>{% endif %}
+          <div class="side-row"><span class="side-label">테마</span>
+            <button type="button" id="theme-toggle" class="theme-toggle" aria-label="테마 전환"></button>
+          </div>
+          <button class="side-link side-logout" id="logout-btn" type="button">⎋ 로그아웃</button>
+        </nav>
+      </div>
+    </aside>
+    <div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
+    {% endif %}
     <main class="container">
       {% block content %}{% endblock %}
     </main>
@@ -39,6 +57,7 @@
   <script src="/static/js/theme.js?v={{ asset_v }}"></script>
   <script src="/static/js/form-utils.js?v={{ asset_v }}"></script>
   <script src="/static/js/logout.js?v={{ asset_v }}"></script>
+  {% if nickname %}<script src="/static/js/sidebar.js?v={{ asset_v }}"></script>{% endif %}
   {% block scripts %}{% endblock %}
 </body>
 </html>

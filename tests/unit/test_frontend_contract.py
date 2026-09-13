@@ -166,9 +166,11 @@ def test_mobile_first_layout_contract():
 def test_chat_js_autoscroll_and_thread_states():
     """채팅 하단 고정(읽기 중엔 안 당김) + 대화 목록 비동기 4상태(로드 중/실패/빈/성공)."""
     code = (ROOT / "static/js/chat.js").read_text()
+    sidebar = (ROOT / "static/js/sidebar.js").read_text()
     assert "stickToBottom" in code and "pinToBottom" in code
-    assert "threadsLoaded" in code and "threadsLoadError" in code
-    assert "thread-retry" in code  # 실패 상태의 '다시 시도'
+    # 대화 목록 4상태는 전역 sidebar.js(전 로그인 페이지 공통)
+    assert "threadsLoaded" in sidebar and "threadsLoadError" in sidebar
+    assert "thread-retry" in sidebar  # 실패 상태의 '다시 시도'
     css = (ROOT / "static/css/style.css").read_text()
     assert ".thread-state" in css and ".thread-retry" in css
 
@@ -188,44 +190,48 @@ def test_static_assets_are_versioned():
 
 
 def test_sidebar_user_menu_contract():
-    """채팅 페이지 — 기록/관리자/테마/로그아웃은 사이드바 하단에, 네비는 슬림(☰+브랜드만)."""
+    """로그인 전 페이지 — 기록/관리자/테마/로그아웃은 사이드바 하단에, 네비는 슬림(☰+브랜드만)."""
     base = (ROOT / "templates/base.html").read_text()
-    chat = (ROOT / "templates/chat.html").read_text()
     css = (ROOT / "static/css/style.css").read_text()
-    # base: 네비 우측은 블록으로(채팅 페이지는 비워서 슬림 네비 유지)
-    assert "block nav_right" in base
-    assert "{% block nav_right %}{% endblock %}" in chat
-    # 사이드바 하단: 사용자 칩 + 기록/관리자(조건부)/테마/로그아웃
-    assert "sidebar-foot" in chat
-    assert 'href="/logs"' in chat and 'href="/admin/logs"' in chat and "is_admin" in chat
-    assert "sidebar-foot" in chat and chat.index("sidebar-foot") > chat.index("thread-list")
-    assert chat.count('id="theme-toggle"') == 1 and chat.count('id="logout-btn"') == 1
-    # 채팅 네비 슬림(패딩 최소화) + 하단 메뉴 스타일
-    assert "body.chat-page .nav { padding: 0 6px; }" in css
+    # base: 사이드바가 전 로그인 페이지에 공통(닉네임 조건부) + 하단 사용자 메뉴
+    assert "if nickname" in base and "sidebar-foot" in base
+    assert base.index("sidebar-foot") > base.index("thread-list")
+    assert 'href="/logs"' in base and 'href="/admin/logs"' in base and "is_admin" in base
+    assert base.count('id="theme-toggle"') == 2 and base.count('id="logout-btn"') == 1
+    # 사이드바 하단 메뉴가 리스트 아래(바인딩) — app-page 바디 클래스로 네비 슬림
+    assert "app-page" in base
+    # 앱 페이지 네비 슬림(패딩 최소화) + 하단 메뉴 스타일
+    assert "body.app-page .nav { padding: 0 6px; }" in css
     assert ".sidebar-foot" in css and ".side-link" in css
 
 
 def test_sidebar_hamburger_contract():
-    """채팅 화면 — 햄버거 버튼으로 사이드바(대화 목록) 토글. 모바일 드로어/데스크톱 상시+접기."""
+    """전 로그인 페이지 — 햄버거로 사이드바 토글(모바일 드로어/데스크톱 상시+접기)."""
     base = (ROOT / "templates/base.html").read_text()
     chat = (ROOT / "templates/chat.html").read_text()
     css = (ROOT / "static/css/style.css").read_text()
-    code = (ROOT / "static/js/chat.js").read_text()
-    # 템플릿 — 체인 구조 + 햄버거(인라인 핸들러 금지, 기존 계약)
-    assert "page-shell" in base and "block menu_toggle" in base and "block sidebar" in base
-    assert 'id="menu-toggle"' in chat and 'id="sidebar"' in chat
-    assert 'class="sidebar-backdrop"' in chat and "chat-layout" in chat and "chat-page" in chat
-    assert 'id="new-thread-btn"' in chat  # 새 채팅은 사이드바에
-    # CSS — 뷰포트 전체 채움(calc 추정 없이), 드로어(translateX) + 데스크톱 접기
+    sidebar_js = (ROOT / "static/js/sidebar.js").read_text()
+    chat_js = (ROOT / "static/js/chat.js").read_text()
+    # 템플릿 — 사이드바·햄버거는 base에 공통(인라인 핸들러 금지, 기존 계약)
+    assert "page-shell" in base
+    assert 'id="menu-toggle"' in base and 'id="sidebar"' in base
+    assert 'class="sidebar-backdrop"' in base and 'id="new-thread-btn"' in base
+    assert "app-layout" in base and "app-layout chat-layout" in chat  # 채팅만 뷰포트 전체 채움
+    # CSS — 뷰포트 전체 채움(calc 추정 없이), 드로어(translateX) + 데스크톱 접기(전 앱 페이지)
     assert "body.chat-page" in css and "translateX" in css
     assert "sidebar-collapsed" in css and "min-width: 768px" in css
     assert "calc(100dvh - " not in css  # 네비 높이 추정 calc 제거(입력창 아래 빈 공간 원인)
-    # JS — 토글 상태(모바일 open / 데스크톱 collapsed) + 저장 + Esc/백드롭 닫기
+    # 최소 폭 320px(가장 작은 모바일) — 그 이하 가로 스크롤
+    assert "min-width: 320px" in css
+    # 사이드바 로직은 전역 sidebar.js — 채팅은 SidebarUI 훅으로만 연동
     for token in (
         "sidebar-open",
         "sidebar-collapsed",
         "setSidebar",
         "closeSidebarIfMobile",
-        "sidebarBackdrop",
+        "SidebarUI",
+        "register",
     ):
-        assert token in code
+        assert token in sidebar_js
+    assert "SidebarUI.register" in chat_js and "SidebarUI.ready" in chat_js
+    assert "?thread=" in chat_js  # 다른 페이지에서 대화 고르면 ?thread=로 전달
