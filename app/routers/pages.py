@@ -14,6 +14,7 @@ from app.deps import resolve_session_user
 from app.logging_config import log_event
 from app.models import User
 from app.repositories.chat_logs import list_logs
+from app.repositories.users import find_by_email
 from app.services.admin import is_admin
 from app.services.password_reset import is_reset_token_valid
 
@@ -116,7 +117,7 @@ def logs_page(request: Request, db: Session = Depends(get_db)):
 @router.get("/admin/logs")
 def admin_logs_page(
     request: Request,
-    user_id: int | None = Query(default=None, gt=0),
+    email: str = Query(default="", max_length=255, description="사용자 이메일 — 정확히 일치"),
     before_id: int | None = Query(default=None, gt=0),
     reason: str = Query(default="", max_length=200, description="열람 사유 — 감사 로그에 기록"),
     db: Session = Depends(get_db),
@@ -126,10 +127,17 @@ def admin_logs_page(
         return RedirectResponse("/login", status_code=302)
     if not is_admin(db, user):
         raise HTTPException(status_code=403, detail="관리자 권한이 필요한 기능이에요.")
-    rows = list_logs(db, user_id=user_id, before_id=before_id, limit=50)
+    # 사용자 검색 — 이메일 기준(ID 검색보다 직관적). 정규화(여백/대소문자)는 로그인과 동일.
+    clean_email = email.strip().lower()
+    target = find_by_email(db, clean_email) if clean_email else None
+    user_not_found = bool(clean_email) and target is None
+    if user_not_found:
+        rows = []
+    else:
+        rows = list_logs(db, user_id=(target.id if target else None), before_id=before_id, limit=50)
     audit = {
         "user_id": user.id,
-        "filter_user_id": user_id,
+        "filter_email": clean_email or None,
         "result_count": len(rows),
         "before_id": before_id,
     }
@@ -137,13 +145,22 @@ def admin_logs_page(
     if cleaned_reason:
         audit["reason"] = cleaned_reason
     log_event(logger, "admin_logs_viewed", **audit)
+    # '사용자' 열 — 이메일·닉네임 표시(ID 숫자만으로는 특정 사용자가 누군지 알기 어려움)
+    user_infos = {}
+    if rows:
+        ids = {row.user_id for row in rows}
+        users_q = db.query(User.id, User.email, User.nickname).filter(User.id.in_(ids))
+        for uid, u_email, nick in users_q:
+            user_infos[uid] = {"email": u_email, "nickname": nick}
     return templates.TemplateResponse(
         request,
         "admin-logs.html",
         {
             **_context(db, user),
             "logs": rows,
-            "filter_user_id": user_id,
+            "filter_email": clean_email,
+            "user_not_found": user_not_found,
+            "user_infos": user_infos,
             "filter_reason": cleaned_reason,
             "next_before_id": rows[-1].id if len(rows) == 50 else None,
         },
