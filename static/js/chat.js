@@ -38,6 +38,16 @@ input.addEventListener('keydown', (e) => {
 // send는 함수 선언이라 호이스팅되어 아래 정의를 그대로 참조한다.
 form.addEventListener('submit', send);
 
+// 하단 자동 스크롤 — 사용자가 위로 스크롤해 이전 내용을 읽고 있으면 새 말풍선에 강제로 당기지 않는다.
+// 사용자가 전송/대화 전환(자신의 의사로 최신 보기)을 하면 다시 고정된다.
+let stickToBottom = true;
+window_.addEventListener('scroll', () => {
+  stickToBottom = window_.scrollTop + window_.clientHeight >= window_.scrollHeight - 60;
+});
+function pinToBottom() {
+  if (stickToBottom) window_.scrollTop = window_.scrollHeight;
+}
+
 function addBubble(text, cls, timeText) {
   const div = document.createElement('div');
   div.className = 'bubble ' + cls;
@@ -50,7 +60,7 @@ function addBubble(text, cls, timeText) {
     div.appendChild(time);
   }
   window_.appendChild(div);
-  window_.scrollTop = window_.scrollHeight;
+  pinToBottom();
   return div;
 }
 
@@ -96,6 +106,7 @@ async function send(e) {
   if (!question) return showError('질문을 입력해 주세요. (빈 입력은 전송되지 않아요)');
   if (FormUtils.codepointLength(question) > MAX_LEN) return showError(`질문이 너무 길어요. ${MAX_LEN}자 이하로 줄여주세요.`);
 
+  stickToBottom = true;  // 본인이 보낸 질문 — 답은 반드시 하단에 보여줘야 한다
   addBubble(question, 'user', nowTime());
   input.value = '';
   counter.textContent = '0';
@@ -184,17 +195,30 @@ async function loadHistory() {
 
 // ---- 대화(스레드) 관리 -------------------------------------------------
 
+// 비동기 상태 플래그 — 목록 렌더가 4상태(로드 중/실패/빈/성공)로 나뉘게 한다
+let threadsLoaded = false;
+let threadsLoadError = false;
+
 // 대화 목록 로드 + 렌더. 401은 로그인으로.
+// 첫 로드가 실패하면 '실패 + 다시 시도' 상태를 표시하고, 그 뒤의 실패는 기존 목록을 유지한다.
 async function loadThreads() {
   let res;
   try {
     res = await fetch('/api/threads');
   } catch {
+    if (!threadsLoaded) threadsLoadError = true;
+    renderThreadList(threadsCache);
     return; // 네트워크 오류 → 조용히 스킵
   }
   if (res.status === 401) { location.href = '/login'; return; }
-  if (!res.ok) return;
+  if (!res.ok) {
+    if (!threadsLoaded) threadsLoadError = true;
+    renderThreadList(threadsCache);
+    return;
+  }
+  threadsLoadError = false;
   threadsCache = await res.json();
+  threadsLoaded = true;
   renderThreadList(threadsCache);
   // 현재 대화가 목록에서 사라졌다면(삭제) 서버 기본 대화(가장 오래된)로 복귀
   if (currentThreadId !== null && !threadsCache.some((t) => t.id === currentThreadId)) {
@@ -206,9 +230,39 @@ async function loadThreads() {
   }
 }
 
+function renderThreadState(message) {
+  const li = document.createElement('li');
+  li.className = 'thread-state';
+  li.textContent = message;
+  return li;
+}
+
 function renderThreadList(threads) {
   threadCount.textContent = String(threads.length);
   threadList.textContent = '';
+
+  // 비동기 상태 — 404/오류가 아닌 '로드 중'·'실패'·'빈' 상태도 명시적으로 표시
+  if (!threadsLoaded) {
+    if (threadsLoadError) {
+      const li = renderThreadState('대화 목록을 불러오지 못했어요. 연결을 확인해 주세요.');
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'thread-retry';
+      retry.textContent = '다시 시도';
+      retry.addEventListener('click', () => loadThreads());
+      li.appendChild(document.createElement('br'));
+      li.appendChild(retry);
+      threadList.appendChild(li);
+    } else {
+      threadList.appendChild(renderThreadState('대화 목록을 불러오는 중…'));
+    }
+    return;
+  }
+  if (threads.length === 0) {
+    threadList.appendChild(renderThreadState("아직 대화가 없어요. '＋ 새 채팅'으로 시작해 보세요."));
+    return;
+  }
+
   for (const t of threads) {
     const li = document.createElement('li');
     li.className = 'thread-item' + (t.id === currentThreadId ? ' active' : '');
@@ -250,6 +304,7 @@ function switchThread(id) {
   if (id === currentThreadId) return;
   currentThreadId = id;
   clearWindow();
+  stickToBottom = true;  // 대화 전환 = 최신 메시지부터 보기(의도적)
   renderThreadList(threadsCache);  // active 표시 갱신
   loadHistory();
   closeThreadList();
