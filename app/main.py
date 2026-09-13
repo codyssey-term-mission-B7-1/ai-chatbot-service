@@ -272,11 +272,22 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     ),
 )
 def health():
+    from app.database import schema_sync
+
+    if schema_sync["status"] == "ok":
+        schema_field = "ok"
+    elif schema_sync["status"] == "error":
+        schema_field = f"error:{schema_sync['error']}"
+    else:
+        schema_field = "pending"
     return {
         "status": "ok",
         "version": app.version,
         "ai_mode": "demo" if not settings.ai_api_key else "real",
         "build": settings.build_sha,
+        # 스키마 동기화 결과 진단 — 2026-09-13 스키마 미반영 사고 이후 로그 말고
+        # 헬스체크로 상태가 바로 보일 수 있게 했다. ok / error:<예외타입> / pending.
+        "schema": schema_field,
     }
 
 
@@ -301,5 +312,24 @@ def readyz():
             status_code=503,
             headers=SECURITY_HEADERS,
             content={"status": "not_ready", "reason": "database_unavailable"},
+        )
+    from app.database import schema_sync
+
+    # DB는 살아도 스키마 동기화가 실패했다면(마이그레이션 미반영) 서비스 불가.
+    if schema_sync["status"] == "error":
+        log_event(
+            logger,
+            "readyz_schema_failure",
+            error=schema_sync["error"],
+            level=logging.ERROR,
+        )
+        return JSONResponse(
+            status_code=503,
+            headers=SECURITY_HEADERS,
+            content={
+                "status": "not_ready",
+                "reason": "schema_sync_failed",
+                "error": schema_sync["error"],
+            },
         )
     return {"status": "ready", "version": app.version}

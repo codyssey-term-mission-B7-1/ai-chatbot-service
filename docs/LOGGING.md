@@ -15,7 +15,7 @@
 uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 ```
 
-## 등록된 이벤트 30종
+## 등록된 이벤트 34종
 
 | 이벤트 | 목적 | 주요 필드 / 집계 주의 |
 |---|---|---|
@@ -32,6 +32,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 | auth_stale_session | 오래된 세션 파기 | user_id, request_id(HTTP 요청 안이면 자동 부여) |
 | auth_session_revoked | 서버 측 폐기 세션 거부 | user_id, request_id. 폐기 기준 이전 발급 세션 차단(#74) |
 | user_signup | 계정 생성 추적 | user_id, email_domain. 평문 이메일 제외 |
+| signup_rate_limited | IP별 가입 요청 상한 초과 | retry_after_sec, request_id |
 | user_login | 성공 로그인 추적 | user_id, request_id |
 | user_login_fail | 인증 실패·무차별 대입 징후 | user_id(있으면), email_domain, request_id. 이메일 평문 제외 |
 | user_login_locked | 실패 누적 잠금 발동 | email_domain, retry_after_sec, request_id. 이메일 평문 제외 |
@@ -41,8 +42,11 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 | admin_user_deleted | 사용자 삭제 감사 | user_id(검증된 관리자), deleted_user_id, email_domain. 평문 이메일 제외, WARNING |
 | thread_created | 대화(스레드) 생성 | user_id, thread_id |
 | thread_deleted | 대화(스레드) 삭제 — 기록 CASCADE | user_id, thread_id |
+| readyz_db_failure | 기동 시 스키마 동기화 실패 / /readyz의 DB 확인 실패 | error(예외 타입), reason. DB는 살아도 스키마 미반영을 이어서 드러낸다 |
+| readyz_schema_failure | /readyz가 스키마 동기화 실패를 발견 | error(예외 타입). 503 응답과 함께 |
 | auth_password_reset_requested | 재설정 링크 발급 | user_id, request_id. 토큰 원문 없음 |
 | auth_password_reset_rate_limited | 요청 상한 초과로 발송 생략 | user_id, request_id |
+| auth_password_reset_ip_rate_limited | IP별 재설정 요청 상한 초과 | retry_after_sec, request_id |
 | auth_password_reset_email_sent | 재설정 메일 발송 성공 | user_id, request_id |
 | auth_password_reset_email_dev_console | 개발 모드 링크 콘솔 출력 | 링크는 경고 로그에만 |
 | auth_password_reset_email_unconfigured | 운영 SMTP 미설정 503 | request_id |
