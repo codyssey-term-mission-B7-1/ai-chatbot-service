@@ -6,9 +6,15 @@ const sendBtn = document.getElementById('send-btn');
 const counter = document.getElementById('count');
 const welcomeBubble = document.getElementById('welcome-bubble');
 const newThreadBtn = document.getElementById('new-thread-btn');
-const threadsToggle = document.getElementById('threads-toggle');
 const threadList = document.getElementById('thread-list');
 const threadCount = document.getElementById('thread-count');
+
+// 사이드바(대화 메뉴) — 모바일: 오프캔버스 드로어 / 데스크톱: 상시 표시 + ☰ 접기
+const menuToggle = document.getElementById('menu-toggle');
+const sidebarEl = document.getElementById('sidebar');
+const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+const sidebarClose = document.getElementById('sidebar-close');
+const desktopMQ = window.matchMedia('(min-width: 768px)');
 
 const MAX_LEN = parseInt(window_.dataset.maxQuestionLength || '1000', 10);
 
@@ -294,20 +300,48 @@ function clearWindow() {
   }
 }
 
-function closeThreadList() {
-  threadList.hidden = true;
-  threadsToggle.setAttribute('aria-expanded', 'false');
+function isDesktop() {
+  return desktopMQ.matches;
+}
+
+// 사이드바 열림/접힘 — 모바일: body.sidebar-open(드로어+백드롭), 데스크톱: body.sidebar-collapsed(저장 유지)
+function setSidebar(open) {
+  if (isDesktop()) {
+    document.body.classList.toggle('sidebar-collapsed', !open);
+    try { localStorage.setItem('sidebar-collapsed', open ? '0' : '1'); } catch (e) { /* 무시 */ }
+  } else {
+    document.body.classList.toggle('sidebar-open', open);
+    if (sidebarBackdrop) sidebarBackdrop.hidden = !open;
+  }
+  if (menuToggle) {
+    menuToggle.setAttribute('aria-expanded', String(open));
+    menuToggle.setAttribute('aria-label', open ? '대화 메뉴 닫기' : '대화 메뉴 열기');
+  }
+}
+
+function sidebarOpenNow() {
+  return isDesktop()
+    ? !document.body.classList.contains('sidebar-collapsed')
+    : document.body.classList.contains('sidebar-open');
+}
+
+// 모바일 드로어에서 대화를 고른 뒤에는 자동으로 닫힌다(데스크톱은 유지)
+function closeSidebarIfMobile() {
+  if (!isDesktop() && document.body.classList.contains('sidebar-open')) setSidebar(false);
 }
 
 // 대화 전환 — 창 비우고 해당 대화의 이전 대화만 복원
 function switchThread(id) {
-  if (id === currentThreadId) return;
+  if (id === currentThreadId) {
+    closeSidebarIfMobile();  // 이미 열려 있는 대화 탭 — 모바일 드로어만 닫고 종료
+    return;
+  }
   currentThreadId = id;
   clearWindow();
   stickToBottom = true;  // 대화 전환 = 최신 메시지부터 보기(의도적)
   renderThreadList(threadsCache);  // active 표시 갱신
   loadHistory();
-  closeThreadList();
+  closeSidebarIfMobile();
 }
 
 // 새 채팅 — 빈 기록의 대화 만들고 바로 전환
@@ -330,7 +364,7 @@ async function newThread() {
   currentThreadId = t.id;
   clearWindow();
   await loadThreads();
-  closeThreadList();
+  closeSidebarIfMobile();
   input.focus();
 }
 
@@ -357,14 +391,42 @@ async function deleteThread(id) {
   }
   await loadThreads();
   loadHistory();
-  closeThreadList();
+  closeSidebarIfMobile();
 }
 
 newThreadBtn.addEventListener('click', newThread);
-threadsToggle.addEventListener('click', () => {
-  threadList.hidden = !threadList.hidden;
-  threadsToggle.setAttribute('aria-expanded', String(!threadList.hidden));
+
+// ---- 사이드바(대화 메뉴) 토글 — 햄버거 버튼 ---------------------------------
+// 초기 상태: 모바일=항상 닫힘(드로어), 데스크톱=저장값 복원(기본 열림). 반응형 전환 시에도 일관.
+if (menuToggle) {
+  let open = false;
+  if (isDesktop()) {
+    let collapsed = '0';
+    try { collapsed = localStorage.getItem('sidebar-collapsed') || '0'; } catch (e) { /* 무시 */ }
+    open = collapsed !== '1';
+  }
+  setSidebar(open);
+  menuToggle.addEventListener('click', () => setSidebar(!sidebarOpenNow()));
+}
+if (sidebarClose) sidebarClose.addEventListener('click', () => setSidebar(false));
+if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', () => setSidebar(false));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !isDesktop() && document.body.classList.contains('sidebar-open')) {
+    setSidebar(false);
+  }
 });
+if (desktopMQ.addEventListener) {
+  desktopMQ.addEventListener('change', (e) => {
+    if (e.matches) {
+      // 데스크톱으로 전환 — 드로어 상태 정리, 접힘 여부는 저장값(기본 열림)
+      document.body.classList.remove('sidebar-open');
+      if (sidebarBackdrop) sidebarBackdrop.hidden = true;
+      setSidebar(!document.body.classList.contains('sidebar-collapsed'));
+    } else {
+      setSidebar(false);  // 모바일로 전환 — 드로어 닫힘
+    }
+  });
+}
 
 // ---- 초기화 -----------------------------------------------------------
 async function init() {
