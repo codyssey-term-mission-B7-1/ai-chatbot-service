@@ -8,6 +8,9 @@ MAX_NICKNAME_CHARS = 20
 MAX_EMAIL_LOCAL_CHARS = 64
 MAX_CONTEXT_TURNS = 200
 MAX_LOG_PAGE_SIZE = 200
+# 대화 스레드 — 제목은 첫 질문에서 자동 생성(코드 포인트 기준)
+MAX_THREAD_TITLE_CHARS = 20
+DEFAULT_THREAD_TITLE = "기본 대화"
 # XSS 2차 방어선(#75). 인라인 script/핸들러를 쓰지 않는 전제 — 외부 파일 스크립트만 허용.
 CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "

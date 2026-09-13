@@ -15,13 +15,13 @@
 uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 ```
 
-## 등록된 이벤트 28종
+## 등록된 이벤트 30종
 
 | 이벤트 | 목적 | 주요 필드 / 집계 주의 |
 |---|---|---|
 | request_received | 요청 유입 추적 | method, path, request_id, **session_user_id**. 서명된 세션 값이며 아직 DB 검증된 ID는 아님 |
 | request_finished | 운영 상태·응답 시간 | method, path, status, request_id, **user_id**. 인증 의존성/로그인 검증이 끝난 계정 ID만 기록 |
-| ai_call_start | AI 비용·문맥 크기 추적 | user_id, request_id, question_chars, context_pairs |
+| ai_call_start | AI 비용·문맥 크기 추적 | user_id, thread_id, request_id, question_chars, context_pairs |
 | ai_call_success | 응답 성공·시간 | user_id, request_id, latency_ms |
 | ai_call_fail | 장애 진단 | user_id, request_id, reason, latency_ms |
 | ai_retry | 추가 시도 집계 | attempt, previous_error, delay_ms. 실제 추가 시도를 시작할 때만 기록 |
@@ -39,6 +39,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 | admin_logs_viewed | 민감 기록 접근 감사 | user_id(검증된 관리자), filter_user_id, result_count, before_id, request_id |
 | admin_hash_status_viewed | 해시 현황 조회 감사 | user_id(검증된 관리자), total, legacy |
 | admin_user_deleted | 사용자 삭제 감사 | user_id(검증된 관리자), deleted_user_id, email_domain. 평문 이메일 제외, WARNING |
+| thread_created | 대화(스레드) 생성 | user_id, thread_id |
+| thread_deleted | 대화(스레드) 삭제 — 기록 CASCADE | user_id, thread_id |
 | auth_password_reset_requested | 재설정 링크 발급 | user_id, request_id. 토큰 원문 없음 |
 | auth_password_reset_rate_limited | 요청 상한 초과로 발송 생략 | user_id, request_id |
 | auth_password_reset_email_sent | 재설정 메일 발송 성공 | user_id, request_id |

@@ -104,6 +104,8 @@ class Settings(BaseSettings):
     # 챗 파이프라인
     context_turns: int = Field(default=5, ge=0, le=MAX_CONTEXT_TURNS)  # 0이면 문맥 비활성화
     max_question_length: int = Field(default=1000, ge=1, le=100000)  # 입력 검증: 길이 제한
+    # 대화 스레드(새 채팅) — 사용자별 대화 수 상한(스팸/오남용 방어, UI 목록과 무관)
+    max_threads_per_user: int = Field(default=100, ge=1)
 
     # 로그인 무차별 대입 방어(#72) — 이메일별 실패 누적 잠금. 프로세스 메모리·단일 워커 전제
     login_max_fails: int = Field(default=5, ge=1)

@@ -1,4 +1,4 @@
-"""DB 모델 — users / chat_logs."""
+"""DB 모델 — users / threads / chat_logs."""
 
 import time
 from datetime import datetime, timezone
@@ -25,6 +25,33 @@ class User(Base):
     chat_logs: Mapped[list["ChatLog"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    threads: Mapped[list["Thread"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class Thread(Base):
+    """대화 스레드 — "새 채팅"으로 대화를 나눈다.
+
+    AI 문맥은 스레드 기준으로 스코핑되며(스레드 내 직전 N개 성공 Q/A), 삭제 단위도
+    스레드다(기록 전체 삭제는 스레드 삭제의 특수한 경우). title은 첫 질문에서
+    자동 생성되며, NULL이면 UI/API가 '기본 대화'로 표시한다.
+    """
+
+    __tablename__ = "threads"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    title: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    user: Mapped[User] = relationship(back_populates="threads")
+    chat_logs: Mapped[list["ChatLog"]] = relationship(
+        back_populates="thread", cascade="all, delete-orphan"
+    )
 
 
 class ChatLog(Base):
@@ -34,6 +61,9 @@ class ChatLog(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
     )  # SQL 레벨 cascade (#51)
+    thread_id: Mapped[int | None] = mapped_column(
+        ForeignKey("threads.id", ondelete="CASCADE"), index=True, nullable=True
+    )  # 스레드 단위 대화 — NULL은 마이그레이션 이전 레거시 기록(기본 대화로 귀속)
     question: Mapped[str] = mapped_column(Text, nullable=False)
     answer: Mapped[str] = mapped_column(Text, default="", nullable=False)
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
@@ -44,6 +74,7 @@ class ChatLog(Base):
     )
 
     user: Mapped[User] = relationship(back_populates="chat_logs")
+    thread: Mapped[Thread | None] = relationship(back_populates="chat_logs")
 
 
 class SessionRevocation(Base):
