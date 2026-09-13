@@ -64,6 +64,105 @@ def test_upgrade_head_creates_all_tables(fresh_sqlite_url):
         assert expected in tables, f"테이블 {expected}가 마이그레이션으로 생성되어야 한다."
 
 
+def test_legacy_db_without_version_table_is_adopted(fresh_sqlite_url, monkeypatch):
+    """레거시 DB(alembic 도입 전 create_all 생성, alembic_version 없음) — base 스탬프 후
+    누락 마이그레이션이 적용된다. 2026-09-13 운영 사고 재발 방지: 버전 테이블 없이
+    upgrade 하면 init 재실행 → 'table users already exists'로 항상 실패해
+    lifespan이 삼키며 스키마가 갱신되지 않았다."""
+    from sqlalchemy import text
+
+    monkeypatch.delenv("TESTING", raising=False)
+    cfg = _alembic_config(fresh_sqlite_url)
+    command.upgrade(cfg, "9dea740a4bf1")  # init 스키마만
+
+    engine = create_engine(fresh_sqlite_url)
+    event.listens_for(engine, "connect")(_sqlite_pragmas)
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO users (email, password_hash, nickname, created_at) "
+                "VALUES ('legacy@example.com', 'hash', '레거시', '2026-01-01 00:00:00+00:00')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO chat_logs "
+                "(user_id, question, answer, latency_ms, status, request_id, created_at) "
+                "VALUES (1, '레거시 질문', '레거시 답변', 10, 'success', "
+                "'req1', '2026-01-02 00:00:00+00:00')"
+            )
+        )
+        conn.execute(text("DROP TABLE alembic_version"))  # ★ ceed2b7 이전 운영 DB 상태
+    engine.dispose()
+
+    from app.database import init_db
+
+    engine = create_engine(fresh_sqlite_url)
+    event.listens_for(engine, "connect")(_sqlite_pragmas)
+    try:
+        init_db(alembic_cfg=cfg, eng=engine)
+
+        insp = inspect(engine)
+        assert "threads" in insp.get_table_names()
+        assert "thread_id" in [c["name"] for c in insp.get_columns("chat_logs")]
+        with engine.connect() as conn:
+            assert (
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
+                == "c7e4a9b21d05"
+            )
+            titles = conn.execute(text("SELECT title FROM threads")).fetchall()
+            assert titles == [("기본 대화",)]
+            nulls = conn.execute(
+                text("SELECT COUNT(*) FROM chat_logs WHERE thread_id IS NULL")
+            ).scalar()
+            assert nulls == 0, "레거시 기록이 기본 대화에 귀속되어야 한다."
+    finally:
+        engine.dispose()
+
+
+def test_legacy_db_with_current_schema_gets_head_stamp(fresh_sqlite_url, monkeypatch):
+    """최신 스키마인데 버전 테이블만 없는 DB — head 스탬프만, 마이그레이션 재실행 없음."""
+    from sqlalchemy import text
+
+    monkeypatch.delenv("TESTING", raising=False)
+    cfg = _alembic_config(fresh_sqlite_url)
+    command.upgrade(cfg, "head")
+
+    engine = create_engine(fresh_sqlite_url)
+    event.listens_for(engine, "connect")(_sqlite_pragmas)
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO users (email, password_hash, nickname, created_at) "
+                "VALUES ('cur@example.com', 'hash', '최신', '2026-01-01 00:00:00+00:00')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO threads (user_id, title, created_at, updated_at) "
+                "VALUES (1, '보존될 제목', '2026-01-02 00:00:00+00:00', "
+                "'2026-01-02 00:00:00+00:00')"
+            )
+        )
+        conn.execute(text("DROP TABLE alembic_version"))
+    engine.dispose()
+
+    from app.database import init_db
+
+    engine = create_engine(fresh_sqlite_url)
+    event.listens_for(engine, "connect")(_sqlite_pragmas)
+    try:
+        init_db(alembic_cfg=cfg, eng=engine)
+        with engine.connect() as conn:
+            head = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
+            assert head == "c7e4a9b21d05"
+            # 스탬프만 — 기존 데이터에 손대지 않는다
+            titles = conn.execute(text("SELECT title FROM threads")).fetchall()
+            assert titles == [("보존될 제목",)]
+    finally:
+        engine.dispose()
+
+
 def test_threads_migration_backfills_legacy_rows(fresh_sqlite_url):
     """기존 DB(레거시) 업그레이드: 사용자당 '기본 대화' 생성 + 기존 기록을 그 스레드에 귀속."""
     from sqlalchemy import text

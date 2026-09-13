@@ -48,6 +48,7 @@ Variables: `RAILWAY_SERVICE_NAME` 기본 ai-chatbot-service, `RAILWAY_ENVIRONMEN
 - 대상 서비스/환경과 기존 값을 운영자가 확인한 뒤 실행한다. 실제 Secret 값은 로그/커밋에 넣지 않는다.
 - `DATABASE_URL`을 바꾸면 다른 DB를 사용할 수 있으므로 먼저 백업과 영구 볼륨 경로를 검증한다.
 - `.env` 변경/환경변수 동기화 후에는 새 앱 프로세스가 필요하다. `reset_provider`만 호출해도 환경변수가 다시 읽히는 것은 아니다.
+- **스키마는 앱 시작 시 자동 동기화**(`init_db` → alembic). 스키마 변경 배포 후 `/health.build`가 새 SHA로 바뀌어도 **스키마까지 된 보장이 아니다** — `init_db` 실패는 프로세스 기동을 막지 않고 로그에만 남는다(2026-09-13 운영 사고: alembic 도입 전 만들어진 운영 DB에 `alembic_version`이 없어 마이그레이션이 조용히 실패, 신규 스키마 API 500). 이제 `init_db`는 버전 테이블이 없는 레거시 DB를 자동으로 인수(adopt)한다(최신 스키마면 head 스탬프, 아니면 base 리비전 스탬프 후 누락 마이그레이션). 스키마 변경 배포 후엔 해당 스키마를 쓰는 API 하나를 실제 호출해 확인한다.
 
 ## 실행
 
