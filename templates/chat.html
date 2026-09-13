@@ -1,5 +1,24 @@
 {% extends "base.html" %}
 {% block title %}채팅{% endblock %}
+{% block body_class %}chat-page{% endblock %}
+{% block page_class %} chat-layout{% endblock %}
+
+{% block menu_toggle %}
+<button type="button" id="menu-toggle" class="menu-toggle"
+        aria-label="대화 메뉴 열기/닫기" aria-controls="sidebar" aria-expanded="false">☰</button>
+{% endblock %}
+
+{% block sidebar %}
+<aside class="sidebar" id="sidebar" aria-label="대화 목록">
+  <div class="sidebar-head">
+    <span class="sidebar-title">🗂 대화 <span id="thread-count" class="thread-count">0</span></span>
+    <button type="button" id="sidebar-close" class="sidebar-close" aria-label="대화 메뉴 닫기">✕</button>
+  </div>
+  <button type="button" id="new-thread-btn" class="new-thread-btn">＋ 새 채팅</button>
+  <ul id="thread-list" class="thread-list"></ul>
+</aside>
+<div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
+{% endblock %}
 
 {% block content %}
 <div class="chat-wrap">
@@ -8,14 +27,6 @@
     <button type="button" id="banner-close" class="banner-close" aria-label="데모 모드 안내 닫기">×</button>
   </div>
   {% endif %}
-
-  <div class="thread-bar">
-    <button type="button" id="new-thread-btn" class="thread-btn">＋ 새 채팅</button>
-    <button type="button" id="threads-toggle" class="thread-btn" aria-expanded="false">
-      🗂 대화 <span id="thread-count" class="thread-count">0</span>
-    </button>
-    <ul id="thread-list" class="thread-list" hidden></ul>
-  </div>
 
   <div id="chat-window" class="chat-window" data-context-turns="{{ context_turns }}" data-max-question-length="{{ max_question_length }}">
     <div class="bubble ai welcome" id="welcome-bubble">

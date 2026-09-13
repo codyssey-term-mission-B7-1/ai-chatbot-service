@@ -91,23 +91,40 @@ body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; backgr
                     border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; }
 .auth-card button:disabled { opacity: .6; }
 
-/* ---------- 채팅 (모바일 기본) ---------- */
-.chat-wrap { display: flex; flex-direction: column;
-             height: calc(100vh - 152px); height: calc(100dvh - 152px); min-height: 340px; }
+/* ---------- 채팅 페이지 레이아웃 ----------
+   채팅 페이지는 뷰포트 전체를 채운다(네비 자동 높이 + 나머지가 채팅) —
+   calc로 네비 높이를 추정한 방식은 여백이 남거나 넘쳤다(입력창 아래 빈 공간). */
+.page-shell { display: contents; }
+body.chat-page { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+body.chat-page .page-shell.chat-layout { flex: 1; min-height: 0; }
+body.chat-page .container { height: 100%; padding: 10px 10px 8px; }
 
-/* 대화(스레드) 바 — 새 채팅·목록 토글 */
-.thread-bar { position: relative; display: flex; gap: 8px; margin-bottom: 10px; }
-.thread-btn { border: 1px solid var(--border); background: var(--card); color: var(--ink);
-              border-radius: 10px; padding: 0 14px; min-height: 44px;
-              font-size: 14px; font-weight: 600; cursor: pointer; }
-.thread-btn:hover { border-color: var(--brand); color: var(--brand); }
-.thread-btn[aria-expanded="true"] { border-color: var(--brand); color: var(--brand); background: var(--tint-brand); }
+.chat-wrap { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+
+/* 햄버거 버튼 — 사이드바(대화 메뉴) 토글 */
+.nav-left { display: flex; align-items: center; gap: 2px; }
+.menu-toggle { border: none; background: none; cursor: pointer; font-size: 22px; line-height: 1;
+               min-width: 44px; min-height: 44px; padding: 0 8px; border-radius: 10px; color: var(--ink); }
+.menu-toggle:hover { background: var(--hover); }
+
+/* 사이드바 — 모바일 기본: 왼쪽 오프캔버스 드로어 (☰/백드롭/✕/Esc 닫기) */
+.sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
+           width: min(320px, 85vw); background: var(--card); border-right: 1px solid var(--border);
+           display: flex; flex-direction: column; gap: 10px; padding: 12px;
+           transform: translateX(-103%); transition: transform .22s ease; }
+body.sidebar-open .sidebar { transform: translateX(0); box-shadow: var(--shadow); }
+.sidebar-backdrop { position: fixed; inset: 0; z-index: 45; background: rgba(12,15,24,.45); }
+.sidebar-head { display: flex; align-items: center; justify-content: space-between; }
+.sidebar-title { font-size: 15px; font-weight: 800; }
+.sidebar-close { border: none; background: none; color: var(--muted); font-size: 18px; line-height: 1;
+                 min-width: 44px; min-height: 44px; border-radius: 10px; cursor: pointer; }
+.sidebar-close:hover { background: var(--hover); color: var(--ink); }
+.new-thread-btn { width: 100%; border: 1px solid var(--border); background: var(--card); color: var(--brand);
+                  border-radius: 10px; min-height: 44px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.new-thread-btn:hover { border-color: var(--brand); background: var(--tint-brand); }
 .thread-count { color: var(--muted); }
-.thread-list { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20;
-               width: min(340px, 100%); max-height: min(320px, 55vh); overflow-y: auto;
-               list-style: none; margin: 0; padding: 6px;
-               background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-               box-shadow: var(--shadow); }
+.thread-list { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 0;
+               display: flex; flex-direction: column; gap: 2px; }
 .thread-item { display: flex; align-items: center; gap: 2px; padding: 2px; border-radius: 10px; }
 .thread-item:hover { background: var(--bg); }
 .thread-item.active { background: var(--tint-brand); box-shadow: inset 3px 0 0 var(--brand); }
@@ -118,7 +135,7 @@ body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; backgr
                  min-width: 44px; min-height: 44px; border-radius: 10px; cursor: pointer; flex: none; }
 .thread-delete:hover { background: var(--tint-error); color: var(--danger); }
 /* 비동기 상태 — 로드 중 / 실패(다시 시도) / 빈 목록 */
-.thread-state { padding: 14px 10px; font-size: 14px; color: var(--muted); text-align: center; line-height: 1.5; }
+.thread-state { padding: 14px 8px; font-size: 14px; color: var(--muted); text-align: left; line-height: 1.5; }
 .thread-retry { margin-top: 8px; border: 1px solid var(--border); background: var(--card); color: var(--brand);
                 border-radius: 8px; padding: 8px 16px; min-height: 40px;
                 font-size: 13px; font-weight: 600; cursor: pointer; }
@@ -204,10 +221,13 @@ body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; backgr
   .container:has(.admin-panel) { max-width: 1200px; }
   .auth-card { margin: 48px auto; padding: 32px; }
 
-  .chat-wrap { height: calc(100vh - 122px); height: calc(100dvh - 122px); }
-  .thread-btn { min-height: 40px; }
-  .thread-label { min-height: 40px; }
-  .thread-delete { min-width: 34px; min-height: 34px; font-size: 16px; }
+  /* 채팅 — 사이드바 상시 표시(좌측 280px) + 채팅 영역 나머지. ☰로 접기 가능(저장 유지) */
+  body.chat-page .page-shell.chat-layout { display: flex; }
+  body.chat-page .container { height: auto; flex: 1; min-width: 0; padding: 16px 20px 12px; }
+  .sidebar { position: static; transform: none; transition: none; width: 280px; flex: none;
+             border-right: 1px solid var(--border); box-shadow: none; }
+  .sidebar-close, .sidebar-backdrop { display: none; }
+  body.chat-page.sidebar-collapsed .sidebar { display: none; }
   .chat-window { padding: 18px; }
   .bubble { max-width: 78%; }
   .chat-input { gap: 10px; }
