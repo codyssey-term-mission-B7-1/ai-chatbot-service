@@ -145,6 +145,8 @@ def test_theme_toggle_contract():
     # 3상태(시스템→라이트→다크) 순환
     for mode in ("system", "light", "dark"):
         assert f'"{mode}"' in theme
+    # 모드 이름까지 버튼에 표기 — 외형이 안 바뀌는 경우(시스템=현재 색)에도 "바뀌었다"는 피드백
+    assert 'ICONS[mode] + " " + LABELS[mode]' in theme
 
 
 def test_mobile_first_layout_contract():

@@ -65,8 +65,9 @@ body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; backgr
                     border-radius: 10px; font-weight: 600; }
 .nav-link.primary:hover { color: #fff; }
 .linklike { border: none; background: none; cursor: pointer; font: inherit; }
-.theme-toggle { border: none; background: none; cursor: pointer; font-size: 20px; line-height: 1;
-                min-width: 44px; min-height: 44px; padding: 0 8px; border-radius: 10px; color: var(--ink); }
+.theme-toggle { border: none; background: none; cursor: pointer; font-size: 15px; line-height: 1;
+                min-width: 44px; min-height: 44px; padding: 0 10px; border-radius: 10px; color: var(--ink);
+                display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-family: inherit; }
 .theme-toggle:hover { background: var(--hover); }
 .user-chip { background: var(--tint-brand); color: var(--brand-dark); border-radius: 999px;
              padding: 6px 12px; font-size: 13px; font-weight: 600; }
