@@ -185,6 +185,24 @@ def test_static_assets_are_versioned():
         assert all(r.endswith("?v={{ asset_v }}") for r in refs), html_file.name
 
 
+def test_sidebar_user_menu_contract():
+    """채팅 페이지 — 기록/관리자/테마/로그아웃은 사이드바 하단에, 네비는 슬림(☰+브랜드만)."""
+    base = (ROOT / "templates/base.html").read_text()
+    chat = (ROOT / "templates/chat.html").read_text()
+    css = (ROOT / "static/css/style.css").read_text()
+    # base: 네비 우측은 블록으로(채팅 페이지는 비워서 슬림 네비 유지)
+    assert "block nav_right" in base
+    assert "{% block nav_right %}{% endblock %}" in chat
+    # 사이드바 하단: 사용자 칩 + 기록/관리자(조건부)/테마/로그아웃
+    assert "sidebar-foot" in chat
+    assert 'href="/logs"' in chat and 'href="/admin/logs"' in chat and "is_admin" in chat
+    assert "sidebar-foot" in chat and chat.index("sidebar-foot") > chat.index("thread-list")
+    assert chat.count('id="theme-toggle"') == 1 and chat.count('id="logout-btn"') == 1
+    # 채팅 네비 슬림(패딩 최소화) + 하단 메뉴 스타일
+    assert "body.chat-page .nav { padding: 0 6px; }" in css
+    assert ".sidebar-foot" in css and ".side-link" in css
+
+
 def test_sidebar_hamburger_contract():
     """채팅 화면 — 햄버거 버튼으로 사이드바(대화 목록) 토글. 모바일 드로어/데스크톱 상시+접기."""
     base = (ROOT / "templates/base.html").read_text()

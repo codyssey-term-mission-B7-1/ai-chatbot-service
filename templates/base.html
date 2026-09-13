@@ -16,6 +16,7 @@
       <a class="brand" href="/">🤖 AI 챗봇</a>
     </div>
     <div class="nav-right">
+      {% block nav_right %}
       <button type="button" id="theme-toggle" class="theme-toggle" aria-label="테마 전환"></button>
       {% if nickname %}
         <span class="user-chip">{{ nickname }}님</span>
@@ -26,6 +27,7 @@
         <a class="nav-link" href="/login">로그인</a>
         <a class="nav-link primary" href="/signup">회원가입</a>
       {% endif %}
+      {% endblock %}
     </div>
   </nav>
   <div class="page-shell{% block page_class %}{% endblock %}">

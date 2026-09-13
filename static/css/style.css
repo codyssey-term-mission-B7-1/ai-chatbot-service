@@ -98,6 +98,19 @@ body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; backgr
 body.chat-page { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 body.chat-page .page-shell.chat-layout { flex: 1; min-height: 0; }
 body.chat-page .container { height: 100%; padding: 10px 10px 8px; }
+/* 채팅 네비는 ☰+브랜드만 — padding 최소화(슬림). 사용자 메뉴는 사이드바 하단으로. */
+body.chat-page .nav { padding: 0 6px; }
+/* 사이드바 하단 사용자 메뉴(기록/관리자/테마/로그아웃) */
+.sidebar-foot { border-top: 1px solid var(--border); padding-top: 8px; }
+.sidebar-foot .user-chip { display: inline-block; margin-bottom: 8px; }
+.sidebar-links { display: flex; flex-direction: column; }
+.side-link { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+             border: none; background: none; font: inherit; font-size: 14px; color: var(--muted);
+             padding: 10px; min-height: 44px; border-radius: 10px; cursor: pointer; text-decoration: none; }
+.side-link:hover { background: var(--hover); color: var(--ink); }
+.side-row { display: flex; align-items: center; justify-content: space-between; padding: 0 10px; }
+.side-label { color: var(--muted); font-size: 14px; }
+.side-logout { margin-top: 4px; border-top: 1px solid var(--border); border-radius: 0; }
 
 .chat-wrap { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 
@@ -224,6 +237,10 @@ body.sidebar-open .sidebar { transform: translateX(0); box-shadow: var(--shadow)
   /* 채팅 — 사이드바 상시 표시(좌측 280px) + 채팅 영역 나머지. ☰로 접기 가능(저장 유지) */
   body.chat-page .page-shell.chat-layout { display: flex; }
   body.chat-page .container { height: auto; flex: 1; min-width: 0; padding: 16px 20px 12px; }
+  /* 데스크톱: 네비 더 슬림(40px) — 마우스 디바이스라 44px 타깃 유지 불필요 */
+  body.chat-page .nav { padding: 0 10px; }
+  body.chat-page .brand, body.chat-page .menu-toggle { min-height: 40px; }
+  .side-link { min-height: 40px; }
   .sidebar { position: static; transform: none; transition: none; width: 280px; flex: none;
              border-right: 1px solid var(--border); box-shadow: none; }
   .sidebar-close, .sidebar-backdrop { display: none; }
