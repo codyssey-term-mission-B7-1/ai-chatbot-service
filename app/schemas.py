@@ -112,9 +112,13 @@ class UserOut(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    """공백 질문 거부, 상한은 MAX_QUESTION_LENGTH(기본 1000 코드 포인트)."""
+    """공백 질문 거부, 상한은 MAX_QUESTION_LENGTH(기본 1000 코드 포인트).
+
+    thread_id는 현재 대화(스레드)를 지정한다. 생략하면 사용자의 기본 대화가 된다.
+    """
 
     question: str = Field(min_length=1, max_length=settings.max_question_length)
+    thread_id: int | None = Field(default=None, ge=1)
     model_config = {
         "extra": "forbid",
         "json_schema_extra": {
@@ -162,6 +166,7 @@ class ChatLogOut(BaseModel):
     latency_ms: int
     status: str
     request_id: str = ""
+    thread_id: int | None = None
     created_at: datetime
     model_config = {"from_attributes": True}
 
@@ -198,3 +203,20 @@ class PasswordHashStatusOut(BaseModel):
 class DeletedUserOut(BaseModel):
     user_id: int
     email: str
+
+
+class ThreadOut(BaseModel):
+    """대화 스레드(새 채팅) — title은 자동 생성 전까지 None(→ '기본 대화' 표시)."""
+
+    id: int
+    title: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    model_config = {"from_attributes": True}
+
+    @field_validator("created_at", "updated_at")
+    @classmethod
+    def utc_timestamp(cls, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)

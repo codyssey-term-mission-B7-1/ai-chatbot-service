@@ -24,8 +24,11 @@
 | GET | /api/auth/me | 로그인 / 200 |
 | POST | /api/auth/password/reset-request | 공개 / 202 (계정 존재 은닉) |
 | POST | /api/auth/password/reset | 공개 / 200 · 400 |
-| POST | /api/chat | 로그인 / 200 |
-| GET | /api/me/chats | 로그인 / 본인 기록 |
+| POST | /api/chat | 로그인 / 200 · 404 (thread_id 타인·부존재) |
+| POST | /api/threads | 로그인 / 201 · 409 (상한) |
+| GET | /api/threads | 로그인 / 내 대화 목록(최근 활동순, 최대 50) |
+| DELETE | /api/threads/{id} | 로그인 / 200 · 404 — 기록 CASCADE 삭제 |
+| GET | /api/me/chats | 로그인 / 본인 기록 (thread_id 필터 가능) |
 | GET | /api/admin/chats | 명시적 앱 관리자 / 전체 조회 |
 | GET | /health | 공개 / 200 |
 
@@ -93,13 +96,15 @@ POST /api/chat
 Content-Type: application/json
 Cookie: session=<실제 요청에서만 사용, 증빙에서는 마스킹>
 
-{"question":"내가 방금 뭘 물어봤지?"}
+{"question":"내가 방금 뭘 물어봤지?","thread_id":2}
 ```
 ```json
 {"answer":"직전에 배포 방법을 물어보셨어요.","latency_ms":1240,"chat_id":987,"status":"success"}
 ```
 
-순서: 입력 검증 → 본인 성공 Q/A 최대 N쌍 → AI 호출 → DB 저장 시도 → HTTP 응답.
+`thread_id`는 생략 가능 — 생략 시 **기본 대화**(가장 오래된 스레드)가 사용된다. 타인·부존재 스레드는 404.
+
+순서: 입력 검증 → (thread_id 소유권 검증) → 해당 대화의 성공 Q/A 최대 N쌍 → AI 호출 → DB 저장 시도 → HTTP 응답.
 
 - `MAX_QUESTION_LENGTH` 기본 1000, 앞뒤 공백 제거 후 코드 포인트 수 검사. 프론트도 서버 설정값을 사용한다.
 - `CONTEXT_TURNS` 0~200, 0이면 과거 문맥 없음. 성공 Q/A만 선택한다.
@@ -111,16 +116,34 @@ Cookie: session=<실제 요청에서만 사용, 증빙에서는 마스킹>
 
 사용자별로 `CHAT_RATE_PER_MIN`회(기본 10)/분을 초과하면 429 + `Retry-After`로 거부되며 이때 AI 호출·DB 저장은 일어나지 않는다. `CHAT_RATE_PER_MIN=0`이면 제한이 비활성화된다.
 
+### 대화(스레드) — 새 채팅
+
+한 사용자는 여러 대화(스레드)를 가진다. **AI 문맥과 UI 복원은 스레드 단위**다(ADR-011).
+
+```http
+POST /api/threads          → 201 {"id":3,"title":null,"created_at":"…Z","updated_at":"…Z"}
+GET  /api/threads          → 200 [{"id":2,"title":"DB 백업 방법","…"}, …]   (최근 활동순, 최대 50)
+DELETE /api/threads/2      → 200 {"deleted":true}    (그 대화의 기록도 CASCADE 삭제)
+```
+
+- `thread_id`를 **전달한 채팅**은 그 대화에 저장되고 문맥도 그 대화의 직전 N개 성공 Q/A만 사용한다. **미전달**이면 사용자의 **기본 대화**(가장 오래된 스레드)로 저장·해제된다.
+- 기본 대화: 제목 고정 `기본 대화`. 처음 채팅하면 자동 생성(기존 기록은 여기에 이미 백필됨).
+- 제목 자동 생성: `title=null`인 대화의 **첫 질문**에서 생성 — 공백 압축 후 코드포인트 20자(`MAX_THREAD_TITLE_CHARS`). 기본 대화는 제외.
+- `thread_id`가 존재하지 않거나 **내 대화가 아니면 404**("대화를 찾을 수 없어요.") — AI 호출 전 거부(비용 방어). 403을 쓰지 않아 타인 대화 존재 여부도 노출하지 않는다.
+- 상한: 사용자당 `MAX_THREADS_PER_USER`(기본 100)개 — 초과 시 409.
+- 내 대화만 조회/삭제 가능(본인 스코프 쿼리). 기록 조회의 `thread_id` 필터도 동일하게 타인은 404.
+
 ## 본인 기록
 
-`GET /api/me/chats?limit=50&status=success&before_id=100`
+`GET /api/me/chats?limit=50&status=success&before_id=100&thread_id=2`
 
 ```json
 [{"id":99,"question":"이전 질문","answer":"이전 응답","latency_ms":1200,
-  "status":"success","request_id":"example","created_at":"2026-09-08T00:00:00Z"}]
+  "status":"success","request_id":"example","thread_id":2,"created_at":"2026-09-08T00:00:00Z"}]
 ```
 
 - 다른 사용자의 기록은 반환하지 않는다. 관리자가 이 경로를 호출해도 본인 기록만 반환한다.
+- `thread_id`: 특정 대화의 기록만 조회. **내 대화가 아니면 404**(타인 존재 여부 비노출).
 - `status`: 생략 / `success` / `ai_error`. 필터를 적용한 **뒤** limit을 적용한다.
 - limit은 1~200으로 제한(음수·0은 1). 최신 ID 순. `before_id`는 양수의 이전 페이지 커서.
 - UI 복원은 `status=success&limit=N`을 요청하고 뒤집어 오래된 순으로 표시한다.
