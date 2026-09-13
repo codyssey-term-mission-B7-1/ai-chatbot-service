@@ -8,6 +8,9 @@
         aria-label="대화 메뉴 열기/닫기" aria-controls="sidebar" aria-expanded="false">☰</button>
 {% endblock %}
 
+{# 채팅 페이지: 기록/관리자/로그아웃/테마는 사이드바 하단으로 — 상단바는 ☰+브랜드만 슬림 유지 #}
+{% block nav_right %}{% endblock %}
+
 {% block sidebar %}
 <aside class="sidebar" id="sidebar" aria-label="대화 목록">
   <div class="sidebar-head">
@@ -16,6 +19,17 @@
   </div>
   <button type="button" id="new-thread-btn" class="new-thread-btn">＋ 새 채팅</button>
   <ul id="thread-list" class="thread-list"></ul>
+  <div class="sidebar-foot">
+    <span class="user-chip">{{ nickname }}님</span>
+    <nav class="sidebar-links" aria-label="사용자 메뉴">
+      <a class="side-link" href="/logs">📄 내 기록</a>
+      {% if is_admin %}<a class="side-link" href="/admin/logs">🛡️ 관리자 조회</a>{% endif %}
+      <div class="side-row"><span class="side-label">테마</span>
+        <button type="button" id="theme-toggle" class="theme-toggle" aria-label="테마 전환"></button>
+      </div>
+      <button class="side-link side-logout" id="logout-btn" type="button">⎋ 로그아웃</button>
+    </nav>
+  </div>
 </aside>
 <div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
 {% endblock %}
