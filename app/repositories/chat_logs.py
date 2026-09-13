@@ -13,21 +13,28 @@ def list_logs(
     limit: int = 50,
     status: str | None = None,
     before_id: int | None = None,
+    thread_id: int | None = None,
 ) -> list[ChatLog]:
     query = db.query(ChatLog)
     if user_id is not None:
         query = query.filter(ChatLog.user_id == user_id)
     if status is not None:
         query = query.filter(ChatLog.status == status)
+    if thread_id is not None:
+        query = query.filter(ChatLog.thread_id == thread_id)
     if before_id is not None:
         query = query.filter(ChatLog.id < before_id)
     return query.order_by(ChatLog.id.desc()).limit(max(1, min(limit, MAX_LOG_PAGE_SIZE))).all()
 
 
-def successful_context(db: Session, user_id: int, turns: int) -> list[ChatLog]:
+def successful_context(
+    db: Session, user_id: int, turns: int, thread_id: int | None = None
+) -> list[ChatLog]:
+    """스레드 내 직전 성공 Q/A — thread_id=None이면 사용자 전체(레거시 동작 유지)."""
     if turns <= 0:
         return []
-    return list_logs(db, user_id=user_id, status="success", limit=turns)[::-1]
+    rows = list_logs(db, user_id=user_id, status="success", limit=turns, thread_id=thread_id)
+    return rows[::-1]
 
 
 def save_log(
@@ -39,9 +46,11 @@ def save_log(
     latency_ms: int,
     status: str,
     request_id: str,
+    thread_id: int | None = None,
 ) -> ChatLog:
     row = ChatLog(
         user_id=user_id,
+        thread_id=thread_id,
         question=question,
         answer=answer,
         latency_ms=latency_ms,
