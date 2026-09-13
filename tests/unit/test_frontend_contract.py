@@ -142,10 +142,11 @@ def test_theme_toggle_contract():
     # CSS는 data-theme="dark" 토큰 재지정 + no-JS 폴백(시스템 설정) 모두 지원
     assert 'data-theme="dark"' in css
     assert "@media (prefers-color-scheme: dark)" in css
-    # 3상태(시스템→라이트→다크) 순환
-    for mode in ("system", "light", "dark"):
+    # 2상태(라이트↔다크) — 시스템 모드는 제거(브라우저·플랫폼별 OS 추적 불신뢰 → 2026-09 user 결정)
+    for mode in ("light", "dark"):
         assert f'"{mode}"' in theme
-    # 모드 이름까지 버튼에 표기 — 외형이 안 바뀌는 경우(시스템=현재 색)에도 "바뀌었다"는 피드백
+    assert '"system"' not in theme and '"system"' not in init
+    # 모드 이름까지 버튼에 표기 — 클릭할 때마다 명확한 피드백
     assert 'ICONS[mode] + " " + LABELS[mode]' in theme
 
 

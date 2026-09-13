@@ -1,28 +1,38 @@
-/* 다크/라이트 수동 토글 — 시스템 → 라이트 → 다크 순환(3상태).
+/* 다크/라이트 수동 토글 — 라이트 ↔ 다크 2상태(시스템 모드 없음).
  * 선택은 localStorage('theme')에 저장되어 전 페이지·세션을 유지한다.
- * 'system' 모드에서는 운영체제 설정 변화에 실시간으로 따른다. */
+ * 기존 'system'/미설정/무효 값은 로드 시 OS 설정으로 한 번 해석해 고정한다. */
 (function () {
   var KEY = "theme";
-  var MODES = { system: "light", light: "dark", dark: "system" };
-  var LABELS = { system: "시스템", light: "라이트", dark: "다크" };
-  var ICONS = { system: "◐", light: "☀", dark: "☾" };
+  var MODES = { light: "dark", dark: "light" };  // 다음 모드
+  var LABELS = { light: "라이트", dark: "다크" };
+  var ICONS = { light: "☀", dark: "☾" };
   var root = document.documentElement;
 
+  function osPrefersDark() {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+
   function current() {
-    var s = "system";
+    var s = "";
     try {
-      s = localStorage.getItem(KEY) || "system";
+      s = localStorage.getItem(KEY) || "";
     } catch (e) {
-      s = "system";
+      s = "";
     }
-    return ["system", "light", "dark"].indexOf(s) >= 0 ? s : "system";
+    if (s !== "light" && s !== "dark") {
+      // 'system'(구 버전 저장값)/미설정/무효 → OS 설정으로 한 번 해석해 내 설정으로 고정
+      s = osPrefersDark() ? "dark" : "light";
+      try {
+        localStorage.setItem(KEY, s);
+      } catch (e) {
+        /* 저장 불가(사생활 모드) — 이번 로드에서만 해석 */
+      }
+    }
+    return s;
   }
 
   function apply(mode) {
-    var dark =
-      mode === "dark" ||
-      (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    root.setAttribute("data-theme", dark ? "dark" : "light");
+    root.setAttribute("data-theme", mode);
     root.setAttribute("data-theme-mode", mode);
   }
 
@@ -30,8 +40,7 @@
     var btn = document.getElementById("theme-toggle");
     if (!btn) return;
     var mode = current();
-    // 아이콘만으로는 "바뀌었나"를 알기 어려움(시스템이 현재 색과 같으면 외형 변화 0).
-    // 모드 이름을 함께 표기해 클릭할 때마다 어떤 모드인지 명확히 피드백한다.
+    // 모드 이름까지 표기해 클릭할 때마다 어떤 모드인지 명확히 피드백한다.
     btn.textContent = ICONS[mode] + " " + LABELS[mode];
     btn.setAttribute("aria-label", "테마: " + LABELS[mode] + " — 클릭하여 " + LABELS[MODES[mode]] + "으로 변경");
     btn.title = "테마: " + LABELS[mode] + " → 다음: " + LABELS[MODES[mode]];
@@ -51,14 +60,4 @@
     });
     updateButton();
   }
-
-  /* system 모드 — 운영체제 설정 변화 추적 */
-  var mq = window.matchMedia("(prefers-color-scheme: dark)");
-  var onSystemChange = function () {
-    if (current() === "system") {
-      apply("system");
-      updateButton();
-    }
-  };
-  if (mq.addEventListener) mq.addEventListener("change", onSystemChange);
 })();
