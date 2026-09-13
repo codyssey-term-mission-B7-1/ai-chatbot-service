@@ -48,7 +48,9 @@
   }
 }
 
-body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+/* 최소 폭 320px — 가장 작은 모바일 기기(iPhone SE/고급 Android 기준) 이하로는
+   줄이지 않고 가로 스크롤을 둔다(더 줄면 카드·테이블·채팅 입력이 깨짐). */
+body { min-width: 320px; font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; background: var(--bg); color: var(--ink); }
 [hidden] { display: none !important; }
 
 /* ---------- 내비게이션 (모바일 기본: 2줄 랩 + 44px 타깃) ---------- */
@@ -99,8 +101,8 @@ body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; backgr
 body.chat-page { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 body.chat-page .page-shell.chat-layout { flex: 1; min-height: 0; }
 body.chat-page .container { height: 100%; padding: 10px 10px 8px; }
-/* 채팅 네비는 ☰+브랜드만 — padding 최소화(슬림). 사용자 메뉴는 사이드바 하단으로. */
-body.chat-page .nav { padding: 0 6px; }
+/* 앱 페이지(채팅·기록·관리자) 네비는 ☰+브랜드만 — padding 최소화(슬림). 사용자 메뉴는 사이드바 하단으로. */
+body.app-page .nav { padding: 0 6px; }
 /* 사이드바 하단 사용자 메뉴(기록/관리자/테마/로그아웃) */
 .sidebar-foot { border-top: 1px solid var(--border); padding-top: 8px; }
 .sidebar-foot .user-chip { display: inline-block; margin-bottom: 8px; }
@@ -235,17 +237,21 @@ body.sidebar-open .sidebar { transform: translateX(0); box-shadow: var(--shadow)
   .container:has(.admin-panel) { max-width: 1200px; }
   .auth-card { margin: 48px auto; padding: 32px; }
 
-  /* 채팅 — 사이드바 상시 표시(좌측 280px) + 채팅 영역 나머지. ☰로 접기 가능(저장 유지) */
-  body.chat-page .page-shell.chat-layout { display: flex; }
-  body.chat-page .container { height: auto; flex: 1; min-width: 0; padding: 16px 20px 12px; }
+  /* 앱 페이지(채팅·기록·관리자) — 사이드바 상시 표시(좌측 280px) + 콘텐츠 나머지. ☰로 접기 가능(저장 유지) */
+  .page-shell.app-layout { display: flex; align-items: stretch; }
+  .page-shell.app-layout > main.container { flex: 1; min-width: 0; max-width: none; margin: 0; }
+  .container:has(.admin-panel) { max-width: none; }
+  /* 채팅 — 페이지가 뷰포트 전체를 채운다(기록·관리자는 자연 높이) */
+  body.chat-page .page-shell.chat-layout { flex: 1; min-height: 0; }
+  body.chat-page .container { height: 100%; padding: 16px 20px 12px; }
   /* 데스크톱: 네비 더 슬림(40px) — 마우스 디바이스라 44px 타깃 유지 불필요 */
-  body.chat-page .nav { padding: 0 10px; }
-  body.chat-page .brand, body.chat-page .menu-toggle { min-height: 40px; }
+  body.app-page .nav { padding: 0 10px; }
+  body.app-page .brand, body.app-page .menu-toggle { min-height: 40px; }
   .side-link { min-height: 40px; }
   .sidebar { position: static; transform: none; transition: none; width: 280px; flex: none;
              border-right: 1px solid var(--border); box-shadow: none; }
   .sidebar-close, .sidebar-backdrop { display: none; }
-  body.chat-page.sidebar-collapsed .sidebar { display: none; }
+  body.sidebar-collapsed .sidebar { display: none; }
   .chat-window { padding: 18px; }
   .bubble { max-width: 78%; }
   .chat-input { gap: 10px; }
