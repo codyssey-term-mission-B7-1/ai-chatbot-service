@@ -272,3 +272,93 @@ def test_models_metadata_matches_head(fresh_sqlite_url):
         if not n.startswith("sqlite_autoindex_")
     }
     assert extra_in_db == set(), f"마이그레이션이 모델에 없는 테이블을 만듦: {extra_in_db}"
+
+
+def test_legacy_db_with_empty_version_table_is_adopted(fresh_sqlite_url, monkeypatch):
+    """실패한 upgrade가 남긴 빈(0행) alembic_version도 adopt 대상 — 운영 사고 회귀 테스트.
+
+    타임라인 재현: (1) ceed2b7 이전 레거시 DB → (2) adopt 도입 전 구버전 기동:
+    upgrade가 버전 테이블을 만든 뒤 root 재실행에 실패 → 빈 테이블 잔여 →
+    (3) adopt 버전 기동: 테이블 껍질이 있어 adopt 스킵 → 'table users already
+    exists' 무한 루프. 현재 코드는 빈 테이블도 adopt해 head에 도달해야 한다.
+    """
+    from sqlalchemy import text
+
+    monkeypatch.delenv("TESTING", raising=False)
+    cfg = _alembic_config(fresh_sqlite_url)
+
+    # (1) 레거시 스키마 + 데이터, 버전 테이블 제거
+    command.upgrade(cfg, "9dea740a4bf1")
+    engine = create_engine(fresh_sqlite_url)
+    event.listens_for(engine, "connect")(_sqlite_pragmas)
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO users (email, password_hash, nickname, created_at) "
+                "VALUES ('legacy@example.com', 'hash', '레거시', '2026-01-01 00:00:00+00:00')"
+            )
+        )
+        conn.execute(text("DROP TABLE alembic_version"))
+    engine.dispose()
+
+    # (2) 구버전(adopt 없음) 기동 시뮬레이션 — 실패, 빈 버전 테이블 잔여
+    engine = create_engine(fresh_sqlite_url)
+    event.listens_for(engine, "connect")(_sqlite_pragmas)
+    try:
+        with pytest.raises(Exception, match="already exists"):
+            command.upgrade(cfg, "head")
+        insp = inspect(engine)
+        assert "alembic_version" in insp.get_table_names()
+        with engine.connect() as conn:
+            assert conn.execute(text("SELECT COUNT(*) FROM alembic_version")).scalar() == 0
+    finally:
+        engine.dispose()
+
+    # (3) 현재 init_db — 빈 테이블도 adopt → head 도달
+    from app.database import init_db
+
+    engine = create_engine(fresh_sqlite_url)
+    event.listens_for(engine, "connect")(_sqlite_pragmas)
+    try:
+        init_db(alembic_cfg=cfg, eng=engine)
+        insp = inspect(engine)
+        assert "threads" in insp.get_table_names()
+        assert "thread_id" in [c["name"] for c in insp.get_columns("chat_logs")]
+        with engine.connect() as conn:
+            assert (
+                conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
+                == "c7e4a9b21d05"
+            )
+    finally:
+        engine.dispose()
+
+
+def test_init_db_flags_legacy_schema_incomplete(fresh_sqlite_url, monkeypatch):
+    """root 이전 구조의 DB(root가 만든 테이블 일부 부재) — adopt 후에도 스키마가
+    최신이 아니면 기동 시점에 legacy_incomplete로 노출한다(나중에 500으로 번지는 대신)."""
+    from sqlalchemy import text
+
+    monkeypatch.delenv("TESTING", raising=False)
+    cfg = _alembic_config(fresh_sqlite_url)
+    # init 스키마에서 session_revocations만 빼놓은 오래전 구조
+    command.upgrade(cfg, "9dea740a4bf1")
+    engine = create_engine(fresh_sqlite_url)
+    event.listens_for(engine, "connect")(_sqlite_pragmas)
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE session_revocations"))
+        conn.execute(text("DROP TABLE alembic_version"))
+    engine.dispose()
+
+    from app.database import init_db
+
+    engine = create_engine(fresh_sqlite_url)
+    event.listens_for(engine, "connect")(_sqlite_pragmas)
+    try:
+        with pytest.raises(Exception, match="Legacy schema incomplete"):
+            init_db(alembic_cfg=cfg, eng=engine)
+        import app.database as dbmod
+
+        assert dbmod.schema_sync["status"] == "error"
+        assert dbmod.schema_sync["error"] == "legacy_incomplete"
+    finally:
+        engine.dispose()
