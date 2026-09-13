@@ -151,6 +151,41 @@ def find_id(db, email):
     return find_by_email(db, email).id
 
 
+def test_admin_page_filters_by_email_and_shows_user_identity(client, db, caplog):
+    """/admin/logs 사용자 검색 — 이메일 기준(ID 검색 제거). 정규화·없음 처리·사용자 열·감사 로그."""
+    import logging
+
+    signup_and_login(client, "filter-a@example.com")
+    client.post("/api/chat", json={"question": "A 사용자 질문"})
+    signup_and_login(client, "filter-b@example.com")  # 현재 세션
+    client.post("/api/chat", json={"question": "B 사용자 질문"})
+    grant_admin(db, "filter-b@example.com")  # 현재 세션 사용자에게 부여
+
+    # 전체(필터 없음) — 두 사용자 기록 모두 + 사용자 열에 이메일·닉네임
+    body = client.get("/admin/logs").text
+    assert "A 사용자 질문" in body and "B 사용자 질문" in body
+    assert "filter-b@example.com" in body
+
+    # 이메일 필터 — 정확히 일치(대소문자·여백 정규화)
+    body = client.get("/admin/logs", params={"email": "  Filter-B@example.com "}).text
+    assert "B 사용자 질문" in body and "A 사용자 질문" not in body
+
+    # 없는 이메일 — 200 + 안내 메시지(404 아님)
+    body = client.get("/admin/logs", params={"email": "nobody@example.com"}).text
+    assert "사용자를 찾을 수 없어요" in body
+    assert "A 사용자 질문" not in body
+
+    # JS가 참조하는 이메일 입력이 실제 렌더에 존재(유실 시 폼 제출이 깨짐)
+    assert 'id="admin-user-email"' in body
+
+    # 감사 로그 — filter_email 기록
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger="app.pages"):
+        client.get("/admin/logs", params={"email": "filter-b@example.com"})
+    assert "event=admin_logs_viewed" in caplog.text
+    assert "filter_email=filter-b@example.com" in caplog.text
+
+
 def test_admin_page_view_records_reason_in_audit_log(client, db, caplog):
     """/admin/logs 열람 사유가 admin_logs_viewed 감사 이벤트에 기록된다(B-1 — who/what/why)."""
     import logging
