@@ -38,6 +38,26 @@ body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; backgr
 
 /* 채팅 */
 .chat-wrap { display: flex; flex-direction: column; height: calc(100vh - 150px); }
+
+/* 대화(스레드) 바 — 새 채팅·목록 토글 */
+.thread-bar { position: relative; display: flex; gap: 8px; margin-bottom: 10px; }
+.thread-btn { border: 1px solid var(--border); background: var(--card); color: var(--ink);
+              border-radius: 8px; padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.thread-btn:hover { border-color: var(--brand); color: var(--brand); }
+.thread-count { color: var(--muted); }
+.thread-list { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 240px;
+               max-height: 280px; overflow-y: auto; list-style: none; margin: 0; padding: 6px;
+               background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+               box-shadow: 0 8px 24px rgba(20,25,40,.12); }
+.thread-item { display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 8px; }
+.thread-item:hover { background: var(--bg); }
+.thread-item.active { background: #eef1fe; }
+.thread-label { flex: 1; border: none; background: none; text-align: left; font: inherit; font-size: 14px;
+                padding: 8px 10px; border-radius: 8px; cursor: pointer; color: var(--ink);
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.thread-delete { border: none; background: none; color: var(--muted); font-size: 16px; line-height: 1;
+                 min-width: 30px; min-height: 30px; border-radius: 8px; cursor: pointer; }
+.thread-delete:hover { background: #fdecec; color: var(--danger); }
 .banner { background: #fff7e0; border: 1px solid #f0dfa8; color: #755c12;
           border-radius: 8px; padding: 8px 36px 8px 12px; font-size: 13px; margin-bottom: 10px;
           position: relative; }
@@ -123,4 +143,8 @@ body { font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; backgr
   .row-error { background: #2a1b1b; }
   .user-chip { background: #262b3d; }
   .history-divider { background: var(--bg); }
+  .thread-btn { background: var(--card); border-color: var(--border); color: var(--ink); }
+  .thread-item.active { background: #262b3d; }
+  .thread-item:hover { background: #22252d; }
+  .thread-delete:hover { background: #3a1d1d; }
 }

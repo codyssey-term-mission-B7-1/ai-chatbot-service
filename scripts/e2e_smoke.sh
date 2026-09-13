@@ -36,6 +36,12 @@ step "⑥ 채팅 (AI 호출)"       200 -b "$COOKIE" -X POST "$BASE/api/chat" -H
 echo "    └ 응답: $(echo "$LAST_BODY" | python3 -c 'import sys; sys.stdout.buffer.write(sys.stdin.buffer.read().decode("utf-8")[:200].encode("utf-8"))')"
 step "⑦ 내 대화 로그 조회"     200 -b "$COOKIE" "$BASE/api/me/chats"
 echo "    └ 로그: $(echo "$LAST_BODY" | python3 -c 'import sys; sys.stdout.buffer.write(sys.stdin.buffer.read().decode("utf-8")[:200].encode("utf-8"))')"
+step "⑧ 새 대화 시작 (스레드)"  201 -b "$COOKIE" -X POST "$BASE/api/threads"
+TID=$(echo "$LAST_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
+step "⑨ 새 대화 채팅 (thread_id)" 200 -b "$COOKIE" -X POST "$BASE/api/chat" -H 'Content-Type: application/json' \
+     -d "{\"question\":\"새 대화 스모크 질문입니다.\",\"thread_id\":$TID}"
+step "⑩ 새 대화 로그 조회 (필터)"  200 -b "$COOKIE" "$BASE/api/me/chats?thread_id=$TID"
+echo "    └ 스레드 $TID 로그: $(echo "$LAST_BODY" | python3 -c 'import sys; sys.stdout.buffer.write(sys.stdin.buffer.read().decode("utf-8")[:200].encode("utf-8"))')"
 
 echo ""
 echo "🎉 E2E 스모크 통과 — $(date)"

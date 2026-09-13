@@ -14,6 +14,7 @@ from app.deps import get_current_user
 from app.logging_config import log_event
 from app.models import User
 from app.repositories import chat_logs
+from app.repositories import threads as threads_repo
 from app.schemas import ChatOut, ChatRequest
 from app.services.ai_client import AIError, AIProvider, AITimeoutError, get_ai_provider
 from app.services.context import SYSTEM_PROMPT, build_messages
@@ -31,6 +32,7 @@ def _save_log(
     latency_ms: int,
     status_: str,
     request_id: str,
+    thread_id: int | None = None,
 ) -> int | None:
     """저장 실패 시 원문/SQL 파라미터 없이 진단 메타데이터만 기록한다."""
     try:
@@ -42,6 +44,7 @@ def _save_log(
             latency_ms=latency_ms,
             status=status_,
             request_id=request_id,
+            thread_id=thread_id,
         )
         log_event(
             logger,
@@ -69,11 +72,13 @@ def _save_log(
     response_model=ChatOut,
     summary="질문 → AI 응답",
     description=(
-        "같은 사용자의 성공 Q/A 문맥 → AI 응답 수신 → DB 저장 시도 → HTTP 응답. "
+        "현재 대화(스레드)의 성공 Q/A 문맥 → AI 응답 수신 → DB 저장 시도 → HTTP 응답. "
+        "thread_id를 주면 그 대화, 미전달이면 사용자의 기본 대화. "
         "status=success는 AI 성공을 뜻하며 chat_id=-1이면 DB 저장 실패입니다."
     ),
     responses={
         401: {"description": "로그인 필요"},
+        404: {"description": "thread_id가 존재하지 않거나 내 대화가 아님"},
         422: {"description": "공백 또는 설정된 질문 길이 상한 초과"},
         429: {"description": "사용자별 분당 요청 상한 초과. Retry-After 헤더 참고"},
         502: {"description": "AI_ERROR: AI 호출/응답 형식 오류"},
@@ -106,7 +111,16 @@ async def chat(
             ),
             headers={"Retry-After": str(retry_after)},
         )
-    history = chat_logs.successful_context(db, user.id, settings.context_turns)
+    # 스레드 해제: thread_id 미전달 = 사용자의 기본 대화(없으면 생성).
+    # 남의/존재하지 않는 스레드는 404 — 사용자 간 격리는 조회 filter가 이중 보장한다.
+    if body.thread_id is not None:
+        thread = threads_repo.get_thread(db, body.thread_id, user_id=user.id)
+        if thread is None:
+            raise HTTPException(status_code=404, detail="대화를 찾을 수 없어요.")
+    else:
+        thread = threads_repo.resolve_default_thread(db, user.id)
+    # 문맥은 스레드 단위 — 같은 스레드의 직전 N개 성공 Q/A만 AI에게 전달한다.
+    history = chat_logs.successful_context(db, user.id, settings.context_turns, thread_id=thread.id)
     context_pairs = [(row.question, row.answer) for row in history]
     # 문맥 조회 트랜잭션을 여기서 닫아 AI 호출(최대 AI_TIMEOUT_SEC) 동안 커넥션을 풀에
     # 반납한다(#73). 조회 결과는 이미 메모리로 뽑았고 저장은 별도 커밋으로 수행한다.
@@ -121,6 +135,7 @@ async def chat(
         logger,
         "ai_call_start",
         user_id=user.id,
+        thread_id=thread.id,
         question_chars=len(body.question),
         context_pairs=len(history),
         request_id=request_id,
@@ -144,7 +159,10 @@ async def chat(
             latency_ms=latency_ms,
             level=logging.ERROR,
         )
-        _save_log(db, user.id, body.question, "", latency_ms, "ai_error", request_id)
+        _save_log(
+            db, user.id, body.question, "", latency_ms, "ai_error", request_id, thread_id=thread.id
+        )
+        threads_repo.touch_after_message(db, thread.id, body.question)
         raise HTTPException(
             status_code=504,
             detail=("현재 응답이 지연되고 있어요. 잠시 후 다시 시도해 주세요. (error: AI_TIMEOUT)"),
@@ -160,10 +178,16 @@ async def chat(
             latency_ms=latency_ms,
             level=logging.ERROR,
         )
-        _save_log(db, user.id, body.question, "", latency_ms, "ai_error", request_id)
+        _save_log(
+            db, user.id, body.question, "", latency_ms, "ai_error", request_id, thread_id=thread.id
+        )
+        threads_repo.touch_after_message(db, thread.id, body.question)
         raise HTTPException(
             status_code=502,
             detail=("AI 서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요. (error: AI_ERROR)"),
         ) from None
-    chat_id = _save_log(db, user.id, body.question, answer, latency_ms, "success", request_id)
+    chat_id = _save_log(
+        db, user.id, body.question, answer, latency_ms, "success", request_id, thread_id=thread.id
+    )
+    threads_repo.touch_after_message(db, thread.id, body.question)
     return ChatOut(answer=answer, latency_ms=latency_ms, chat_id=chat_id or -1, status="success")
