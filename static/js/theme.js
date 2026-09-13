@@ -30,8 +30,10 @@
     var btn = document.getElementById("theme-toggle");
     if (!btn) return;
     var mode = current();
-    btn.textContent = ICONS[mode];
-    btn.setAttribute("aria-label", "테마: " + LABELS[mode] + " — 클릭하여 " + LABELS[MODES[mode]] + "(으)로 변경");
+    // 아이콘만으로는 "바뀌었나"를 알기 어려움(시스템이 현재 색과 같으면 외형 변화 0).
+    // 모드 이름을 함께 표기해 클릭할 때마다 어떤 모드인지 명확히 피드백한다.
+    btn.textContent = ICONS[mode] + " " + LABELS[mode];
+    btn.setAttribute("aria-label", "테마: " + LABELS[mode] + " — 클릭하여 " + LABELS[MODES[mode]] + "으로 변경");
     btn.title = "테마: " + LABELS[mode] + " → 다음: " + LABELS[MODES[mode]];
   }
 
