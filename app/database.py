@@ -14,7 +14,7 @@
 
 from pathlib import Path
 
-from sqlalchemy import create_engine, event, inspect
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import settings
@@ -83,6 +83,35 @@ def _sqlite_pragmas_on_connect(dbapi_conn, _conn_record):
 
 if _is_sqlite:
     event.listens_for(engine, "connect")(_sqlite_pragmas_on_connect)
+
+
+# 스키마 동기화 상태 — /health의 ``schema`` 필드와 /readyz 판정에 노출한다.
+# init_db 실패가 lifespan에서 로그로만 삼켜지자, 운영 DB 스키마 미반영이
+# 2026-09-13 threads 스키마 배포까지 수 주 동안 보이지 않았던 전례가 있다.
+schema_sync = {"status": "pending", "error": None, "revision": None}
+
+
+def _classify_db_error(exc: Exception) -> str:
+    """예외 상세를 노출하지 않으면서도 원인 식별이 되는 짧은 코드.
+
+    (로그·응답 정책: 원문/파라미터 노출 금지 — 예외 타입+분류만)
+    """
+    msg = str(exc).lower()
+    if "already exists" in msg:
+        return "table_exists"
+    if "no such table" in msg:
+        return "no_such_table"
+    if "no such column" in msg:
+        return "no_such_column"
+    if "database is locked" in msg:
+        return "db_locked"
+    if "readonly database" in msg:
+        return "db_readonly"
+    if "disk i/o error" in msg:
+        return "db_io_error"
+    if "database or disk is full" in msg:
+        return "db_full"
+    return type(exc).__name__
 
 
 def _has_any_table(eng) -> bool:
@@ -164,16 +193,30 @@ def init_db(alembic_cfg=None, eng=None) -> None:
         ini_path = Path(__file__).resolve().parent.parent / "alembic.ini"
         alembic_cfg = Config(str(ini_path))
 
-    # "sqlite://"은 SQLAlchemy가 "sqlite:///"으로 정규화 — 인메모리 판별에 두 표기 모두.
-    in_memory = str(target.url) in ("sqlite://", "sqlite:///", "sqlite:///:memory:")
-    is_test = os.environ.get("TESTING") == "1"
-    if in_memory or is_test or not _has_any_table(target):
-        Base.metadata.create_all(bind=target)
-        command.stamp(alembic_cfg, "head")
-        return
-    if not _has_alembic_version_table(target):
-        _adopt_legacy_schema(alembic_cfg, target)
-    command.upgrade(alembic_cfg, "head")
+    try:
+        # "sqlite://"은 SQLAlchemy가 "sqlite:///"으로 정규화 — 인메모리 판별에 두 표기 모두.
+        in_memory = str(target.url) in ("sqlite://", "sqlite:///", "sqlite:///:memory:")
+        is_test = os.environ.get("TESTING") == "1"
+        if in_memory or is_test or not _has_any_table(target):
+            Base.metadata.create_all(bind=target)
+            command.stamp(alembic_cfg, "head")
+        else:
+            if not _has_alembic_version_table(target):
+                _adopt_legacy_schema(alembic_cfg, target)
+            command.upgrade(alembic_cfg, "head")
+    except Exception as exc:
+        # 실패는 호출 측(lifespan)이 기존처럼 로그로 삼키되, 상태는 노출한다.
+        schema_sync.update(status="error", error=_classify_db_error(exc), revision=None)
+        raise
+
+    try:
+        with target.connect() as conn:
+            revision = conn.execute(
+                text("SELECT version_num FROM alembic_version LIMIT 1")
+            ).scalar()
+    except Exception:
+        revision = None
+    schema_sync.update(status="ok", error=None, revision=revision)
 
 
 def get_db():

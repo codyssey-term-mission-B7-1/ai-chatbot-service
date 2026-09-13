@@ -46,6 +46,7 @@ EVENTS = frozenset(
         "auth_password_reset_rejected",
         "auth_password_reset_completed",
         "readyz_db_failure",
+        "readyz_schema_failure",
     }
 )
 SENSITIVE_FIELDS = frozenset(

@@ -120,6 +120,47 @@ def test_legacy_db_without_version_table_is_adopted(fresh_sqlite_url, monkeypatc
         engine.dispose()
 
 
+def test_init_db_records_sync_state(fresh_sqlite_url, monkeypatch):
+    """init_db 성공/실패를 schema_sync에 기록 — /health·/readyz가 판정하는 원천."""
+    import sqlalchemy.exc
+    from sqlalchemy import text
+
+    from app import database
+
+    monkeypatch.delenv("TESTING", raising=False)
+    cfg = _alembic_config(fresh_sqlite_url)
+    command.upgrade(cfg, "9dea740a4bf1")
+
+    engine = create_engine(fresh_sqlite_url)
+    event.listens_for(engine, "connect")(_sqlite_pragmas)
+    try:
+        # 1) 성공 경로(레거시 DB) — 상태 ok + 적용된 리비전
+        with engine.begin() as conn:
+            conn.execute(text("DROP TABLE alembic_version"))
+        database.init_db(alembic_cfg=cfg, eng=engine)
+        assert database.schema_sync["status"] == "ok"
+        assert database.schema_sync["revision"] == "c7e4a9b21d05"
+
+        # 2) 실패 경로 — 운영과 동일한 'table users already exists' 시뮬레이션
+        with engine.begin() as conn:
+            conn.execute(text("DROP TABLE alembic_version"))
+        monkeypatch.setattr(
+            database,
+            "_adopt_legacy_schema",
+            lambda c, e: (_ for _ in ()).throw(
+                sqlalchemy.exc.OperationalError("stmt", {}, Exception("table users already exists"))
+            ),
+        )
+        with pytest.raises(sqlalchemy.exc.OperationalError):
+            database.init_db(alembic_cfg=cfg, eng=engine)
+        assert database.schema_sync["status"] == "error"
+        assert database.schema_sync["error"] == "table_exists"
+    finally:
+        # 후속 테스트 오염 방지
+        database.schema_sync.update(status="pending", error=None, revision=None)
+        engine.dispose()
+
+
 def test_legacy_db_with_current_schema_gets_head_stamp(fresh_sqlite_url, monkeypatch):
     """최신 스키마인데 버전 테이블만 없는 DB — head 스탬프만, 마이그레이션 재실행 없음."""
     from sqlalchemy import text
