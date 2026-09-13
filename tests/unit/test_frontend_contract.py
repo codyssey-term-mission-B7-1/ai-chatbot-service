@@ -171,6 +171,20 @@ def test_chat_js_autoscroll_and_thread_states():
     assert ".thread-state" in css and ".thread-retry" in css
 
 
+def test_static_assets_are_versioned():
+    """정적 자산 URL에 배포 지문 버전 붙이기 — 배포 후 브라우저 캐시로 옛 UI가 남지 않게."""
+    import re
+
+    pages = (ROOT / "app/routers/pages.py").read_text()
+    # 템플릿 전역 변수로 배포 지문(커밋 SHA 앞 7자)을 주입한다
+    assert 'env.globals["asset_v"]' in pages and "build_sha" in pages
+    # 모든 템플릿의 /static CSS·JS 참조가 버전 태그를 가진다
+    for html_file in (ROOT / "templates").glob("*.html"):
+        html = html_file.read_text()
+        refs = re.findall(r'(?:src|href)=["\'](/static/[^"\']+)["\']', html)
+        assert all(r.endswith("?v={{ asset_v }}") for r in refs), html_file.name
+
+
 def test_sidebar_hamburger_contract():
     """채팅 화면 — 햄버거 버튼으로 사이드바(대화 목록) 토글. 모바일 드로어/데스크톱 상시+접기."""
     base = (ROOT / "templates/base.html").read_text()
