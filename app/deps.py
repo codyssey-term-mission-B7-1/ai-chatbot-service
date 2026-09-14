@@ -9,10 +9,37 @@ from app.database import get_db
 from app.logging_config import log_event
 from app.models import User
 from app.services.admin import is_admin
+from app.services.rate_limit import (
+    SlidingWindowLimiter,
+    chat_limiter,
+    login_limiter,
+    password_reset_ip_limiter,
+    signup_ip_limiter,
+)
 from app.services.security import email_fingerprint
 from app.services.sessions import is_session_revoked
 
 logger = logging.getLogger("app.auth")
+
+
+# ---- rate limiter DI 제공자(#150) ------------------------------------------
+# 라우터가 구현체를 직접 import하지 않고 Depends로 받게 해 경계를 명확히 한다.
+# 반환값은 services.rate_limit의 싱글톤 그대로라, 테스트의 초기화 fixture와
+# 속성 monkeypatch도 이전과 동일하게 동작한다.
+def get_chat_limiter() -> "SlidingWindowLimiter":
+    return chat_limiter
+
+
+def get_login_limiter() -> "SlidingWindowLimiter":
+    return login_limiter
+
+
+def get_signup_ip_limiter() -> "SlidingWindowLimiter":
+    return signup_ip_limiter
+
+
+def get_password_reset_ip_limiter() -> "SlidingWindowLimiter":
+    return password_reset_ip_limiter
 
 
 def resolve_session_user(request: Request, db: Session) -> User | None:

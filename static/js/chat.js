@@ -171,7 +171,7 @@ async function send(e) {
     }
 
     if (!res.ok) { // 타임아웃(504)/AI 오류(502) 등 서버 안내 메시지 표시
-      addBubble(errorText(data, res.status), 'ai error-bubble');
+      addBubble(FormUtils.errorText(data, res.status), 'ai error-bubble');
       return;
     }
 

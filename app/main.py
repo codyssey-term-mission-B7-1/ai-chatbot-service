@@ -1,26 +1,26 @@
-"""FastAPI 진입점. 미들웨어 순서·오류 응답·로깅 계약을 한곳에서 정의한다."""
+"""FastAPI 진입점 — 조립(composition root)만 담당한다(#150).
 
-import asyncio
+여기서는 다음만 한다. 실제 동작은 각 모듈 문서를 본다.
+- lifespan: 시작 시 스키마 동기화(app/database.init_db)
+- 미들웨어 등록 순서·세션: app/middleware.register
+- 전역 예외 응답 계약: app/exception_handlers
+- API 라우터: app/routers.* / 운영 엔드포인트: app/routers/health.py
+"""
+
 import logging
-import time
-import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
-from urllib.parse import urlparse
 
-from fastapi import FastAPI, Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
-from starlette.middleware.sessions import SessionMiddleware
 
+import app.models  # noqa: F401  # 모델 레지스트리 등록 — create_all/autogenerate에 필요
 from app.config import settings
-from app.database import engine, init_db
-from app.logging_config import REQUEST_ID, log_event, setup_logging
-from app.policies import SECURITY_HEADERS
-from app.routers import admin, auth, chat, logs, pages, threads
+from app.database import init_db
+from app.exception_handlers import register as register_exception_handlers
+from app.logging_config import log_event, setup_logging
+from app.middleware import register as register_middleware
+from app.routers import admin, auth, chat, health, logs, pages, threads
 
 setup_logging()
 logger = logging.getLogger("app")
@@ -53,10 +53,6 @@ async def lifespan(application: FastAPI):
     DB 연결 실패로 프로세스 시작 자체가 실패하지 않도록 init_db 오류는 잡아 로그만
     남긴다 — /readyz가 503으로 가용성 없음을 알려준다.
     """
-    # 모든 모델이 Base.metadata에 등록되도록 명시적으로 임포트한다(그렇지 않으면
-    # autogenerate와 create_all이 릴레이션을 찾지 못한다).
-    import app.models  # noqa: F401
-
     try:
         init_db()
     except Exception as exc:  # DB 장애 시 프로세스는 뜨고 /readyz가 503을 반환하게
@@ -84,172 +80,9 @@ app = FastAPI(
     ],
 )
 
-
-@app.middleware("http")
-async def security_headers(request: Request, call_next):
-    """일반/처리된 오류 응답에 헤더 추가. 미처리 500은 아래 핸들러에서도 동일 적용."""
-    response = await call_next(request)
-    for key, value in SECURITY_HEADERS.items():
-        # /docs·/redoc의 Swagger UI는 CDN 자산을 쓴다 — 개발·검증 전용 경로는 CSP에서 제외(#75).
-        if (
-            key == "Content-Security-Policy"
-            and settings.docs_enabled
-            and request.url.path in DOCS_PATHS
-        ):
-            continue
-        response.headers.setdefault(key, value)
-    return response
-
-
-_STATE_CHANGING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
-DOCS_PATHS = frozenset({"/docs", "/docs/", "/redoc", "/redoc/", "/openapi.json"})
-
-
-@app.middleware("http")
-async def body_size_guard(request: Request, call_next):
-    """요청 바디 상한. Content-Length 헤더로 미리 막는다.
-
-    대용량 업로드를 받지 않는 서비스이므로 1 MiB 기본값으로 메모리 DoS와 로그 오염을 막는다.
-    파싱(검증 에러)보다 앞에서 끊어 413으로 응답한다. 청크 전송에 대한 누적 읽기 방어는
-    인프라 레벨(로드밸런서/엣지)에서 추가로 막는 것을 전제로 둔다(#HARDENING_BACKLOG B5).
-    """
-    limit = settings.max_request_body_bytes
-    if limit > 0:
-        cl = request.headers.get("content-length")
-        if cl and cl.isdigit() and int(cl) > limit:
-            return JSONResponse(
-                status_code=413,
-                headers=SECURITY_HEADERS,
-                content={"detail": "요청 본문이 너무 커요."},
-            )
-    return await call_next(request)
-
-
-@app.middleware("http")
-async def request_guard(request: Request, call_next):
-    """운영 문서 게이트와 교차 출처 상태 변경 차단(#75).
-
-    - DOCS_ENABLED=false면 /docs·/redoc·/openapi.json을 404로 숨긴다(운영 기본).
-    - 상태 변경 메서드에 Origin 헤더가 있고 출처 호스트가 다르면 403. 같은 출처
-      브라우저 요청은 통과하고 curl/스모크처럼 Origin을 보내지 않는 클라이언트도 통과한다.
-    - log_requests 안쪽에 둬서 차단된 요청도 request_finished 로그에 남는다.
-    """
-    if not settings.docs_enabled and request.url.path in DOCS_PATHS:
-        return JSONResponse(
-            status_code=404, content={"detail": "Not Found"}, headers=SECURITY_HEADERS
-        )
-    if request.method in _STATE_CHANGING_METHODS:
-        origin = request.headers.get("origin", "")
-        origin_host = urlparse(origin).netloc if origin else ""
-        if origin_host and origin_host != request.url.netloc:
-            return JSONResponse(
-                status_code=403,
-                content={"detail": "허용되지 않은 요청 출처예요."},
-                headers=SECURITY_HEADERS,
-            )
-    return await call_next(request)
-
-
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    """HTTP 수신 1회 + 종료 1회. 검증 전 세션 ID와 검증된 계정 ID는 구분한다."""
-    request_id = uuid.uuid4().hex[:20]
-    request.state.request_id = request_id
-    token = REQUEST_ID.set(request_id)
-    started = time.perf_counter()
-    is_api = request.url.path.startswith("/api/")
-    status_code = 500
-    if is_api:
-        session = request.scope.get("session", {})
-        log_event(
-            logger,
-            "request_received",
-            method=request.method,
-            path=request.url.path,
-            session_user_id=session.get("user_id") if isinstance(session, dict) else None,
-            request_id=request_id,
-        )
-    try:
-        response = await call_next(request)
-        status_code = response.status_code
-        response.headers.setdefault("X-Request-ID", request_id)
-        return response
-    except Exception as exc:
-        return await unhandled_exception_handler(request, exc)
-    except asyncio.CancelledError:
-        status_code = 499  # 로그용: 요청 취소. 실제 499 응답 전송을 보장하는 것은 아니다.
-        raise
-    finally:
-        if is_api:
-            log_event(
-                logger,
-                "request_finished",
-                method=request.method,
-                path=request.url.path,
-                user_id=getattr(request.state, "authenticated_user_id", None),
-                status=status_code,
-                request_id=request_id,
-                latency_ms=int((time.perf_counter() - started) * 1000),
-            )
-        REQUEST_ID.reset(token)
-
-
-# 마지막 등록이 가장 바깥: Session → request logger → security headers → router.
-# SessionMiddleware는 서명만 하며 암호화하지 않는다. 쿠키에는 user_id/email_fp만 넣는다.
-app.add_middleware(
-    SessionMiddleware,
-    secret_key=settings.session_secret,
-    max_age=settings.session_max_age_hours * 3600,  # 기본 24시간(#74)
-    https_only=not settings.debug,
-)
-
-
-@app.exception_handler(RequestValidationError)
-async def validation_error_handler(request: Request, exc: RequestValidationError):
-    """유효성 오류에 사용자가 입력한 비밀번호·질문 원문을 다시 싣지 않는다."""
-    details = []
-    for error in exc.errors():
-        item = {key: error[key] for key in ("loc", "type", "msg") if key in error}
-        item["loc"] = [
-            (
-                part.encode("utf-8", "backslashreplace").decode("utf-8")
-                if isinstance(part, str)
-                else part
-            )
-            for part in item["loc"]
-        ]
-        item["msg"] = str(item["msg"]).encode("utf-8", "backslashreplace").decode("utf-8")
-        context = {
-            key: value
-            for key, value in error.get("ctx", {}).items()
-            if key in {"max_length", "min_length", "ge", "gt", "le", "lt"}
-        }
-        if context:
-            item["ctx"] = context
-        details.append(item)
-    return JSONResponse(status_code=422, content={"detail": details}, headers=SECURITY_HEADERS)
-
-
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
-    """일관된 500 + 보안 헤더. SQL/입력/키가 포함될 수 있는 예외 원문은 로깅하지 않는다."""
-    request_id = getattr(request.state, "request_id", uuid.uuid4().hex[:20])
-    log_event(
-        logger,
-        "unhandled_error",
-        path=request.url.path,
-        error=type(exc).__name__,
-        request_id=request_id,
-        level=logging.ERROR,
-    )
-    return JSONResponse(
-        status_code=500,
-        headers={**SECURITY_HEADERS, "X-Request-ID": request_id},
-        content={
-            "detail": "서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요. " "(error: INTERNAL)"
-        },
-    )
-
+# 미들웨어(세션 포함)·전역 예외 핸들러 — 등록 순서 계약은 각 register 문서 참고
+register_middleware(app)
+register_exception_handlers(app)
 
 app.include_router(auth.router)
 app.include_router(chat.router)
@@ -257,79 +90,7 @@ app.include_router(threads.router)
 app.include_router(logs.router)
 app.include_router(admin.router)
 app.include_router(pages.router)
+app.include_router(health.router)
+
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-
-
-@app.get(
-    "/health",
-    tags=["ops"],
-    summary="헬스체크(라이트)",
-    description=(
-        "프로세스 기동 여부만 확인합니다(DB·외부 호출 없음). "
-        "로드밸런서·kubelet liveness에 적합합니다. "
-        "build는 CD가 주입한 배포 지문(커밋 SHA)으로, 실제로 서빙 중인 배포를 식별합니다."
-    ),
-)
-def health():
-    from app.database import schema_sync
-
-    if schema_sync["status"] == "ok":
-        schema_field = "ok"
-    elif schema_sync["status"] == "error":
-        schema_field = f"error:{schema_sync['error']}"
-    else:
-        schema_field = "pending"
-    return {
-        "status": "ok",
-        "version": app.version,
-        "ai_mode": "demo" if not settings.ai_api_key else "real",
-        "build": settings.build_sha,
-        # 스키마 동기화 결과 진단 — 2026-09-13 스키마 미반영 사고 이후 로그 말고
-        # 헬스체크로 상태가 바로 보일 수 있게 했다. ok / error:<예외타입> / pending.
-        "schema": schema_field,
-    }
-
-
-@app.get(
-    "/readyz",
-    tags=["ops"],
-    summary="준비 상태 체크",
-    description="DB 연결 등 핵심 의존성을 검증합니다. readiness probe에 사용하세요.",
-)
-def readyz():
-    """DB에 SELECT 1을 날려 1초 안에 응답하지 못하면 503.
-
-    로드밸런서가 /readyz로 트래픽을 넣을지 결정한다. 프로세스는 떠 있지만 DB 장애가
-    있을 때 503으로 빠르게 실패해서 트래픽을 다른 인스턴스로 돌린다.
-    """
-    try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
-    except SQLAlchemyError:
-        log_event(logger, "readyz_db_failure", level=logging.ERROR)
-        return JSONResponse(
-            status_code=503,
-            headers=SECURITY_HEADERS,
-            content={"status": "not_ready", "reason": "database_unavailable"},
-        )
-    from app.database import schema_sync
-
-    # DB는 살아도 스키마 동기화가 실패했다면(마이그레이션 미반영) 서비스 불가.
-    if schema_sync["status"] == "error":
-        log_event(
-            logger,
-            "readyz_schema_failure",
-            error=schema_sync["error"],
-            level=logging.ERROR,
-        )
-        return JSONResponse(
-            status_code=503,
-            headers=SECURITY_HEADERS,
-            content={
-                "status": "not_ready",
-                "reason": "schema_sync_failed",
-                "error": schema_sync["error"],
-            },
-        )
-    return {"status": "ready", "version": app.version}
