@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+from app.audit import E
 from app.config import settings
 from app.database import get_db
 from app.deps import resolve_session_user
@@ -144,7 +145,7 @@ def admin_logs_page(
     cleaned_reason = reason.strip()[:200]
     if cleaned_reason:
         audit["reason"] = cleaned_reason
-    log_event(logger, "admin_logs_viewed", **audit)
+    log_event(logger, E.ADMIN_LOGS_VIEWED, **audit)
     # '사용자' 열 — 이메일·닉네임 표시(ID 숫자만으로는 특정 사용자가 누군지 알기 어려움)
     user_infos = {}
     if rows:

@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 
 import httpx
 
+from app.audit import E
 from app.config import settings
 from app.logging_config import log_event
 
@@ -133,7 +134,7 @@ class OpenAICompatClient(AIProvider):
                     await asyncio.sleep(0.5)
                     log_event(
                         logger,
-                        "ai_retry",
+                        E.AI_RETRY,
                         level=logging.WARNING,
                         attempt=attempt + 1,
                         previous_error=previous_error,

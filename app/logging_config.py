@@ -1,7 +1,11 @@
-"""표준 이벤트: stderr, 한 줄당 한 이벤트, 값은 필요 시 JSON 문자열로 이스케이프.
+"""표준 이벤트 로깅 — stderr, 한 줄당 한 이벤트, 값은 필요 시 JSON 문자열로 이스케이프.
 
 로그에는 질문/응답·실제 이메일·비밀번호·키·쿠키 값을 기록하지 않는다.
 로그 목적·필드·집계 기준은 docs/LOGGING.md를 따른다.
+
+역할 경계(#150·#151): **무엇을** 기록할지의 카탈로그는 app/audit.py의 단일 소스다.
+이 모듈은 **어떻게** 기록할지(포맷·마스킹·request_id 주입·출력)만 담당하며
+허용 이벤트 집합(EVENTS)도 카탈로그에서 파생해 양쪽이 따로 놀지 않게 한다.
 """
 
 import json
@@ -10,45 +14,10 @@ import re
 import sys
 from contextvars import ContextVar
 
+from app.audit import ALL_EVENTS
+
 REQUEST_ID: ContextVar[str | None] = ContextVar("request_id", default=None)
-EVENTS = frozenset(
-    {
-        "request_received",
-        "request_finished",
-        "ai_call_start",
-        "ai_call_success",
-        "ai_call_fail",
-        "chat_rate_limited",
-        "ai_retry",
-        "db_save_success",
-        "db_save_fail",
-        "unhandled_error",
-        "auth_stale_session",
-        "auth_session_revoked",
-        "user_signup",
-        "user_login",
-        "user_login_fail",
-        "user_login_locked",
-        "signup_rate_limited",
-        "admin_logs_viewed",
-        "admin_hash_status_viewed",
-        "admin_user_deleted",
-        "thread_created",
-        "thread_deleted",
-        "auth_password_rehashed",
-        "auth_password_reset_requested",
-        "auth_password_reset_rate_limited",
-        "auth_password_reset_ip_rate_limited",
-        "auth_password_reset_email_sent",
-        "auth_password_reset_email_dev_console",
-        "auth_password_reset_email_unconfigured",
-        "auth_password_reset_email_failed",
-        "auth_password_reset_rejected",
-        "auth_password_reset_completed",
-        "readyz_db_failure",
-        "readyz_schema_failure",
-    }
-)
+EVENTS = ALL_EVENTS
 SENSITIVE_FIELDS = frozenset(
     {
         "password",

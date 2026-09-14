@@ -26,6 +26,7 @@ import httpx
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.audit import E
 from app.config import settings
 from app.logging_config import log_event
 from app.models import PasswordReset, User
@@ -64,7 +65,7 @@ def create_reset_token(db: Session, user: User, request_ip: str = "") -> str | N
     if requested >= settings.password_reset_max_requests:
         log_event(
             logger,
-            "auth_password_reset_rate_limited",
+            E.AUTH_PASSWORD_RESET_RATE_LIMITED,
             user_id=user.id,
             level=logging.WARNING,
         )

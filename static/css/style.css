@@ -18,6 +18,8 @@
   --row-error: #fff7f7;
   --hover: rgba(0,0,0,.06);
   --shadow: 0 8px 24px rgba(20,25,40,.12);
+  /* 데스크톱 앱 페이지 네비 높이(40px 콘텐츠+1px 테두리) — 사이드바 sticky top 계산용(#149) */
+  --nav-h: 41px;
 }
 
 /* 다크 토큰 — 사용자 선택(data-theme="dark")일 때만 전체 재지정 */

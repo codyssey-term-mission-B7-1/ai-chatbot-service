@@ -15,6 +15,29 @@ const HISTORY_TURNS = parseInt(window_.dataset.contextTurns || '5', 10);
 // 현재 대화(스레드) — null이면 서버 기본 대화(첫 채팅 시 자동 생성)
 let currentThreadId = null;
 
+// ---- 전송 유실 방지 (#148) ------------------------------------------------
+// fetch는 새로고침으로 끊기지만 서버의 AI 호출·저장은 계속 진행된다. 전송 직후의
+// 스레드·질문을 sessionStorage에 남겨, 페이지에 돌아왔을 때 아직 저장 전이면
+// 질문+로딩을 다시 그리고 저장 확인을 짧게 폴링한다. 확정 응답을 받으면 교체한다.
+const INFLIGHT_KEY = 'chat-inflight';
+const INFLIGHT_TTL_MS = 5 * 60 * 1000;  // 서버 AI 예산(45초)+재시도 여유
+
+function saveInflight(threadId, question) {
+  try {
+    sessionStorage.setItem(INFLIGHT_KEY, JSON.stringify({ threadId, question, at: Date.now() }));
+  } catch { /* 저장소 사용 불가 환경 — 복원 기능만 동작하지 않는다 */ }
+}
+function clearInflight() {
+  try { sessionStorage.removeItem(INFLIGHT_KEY); } catch { /* 무시 */ }
+}
+function readInflight() {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(INFLIGHT_KEY) || 'null');
+    if (v && typeof v.question === 'string' && Date.now() - v.at < INFLIGHT_TTL_MS) return v;
+  } catch { /* 손상된 기록은 없는 것과 같다 */ }
+  return null;
+}
+
 input.addEventListener('input', () => {
   input.style.height = 'auto';
   input.style.height = Math.min(input.scrollHeight, 120) + 'px';
@@ -109,6 +132,7 @@ async function send(e) {
 
   const loading = addBubble('AI가 생각 중…', 'ai loading');
   sendBtn.disabled = true;
+  saveInflight(currentThreadId, question);  // 새로고침 복원용 기록(#148)
 
   try {
     const body = currentThreadId ? { question, thread_id: currentThreadId } : { question };
@@ -118,7 +142,7 @@ async function send(e) {
       body: JSON.stringify(body),
     });
 
-    // 401은 로그인 페이지로(비로그인 진입 차단 요구사항)
+    // 401은 로그인 페이지로(비로그인 진입 차단 요구사항). 기록은 남겨 재로그인 후 복원한다.
     if (res.status === 401) {
       location.href = '/login';
       return;
@@ -129,6 +153,9 @@ async function send(e) {
     try { data = await res.json(); } catch (e) { /* ignore */ }
 
     loading.remove();
+    // 성공(답변 저장)이든 실패(ai_error 저장)든 서버가 기록까지 마쳤으므로 복원 기록은 지운다.
+    // 네트워크 오류(아래 catch)는 서버 상태를 알 수 없어 기록을 남긴다 — 다음 방문 시 복원.
+    clearInflight();
 
     // 성공·실패 모두 서버가 스레드를 생성/갱신했을 수 있어(AI 오류도 로그는 저장)
     // 목록을 항상 동기화한다. 안 하면 '마지막 대화 삭제 후 첫 전송' 등에서
@@ -144,7 +171,7 @@ async function send(e) {
     }
 
     if (!res.ok) { // 타임아웃(504)/AI 오류(502) 등 서버 안내 메시지 표시
-      addBubble(errorText(data, res.status), 'ai error-bubble');
+      addBubble(FormUtils.errorText(data, res.status), 'ai error-bubble');
       return;
     }
 
@@ -173,6 +200,9 @@ function addDivider(text) {
 // 이전 대화 복원 — 채팅방에 돌아왔을 때 AI 맥락(현재 대화의 직전 N개 성공 Q/A)을 말풍선으로 표시
 async function loadHistory() {
   if (HISTORY_TURNS <= 0) return;
+  // 복원 중 빈 창으로 있다 보이지 않게 임시 인디케이터(#148)
+  const loadingHistory = addBubble('이전 대화 불러오는 중…', 'ai loading');
+  try {
   let logs;
   try {
     const url = currentThreadId
@@ -197,6 +227,9 @@ async function loadHistory() {
     addBubble(log.question, 'user', when);
     addBubble(log.answer, 'ai', when);
   }
+  } finally {
+    loadingHistory.remove();
+  }
 }
 
 // ---- 대화(스레드) 전환 — 목록 UI는 sidebar.js, 여기는 창(content) 책임 -------
@@ -205,6 +238,75 @@ async function loadHistory() {
 function clearWindow() {
   for (const node of [...window_.children]) {
     if (node !== welcomeBubble) node.remove();
+  }
+}
+
+// ---- 진행 중 요청 복원 (#148) ----------------------------------------------
+// init에서만 실행한다. 다른 대화에서 보낸 요청은 현재 화면과 무관하므로 건너뛴다.
+async function restoreInflight() {
+  const inflight = readInflight();
+  if (!inflight) return;
+  const pendingThread = inflight.threadId ?? currentThreadId;  // null이면 기본 대화로 보낸 것
+  if (pendingThread !== currentThreadId) return;
+
+  const threadQ = currentThreadId != null ? `&thread_id=${currentThreadId}` : '';
+  const findSaved = async () => {
+    // status 미지정 = 전체 — 성공/실패 확정 여부를 함께 봐야 한다(#148)
+    const res = await fetch(`/api/me/chats?limit=5${threadQ}`);
+    if (res.status === 401) { location.href = '/login'; return null; }
+    if (!res.ok) return undefined;  // 일시적 조회 실패 — 폴링에서 재시도
+    return res.json();
+  };
+
+  // 이미 저장된 응답이면 loadHistory가 방금 보여줬을 것 — 기록만 지우고 종료
+  try {
+    const logs = await findSaved();
+    if (logs === null) return;  // 로그인 페이지로 이동 중
+    if (Array.isArray(logs) && logs.some((l) => l.question === inflight.question)) {
+      clearInflight();
+      return;
+    }
+  } catch { /* 네트워크 오류 — 아래 폴링에서 재시도 */ }
+
+  // 아직 저장 전 — 질문과 로딩을 다시 그리고 저장 확인을 폴링한다.
+  // 전송 버튼은 원래 진행 중 상태와 같게 잠근다(서버는 이미 처리 중, 중복 전송 방지).
+  stickToBottom = true;
+  addBubble(inflight.question, 'user', historyTime(new Date(inflight.at).toISOString()));
+  const loading = addBubble('AI가 생각 중…', 'ai loading');
+  sendBtn.disabled = true;
+
+  const started = Date.now();
+  const POLL_MS = 2000;
+  try {
+    while (Date.now() - started < INFLIGHT_TTL_MS) {
+      await new Promise((r) => setTimeout(r, POLL_MS));
+      let logs;
+      try { logs = await findSaved(); } catch { continue; }
+      if (logs === null) return;  // 401 → 로그인 페이지 이동 중
+      const hit = Array.isArray(logs)
+        ? logs.find((l) => l.question === inflight.question)
+        : null;
+      if (hit?.status === 'success') {
+        const bubble = addBubble(hit.answer, 'ai', historyTime(hit.created_at));
+        loading.replaceWith(bubble);
+        clearInflight();
+        await SidebarUI.refresh();
+        return;
+      }
+      if (hit?.status === 'ai_error') {
+        loading.remove();
+        showError('AI가 응답하지 못했어요. 다시 시도해 주세요.');
+        clearInflight();
+        await SidebarUI.refresh();
+        return;
+      }
+    }
+    // TTL 내 확정을 못 봤다 — 서버가 아직 처리 중일 수 있어 안내만 남긴다.
+    loading.remove();
+    showError('응답 확인이 늦어지고 있어요. 잠시 후 새로고침해 주세요.');
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
   }
 }
 
@@ -264,6 +366,7 @@ async function init() {
   }
   SidebarUI.setActive(currentThreadId);
   await loadHistory();
+  await restoreInflight();  // 새로고침으로 끊긴 진행 중 요청이 있으면 복원(#148)
 }
 
 // 데모 모드 배너 — 현재 세션에서만 닫을 수 있다(새 세션에서는 재표시)

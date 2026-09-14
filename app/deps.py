@@ -5,14 +5,42 @@ import logging
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from app.audit import E
 from app.database import get_db
 from app.logging_config import log_event
 from app.models import User
 from app.services.admin import is_admin
+from app.services.rate_limit import (
+    SlidingWindowLimiter,
+    chat_limiter,
+    login_limiter,
+    password_reset_ip_limiter,
+    signup_ip_limiter,
+)
 from app.services.security import email_fingerprint
 from app.services.sessions import is_session_revoked
 
 logger = logging.getLogger("app.auth")
+
+
+# ---- rate limiter DI 제공자(#150) ------------------------------------------
+# 라우터가 구현체를 직접 import하지 않고 Depends로 받게 해 경계를 명확히 한다.
+# 반환값은 services.rate_limit의 싱글톤 그대로라, 테스트의 초기화 fixture와
+# 속성 monkeypatch도 이전과 동일하게 동작한다.
+def get_chat_limiter() -> "SlidingWindowLimiter":
+    return chat_limiter
+
+
+def get_login_limiter() -> "SlidingWindowLimiter":
+    return login_limiter
+
+
+def get_signup_ip_limiter() -> "SlidingWindowLimiter":
+    return signup_ip_limiter
+
+
+def get_password_reset_ip_limiter() -> "SlidingWindowLimiter":
+    return password_reset_ip_limiter
 
 
 def resolve_session_user(request: Request, db: Session) -> User | None:
@@ -30,7 +58,7 @@ def resolve_session_user(request: Request, db: Session) -> User | None:
     except (TypeError, ValueError):
         user = None
     if user is None or email_fingerprint(user.email) != request.session.get("email_fp"):
-        log_event(logger, "auth_stale_session", user_id=user_id, level=logging.WARNING)
+        log_event(logger, E.AUTH_STALE_SESSION, user_id=user_id, level=logging.WARNING)
         request.session.clear()
         return None
     # 서버 측 폐기(#74): 계정별 폐기 기준 이전에 발급(iat)된 세션은 거부한다.
@@ -39,7 +67,7 @@ def resolve_session_user(request: Request, db: Session) -> User | None:
     if not isinstance(iat, int) or isinstance(iat, bool):
         iat = 0
     if is_session_revoked(db, user.id, iat):
-        log_event(logger, "auth_session_revoked", user_id=user.id, level=logging.WARNING)
+        log_event(logger, E.AUTH_SESSION_REVOKED, user_id=user.id, level=logging.WARNING)
         request.session.clear()
         return None
     return user

@@ -8,9 +8,10 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from app.audit import E
 from app.config import settings
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_chat_limiter, get_current_user
 from app.logging_config import log_event
 from app.models import User
 from app.repositories import chat_logs
@@ -18,7 +19,7 @@ from app.repositories import threads as threads_repo
 from app.schemas import ChatOut, ChatRequest
 from app.services.ai_client import AIError, AIProvider, AITimeoutError, get_ai_provider
 from app.services.context import SYSTEM_PROMPT, build_messages
-from app.services.rate_limit import chat_limiter, retry_after_hint
+from app.services.rate_limit import SlidingWindowLimiter, retry_after_hint
 
 logger = logging.getLogger("app.chat")
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -48,7 +49,7 @@ def _save_log(
         )
         log_event(
             logger,
-            "db_save_success",
+            E.DB_SAVE_SUCCESS,
             user_id=user_id,
             chat_id=row.id,
             status=status_,
@@ -58,7 +59,7 @@ def _save_log(
     except Exception as exc:
         log_event(
             logger,
-            "db_save_fail",
+            E.DB_SAVE_FAIL,
             user_id=user_id,
             reason=type(exc).__name__,
             request_id=request_id,
@@ -91,6 +92,7 @@ async def chat(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     ai: AIProvider = Depends(get_ai_provider),
+    chat_limiter: SlidingWindowLimiter = Depends(get_chat_limiter),
 ):
     request_id = request.state.request_id
     # 비용 남용 방어(#73): 사용자별 분당 상한 — 제한되면 AI를 호출하지 않고 429로 안내한다.
@@ -98,7 +100,7 @@ async def chat(
     if retry_after > 0:
         log_event(
             logger,
-            "chat_rate_limited",
+            E.CHAT_RATE_LIMITED,
             user_id=user.id,
             retry_after_sec=retry_after,
             level=logging.WARNING,
@@ -133,7 +135,7 @@ async def chat(
     messages = build_messages(system_prompt, context_pairs, body.question, settings.context_turns)
     log_event(
         logger,
-        "ai_call_start",
+        E.AI_CALL_START,
         user_id=user.id,
         thread_id=thread.id,
         question_chars=len(body.question),
@@ -146,13 +148,13 @@ async def chat(
             answer = await ai.generate(messages)
         latency_ms = int((time.perf_counter() - started) * 1000)
         log_event(
-            logger, "ai_call_success", user_id=user.id, request_id=request_id, latency_ms=latency_ms
+            logger, E.AI_CALL_SUCCESS, user_id=user.id, request_id=request_id, latency_ms=latency_ms
         )
     except (AITimeoutError, httpx.TimeoutException, TimeoutError):
         latency_ms = int((time.perf_counter() - started) * 1000)
         log_event(
             logger,
-            "ai_call_fail",
+            E.AI_CALL_FAIL,
             user_id=user.id,
             request_id=request_id,
             reason="timeout",
@@ -171,7 +173,7 @@ async def chat(
         latency_ms = int((time.perf_counter() - started) * 1000)
         log_event(
             logger,
-            "ai_call_fail",
+            E.AI_CALL_FAIL,
             user_id=user.id,
             request_id=request_id,
             reason="ai_error",
