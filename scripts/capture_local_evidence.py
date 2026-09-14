@@ -145,7 +145,7 @@ async def browser_checks(base: str, output: Path, grant) -> dict:
         })).status == 201
         assert (await other.post('/api/session', data={
             'email': 'local-other@example.com', 'password': 'LocalEvidence123!',
-        })).status == 200
+        })).status == 201
         assert (await other.post('/api/chats', data={'question': '두 번째 로컬 계정의 질문'})).status == 201
         await other.dispose()
         checks.append('실제 로컬 HTTP로 두 사용자 기록 분리 확인')
