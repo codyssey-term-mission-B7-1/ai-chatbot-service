@@ -13,7 +13,14 @@
   const sidebarBackdrop = document.getElementById('sidebar-backdrop');
   const sidebarClose = document.getElementById('sidebar-close');
   const newThreadBtn = document.getElementById('new-thread-btn');
-  const desktopMQ = window.matchMedia('(min-width: 768px)');
+  // 히스테리시스 이중 경계 (#139): 축소 경계 700px / 확대 경계 900px
+  // 두 경계 사이(700~900px)에서는 이전 상태를 유지해 잦은 전환(흔들림)을 방지한다.
+  const expandMQ = window.matchMedia('(min-width: 900px)');   // 이 이상 → 데스크톱
+  const shrinkMQ = window.matchMedia('(max-width: 700px)');   // 이 이하 → 모바일
+  // 현재 모드(초기값: 너비에 따라 결정, 이후 히스테리시스로 유지)
+  let _isDesktop = window.innerWidth >= 900 || (window.innerWidth > 700 && window.innerWidth < 900
+    ? (function () { try { return localStorage.getItem('sidebar-mode') !== 'mobile'; } catch (e) { return true; } })()
+    : false);
 
   // ---- 대화 목록 ---------------------------------------------------------
   let threadsCache = [];
@@ -174,8 +181,14 @@
   }
 
   // ---- 사이드바 열기/닫기 ------------------------------------------------
+  // 히스테리시스: 700px 이하 → 모바일, 900px 이상 → 데스크톱,
+  // 그 사이에서는 _isDesktop을 유지(이전 상태 보존) (#139)
   function isDesktop() {
-    return desktopMQ.matches;
+    return _isDesktop;
+  }
+
+  function saveMode() {
+    try { localStorage.setItem('sidebar-mode', _isDesktop ? 'desktop' : 'mobile'); } catch (e) { /* 무시 */ }
   }
 
   // 모바일: body.sidebar-open(드로어+백드롭), 데스크톱: body.sidebar-collapsed(저장 유지)
@@ -218,17 +231,33 @@
       setSidebar(false);
     }
   });
-  if (desktopMQ.addEventListener) {
-    desktopMQ.addEventListener('change', (e) => {
-      if (e.matches) {
-        // 데스크톱으로 전환 — 드로어 상태 정리, 접힘 여부는 저장값(기본 열림)
-        document.body.classList.remove('sidebar-open');
-        if (sidebarBackdrop) sidebarBackdrop.hidden = true;
-        setSidebar(!document.body.classList.contains('sidebar-collapsed'));
-      } else {
-        setSidebar(false);  // 모바일로 전환 — 드로어 닫힘
-      }
-    });
+  // 히스테리시스 리스너 (#139)
+  // - 축소 경계(700px 이하)를 넘으면 모바일로 전환
+  // - 확대 경계(900px 이상)를 넘으면 데스크톱으로 전환
+  // - 그 사이(700~900px)에서는 아무 일도 일어나지 않아 이전 상태가 유지된다.
+  function onShrink(e) {
+    if (e.matches && _isDesktop) {
+      _isDesktop = false;
+      saveMode();
+      setSidebar(false);  // 모바일로 전환 — 드로어 닫힘
+    }
+  }
+  function onExpand(e) {
+    if (e.matches && !_isDesktop) {
+      _isDesktop = true;
+      saveMode();
+      // 데스크톱으로 전환 — 드로어 상태 정리, 접힘 여부는 저장값(기본 열림)
+      document.body.classList.remove('sidebar-open');
+      if (sidebarBackdrop) sidebarBackdrop.hidden = true;
+      setSidebar(!document.body.classList.contains('sidebar-collapsed'));
+    }
+  }
+  if (shrinkMQ.addEventListener) {
+    shrinkMQ.addEventListener('change', onShrink);
+    expandMQ.addEventListener('change', onExpand);
+  } else if (shrinkMQ.addListener) {
+    shrinkMQ.addListener(onShrink);
+    expandMQ.addListener(onExpand);
   }
 
   if (newThreadBtn) newThreadBtn.addEventListener('click', newThread);

@@ -13,7 +13,7 @@ EXPERT_INTERVIEW_GUIDE.md 작성을 위해 저장소를 전수 조사하는 과�
 1. **[HIGH] AI 페이로드 정책 누락 버그 수정** — `build_payload()`가 정의만 되어 있고 실제 `_attempts()`에서 쓰이지 않아 `AI_MAX_TOKENS`/`AI_TEMPERATURE`가 제공사 기본값으로 무시되던 문제 해제 → 실제로 호출하도록 변경하고 회귀 테스트 추가.
 2. **[MED] AI 응답 잘림(끊김) 미표시** — `finish_reason=length`를 검사해 말줄임 표식 `…(응답이 길이 제한으로 잘렸어요)`을 붙여 문맥 오염과 사용자 혼란 방지.
 3. **[MED] AI 클라이언트 이중 타임아웃 정리** — `asyncio.timeout`(전체 예산)과 `httpx timeout`이 중복으로 걸려 재시도 경로에서 예산이 깨지는 문제를 정리. per-attempt 타임아웃은 연결/쓰기/풀/읽기로 세분화.
-4. **[LOW] AI 엔드포인트 중복 접미사 버그** — 기본 예시 `AI_BASE_URL=https://api.openai.com/v1/chat/completions`에서 `/chat/completions`가 한 번 더 붙는 버그 → normalize 시 중복 스트립 추가.
+4. **[LOW] AI 엔드포인트 중복 접미사 버그** — 기본 예시 `AI_BASE_URL=https://api.openai.com/v1/chat/completions`(또는 네이토 등 `/v1/chat/completions`로 끝나는 URL)에서 `/chat/completions`가 한 번 더 붙는 버그 → normalize 시 중복 스트립 추가.
 5. **[LOW] httpx keep-alive/커넥션 풀 튜닝** — AI 호출 시 매 요청 TCP 핸드셰이크가 반복되던 비효율 개선.
 6. **[MED] 비밀번호 재설정 메일 실패 로그 정보 누출 축소** — `error=str(exc)` 대신 예외 타입 이름만 기록해 API 키/응답 body가 로그에 남지 않도록 (#104 정책 일관).
 7. **[HIGH/dev] DB engine 초기화 SQLite dialect 분기** — SQLite에서 `pool_size/max_overflow` 인자로 TypeError가 나던 문제를 dialect 분기로 해소, Postgres 전환 시 풀 옵션 자동 적용.

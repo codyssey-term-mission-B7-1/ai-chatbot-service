@@ -19,7 +19,7 @@
 | FR-07 | 채팅 질의응답 | POST /api/chat — 검증→문맥→AI 호출→저장→응답(§3) | 07 | test_chat_flow |
 | FR-08 | 문맥 유지 | 같은 사용자 직전 성공 Q/A N쌍(CONTEXT_TURNS 기본 5, 0~200) | 07 | test_context |
 | FR-09 | 채팅 rate limit | 사용자별 분당 상한(기본 10, 0=비활성), 초과 429+Retry-After | 07(확장) | test_chat_rate_limit |
-| FR-10 | AI 연동 | OpenAI 호환(네이토 포함), 전체 시간 예산 45초, 재시도 정책(§3.2) | 06 | test_ai_client, test_ai_http_budget |
+| FR-10 | AI 연동 | 네이토(OpenAI 호환), 전체 시간 예산 45초, 재시도 정책(§3.2) | 06 | test_ai_client, test_ai_http_budget |
 | FR-11 | 대화 저장 | question/answer/status/latency_ms/request_id 저장, UTC, 실패 시 chat_id=-1로 계약 | 08 | test_chat_flow |
 | FR-12 | 내 기록 조회 | 본인만, 성공 필터·커서·limit 상한(음수·초대값 차단) | 08 | test_verified_gaps |
 | FR-13 | 관리자 전체 조회 | 명시적 grants 부여 계정만, 필터·페이징 | 13평가 | test_admin |
@@ -27,7 +27,7 @@
 | FR-15 | 관리자 부트스트랩 | scripts/manage_admin.py grant/revoke — 기본 관리자 없음 | 13평가 | 수동 운영 절차 |
 | FR-16 | 헬스체크 | /health — status·version·ai_mode(real/demo), AI 연결 검증 아님 | 03·12 | test_pages |
 | FR-17 | 입력 검증 | 빈 질문·공백 차단, 질문 ≤1000 코드포인트(MAX_QUESTION_LENGTH 서버→화면 공유) | 11 | test_validation |
-| FR-18 | 표준 로그 | 28종 이벤트 stderr 구조화, 원문·시크릿 금지, 값 이스케이프, request_id 추적 | 11 | test_logging_* |
+| FR-18 | 표준 로그 | 34종 이벤트 stderr 구조화, 원문·시크릿 금지, 값 이스케이프, request_id 추적 | 11 | test_logging_* |
 | FR-19 | 보안 헤더/Origin | CSP 등 보안 헤더 전 응답, 교차 출처 상태변경 403, 운영 /docs 404 | (감사#75) | test_request_guard |
 | FR-20 | 세션 수명/폐기 | 쿠키 Max-Age 24시간(환경변수 1~168), 계정별 서버 폐기(iat 비교) | (감사#74) | test_session_revocation |
 | FR-21 | 백업/복원 | backups/ 7세대·온라인 백업·무결성·해시 검증 | 12 | scripts/backup_db.sh |
@@ -89,7 +89,7 @@
 | NFR-01 보안 | 비밀번호 평문 저장 금지, 시크릿 게이트, 보안 헤더, 세션 폐기 | 운영 기동 시 약한 SESSION_SECRET/PEPPER는 RuntimeError | test_config, test_password_security |
 | NFR-02 안정성 | AI 장애 시 서버 생존 | 타임아웃 504, 저장 실패 분리, 재시도 예산 | test_ai_http_budget, test_storage_failure |
 | NFR-03 추적성 | 요청 상관관계 | X-Request-ID ↔ 로그 ↔ chat_logs.request_id | test_logging_contract |
-| NFR-04 프라이버시 | 로그에 원문·시크릿 금지 | 28종 이벤트 필드 정의 준수, 민감접미사 마스킹 회귀 4건(#104) | test_logging_suffix_redaction |
+| NFR-04 프라이버시 | 로그에 원문·시크릿 금지 | 34종 이벤트 필드 정의 준수, 민감접미사 마스킹 회귀 4건(#104) | test_logging_suffix_redaction |
 | NFR-05 품질 게이트 | ruff/black/isort/pytest | CI 필수 통과, 221 tests (09-11, PR #107) | CI workflow |
 | NFR-06 운영 | 외부 URL 상시 가동 + 스모크 | CD 게이트→Secrets 검증→동기화→배포→헬스→E2E 7/7 | CD workflow |
 | NFR-07 복구 | DB 백업 | 7세대·해시 검증·복원 절차 문서 | BACKUP_RESTORE.md |
