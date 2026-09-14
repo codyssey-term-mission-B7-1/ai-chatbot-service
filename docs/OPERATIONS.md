@@ -14,9 +14,9 @@
 ### 발급 (아무거나 하나 — OpenAI 호환이면 전부 가능)
 | 제공자 | 콘솔 | 비고 |
 |---|---|---|
-| OpenAI | platform.openai.com → API keys | `AI_MODEL=gpt-4o-mini` 기본값 그대로 사용 |
+| **코디세이 '네이토'** (과제 제공, 기본) | 코디세이 콘솔 → API 문서 | `AI_BASE_URL`·`AI_MODEL`·`AI_API_KEY`를 네이토 문서 값으로 설정 |
+| OpenAI | platform.openai.com → API keys | `AI_BASE_URL` 기본값(`api.openai.com`) 사용 가능. `AI_MODEL=gpt-4o-mini` 등 |
 | Groq | console.groq.com → API Keys | 무료 쿼터 큼. `AI_MODEL`은 문서에서 확인 |
-| 코디세이 '네이토' | 코디세이 콘솔 → API 문서 | `AI_BASE_URL`과 `AI_MODEL`을 문서 값으로 변경 |
 
 ### 등록
 1. GitHub 레포 → **Settings → Secrets and variables → Actions → New repository secret**

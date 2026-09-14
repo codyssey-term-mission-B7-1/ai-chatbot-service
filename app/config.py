@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     password_pepper: str = ""  # 비밀번호 페퍼(HMAC 사전 변환용 서버 비밀). 운영: 필수
     session_max_age_hours: int = Field(default=24, ge=1, le=168)  # 쿠키 수명(#74), 상한 7일
 
-    # AI (OpenAI 호환 chat completions — OpenAI/Groq/코디세이 네이토 등)
+    # AI (OpenAI 호환 chat completions — 실제 제공사: 코디세이 네이토. OpenAI/Groq 등도 호환)
     ai_api_key: str | None = None  # 없으면 데모(Fake) 모드로 동작
     ai_base_url: str = "https://api.openai.com/v1/chat/completions"  # /v1까지만 적어도 됨
     ai_model: str = "gpt-4o-mini"

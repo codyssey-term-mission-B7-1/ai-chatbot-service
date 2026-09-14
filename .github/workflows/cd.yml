@@ -151,8 +151,8 @@ jobs:
           set_var BUILD_SHA "$BUILD_SHA" ""
           set_var AI_API_KEY "$AI_API_KEY" ""
           [ -n "$AI_API_KEY" ] || echo "  ⚠️ AI_API_KEY 없음 → 빈 값으로 동기화하며 데모 모드로 배포합니다"
-          set_var AI_BASE_URL "$AI_BASE_URL" "https://api.openai.com/v1/chat/completions"
-          set_var AI_MODEL "$AI_MODEL" "gpt-4o-mini"
+          set_var AI_BASE_URL "$AI_BASE_URL" "https://api.openai.com/v1/chat/completions"  # 네이토 사용 시 Secrets에 실제 URL 등록 필수
+          set_var AI_MODEL "$AI_MODEL" "gpt-4o-mini"  # 네이토 사용 시 Secrets에 실제 모델명 등록 필수
           set_var AI_TIMEOUT_SEC "$AI_TIMEOUT_SEC" "45"
           set_var AI_MAX_RETRIES "$AI_MAX_RETRIES" "1"
           set_var CONTEXT_TURNS "$CONTEXT_TURNS" "5"
