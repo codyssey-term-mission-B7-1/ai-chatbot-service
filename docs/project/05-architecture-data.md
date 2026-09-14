@@ -76,7 +76,7 @@ erDiagram
 
 ## 4. 로그·추적 설계
 
-- **표준 이벤트 28종**, stderr 구조화 출력, `event=` 키: `request_received`, `ai_call_start/success/fail`, `db_save_start/success/fail`, `auth_*`, `login_fail`, `login_rate_limited`, `chat_rate_limited`, `auth_password_reset_*`, `admin_user_deleted` 등 (docs/LOGGING.md 집계표).
+- **표준 이벤트 34종**, stderr 구조화 출력, `event=` 키: `request_received`, `ai_call_start/success/fail`, `db_save_start/success/fail`, `auth_*`, `login_fail`, `login_rate_limited`, `chat_rate_limited`, `auth_password_reset_*`, `admin_user_deleted`, `thread_created/deleted`, `readyz_db/schema_failure` 등 (docs/LOGGING.md 집계표).
 - **민감정보 규칙**: API 키·비밀번호·질문 원문(50자+) 금지, 이메일은 평문 대신 도메인/지문, 값 이스케이프, 민감 접미사 마스킹 회귀 테스트 4건(#104).
 - **추적**: `X-Request-ID` ↔ 이벤트 ↔ `chat_logs.request_id` 3점 연결. 요청 트레이스 3줄(수신→AI→저장)이 한 request_id로 묶인다.
 - 로그 이벤트 추가는 CONTRIBUTING §1.5 컨벤션 등록을 PR 체크리스트로 강제(감사 #48 "종수 3중 불일치" 교훈).
@@ -121,7 +121,7 @@ erDiagram
 
 | 선택지 | 장점 | 단점 |
 |---|---|---|
-| **(1) 구조화 표준 이벤트 → stderr (12-factor)** | 컨테이너 로그 수집과 자연 결합(Railway가 수집), 파일 관리 불필요, 이벤트 사전(28종)으로 집계 가능 | 검색·보존 기간이 플랫폼에 의존 |
+| **(1) 구조화 표준 이벤트 → stderr (12-factor)** | 컨테이너 로그 수집과 자연 결합(Railway가 수집), 파일 관리 불필요, 이벤트 사전(34종)으로 집계 가능 | 검색·보존 기간이 플랫폼에 의존 |
 | (2) 파일 로그(로테이션) | 로컬에서 파일로 남음 | 볼륨 관리·로테이션 코드 추가, 컨테이너 재배포 시 상실 |
 | (3) 외부 SaaS(Sentry/Datadog) | 즉시 검색·알림 | 계정·키·유료 한도 — 과제 요구(로그 이벤트 실측 캡처) 대비 과함 |
 

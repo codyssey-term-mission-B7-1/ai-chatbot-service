@@ -27,7 +27,7 @@
 | FR-15 | 관리자 부트스트랩 | scripts/manage_admin.py grant/revoke — 기본 관리자 없음 | 13평가 | 수동 운영 절차 |
 | FR-16 | 헬스체크 | /health — status·version·ai_mode(real/demo), AI 연결 검증 아님 | 03·12 | test_pages |
 | FR-17 | 입력 검증 | 빈 질문·공백 차단, 질문 ≤1000 코드포인트(MAX_QUESTION_LENGTH 서버→화면 공유) | 11 | test_validation |
-| FR-18 | 표준 로그 | 28종 이벤트 stderr 구조화, 원문·시크릿 금지, 값 이스케이프, request_id 추적 | 11 | test_logging_* |
+| FR-18 | 표준 로그 | 34종 이벤트 stderr 구조화, 원문·시크릿 금지, 값 이스케이프, request_id 추적 | 11 | test_logging_* |
 | FR-19 | 보안 헤더/Origin | CSP 등 보안 헤더 전 응답, 교차 출처 상태변경 403, 운영 /docs 404 | (감사#75) | test_request_guard |
 | FR-20 | 세션 수명/폐기 | 쿠키 Max-Age 24시간(환경변수 1~168), 계정별 서버 폐기(iat 비교) | (감사#74) | test_session_revocation |
 | FR-21 | 백업/복원 | backups/ 7세대·온라인 백업·무결성·해시 검증 | 12 | scripts/backup_db.sh |
@@ -89,7 +89,7 @@
 | NFR-01 보안 | 비밀번호 평문 저장 금지, 시크릿 게이트, 보안 헤더, 세션 폐기 | 운영 기동 시 약한 SESSION_SECRET/PEPPER는 RuntimeError | test_config, test_password_security |
 | NFR-02 안정성 | AI 장애 시 서버 생존 | 타임아웃 504, 저장 실패 분리, 재시도 예산 | test_ai_http_budget, test_storage_failure |
 | NFR-03 추적성 | 요청 상관관계 | X-Request-ID ↔ 로그 ↔ chat_logs.request_id | test_logging_contract |
-| NFR-04 프라이버시 | 로그에 원문·시크릿 금지 | 28종 이벤트 필드 정의 준수, 민감접미사 마스킹 회귀 4건(#104) | test_logging_suffix_redaction |
+| NFR-04 프라이버시 | 로그에 원문·시크릿 금지 | 34종 이벤트 필드 정의 준수, 민감접미사 마스킹 회귀 4건(#104) | test_logging_suffix_redaction |
 | NFR-05 품질 게이트 | ruff/black/isort/pytest | CI 필수 통과, 221 tests (09-11, PR #107) | CI workflow |
 | NFR-06 운영 | 외부 URL 상시 가동 + 스모크 | CD 게이트→Secrets 검증→동기화→배포→헬스→E2E 7/7 | CD workflow |
 | NFR-07 복구 | DB 백업 | 7세대·해시 검증·복원 절차 문서 | BACKUP_RESTORE.md |
