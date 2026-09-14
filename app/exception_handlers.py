@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 
 from app.audit import E
 from app.logging_config import log_event
-from app.policies import SECURITY_HEADERS
+from app.policies import REQUEST_ID_CHARS, SECURITY_HEADERS
 
 logger = logging.getLogger("app")
 
@@ -48,7 +48,7 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
 
 async def unhandled_exception_handler(request: Request, exc: Exception):
     """일관된 500 + 보안 헤더. SQL/입력/키가 포함될 수 있는 예외 원문은 로깅하지 않는다."""
-    request_id = getattr(request.state, "request_id", uuid.uuid4().hex[:20])
+    request_id = getattr(request.state, "request_id", uuid.uuid4().hex[:REQUEST_ID_CHARS])
     log_event(
         logger,
         E.UNHANDLED_ERROR,

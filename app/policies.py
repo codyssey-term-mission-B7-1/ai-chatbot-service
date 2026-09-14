@@ -1,4 +1,7 @@
-"""공유 입력·보안 정책. 문자 수는 Unicode 코드 포인트 기준."""
+"""코드 상수(불변 정책) — 환경과 무관한 규칙의 단일 위치.
+
+분류: .env(환경값)→app/config.py Settings / 불변 정책→여기 / 그 외 참고 docs/CONFIG_BOUNDARY.md.
+"""
 
 MAX_PASSWORD_BYTES = 72  # bcrypt 입력 한계; 비밀번호를 조용히 자르지 않는다.
 MAX_PASSWORD_CHARS = 64
@@ -35,6 +38,10 @@ SECURITY_HEADERS = {
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 }
 DEMO_EMAILS = frozenset({"demo@demo.com", "tester@demo.com", "admin@demo.com"})
+# 요청 추적 ID 길이 — 미들웨어 발급과 chat_logs.request_id 열 길이가 함께 쓴다
+REQUEST_ID_CHARS = 20
+# "분당" 상한 리밋터의 공통 윈도우(초) — chat·signup·비밀번호재설정 IP 상한
+RATE_WINDOW_SECONDS = 60.0
 
 # ── 라우팅/미들웨어 공용 상수(#150) — main.py에서 app/middleware 쪽으로 옮겨졌던 값 ──
 # /docs·/redoc·/openapi.json — DOCS_ENABLED 게이트와 CSP 예외 경로가 함께 쓴다(#75)
