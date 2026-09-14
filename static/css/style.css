@@ -123,13 +123,17 @@ body.app-page .nav { padding: 0 6px; }
                min-width: 44px; min-height: 44px; padding: 0 8px; border-radius: 10px; color: var(--ink); }
 .menu-toggle:hover { background: var(--hover); }
 
-/* 사이드바 — 모바일 기본: 왼쪽 오프캔버스 드로어 (☰/백드롭/✕/Esc 닫기) */
+/* 사이드바 — 모바일 기본: 왼쪽 오프캔버스 드로어 (☰/백드롭/✕/Esc 닫기)
+   easing: 로그 함수처럼 빠르게 시작해 점점 느려지며 수렴하는 커브 (#139) */
 .sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
            width: min(320px, 85vw); background: var(--card); border-right: 1px solid var(--border);
            display: flex; flex-direction: column; gap: 10px; padding: 12px;
-           transform: translateX(-103%); transition: transform .22s ease; }
+           transform: translateX(-103%);
+           transition: transform .5s cubic-bezier(.22,1,.36,1); }
 body.sidebar-open .sidebar { transform: translateX(0); box-shadow: var(--shadow); }
-.sidebar-backdrop { position: fixed; inset: 0; z-index: 45; background: rgba(12,15,24,.45); }
+.sidebar-backdrop { position: fixed; inset: 0; z-index: 45; background: rgba(12,15,24,.45);
+                    opacity: 0; transition: opacity .5s cubic-bezier(.22,1,.36,1); pointer-events: none; }
+body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
 .sidebar-head { display: flex; align-items: center; justify-content: space-between; }
 .sidebar-title { font-size: 15px; font-weight: 800; }
 .sidebar-close { border: none; background: none; color: var(--muted); font-size: 18px; line-height: 1;
@@ -248,10 +252,16 @@ body.sidebar-open .sidebar { transform: translateX(0); box-shadow: var(--shadow)
   body.app-page .nav { padding: 0 10px; }
   body.app-page .brand, body.app-page .menu-toggle { min-height: 40px; }
   .side-link { min-height: 40px; }
-  .sidebar { position: static; transform: none; transition: none; width: 280px; flex: none;
-             border-right: 1px solid var(--border); box-shadow: none; }
+  /* 데스크톱 사이드바 — width 트랜지션으로 부드러운 접기/펼치기 (#139)
+     easing: cubic-bezier(.22,1,.36,1) = 빠르게 시작→점점 느려지며 수렴 (로그 함수 느낌) */
+  .sidebar { position: static; transform: none; width: 280px; flex: none;
+             border-right: 1px solid var(--border); box-shadow: none;
+             overflow: hidden;
+             transition: width .5s cubic-bezier(.22,1,.36,1),
+                         padding .5s cubic-bezier(.22,1,.36,1),
+                         border-width .5s cubic-bezier(.22,1,.36,1); }
   .sidebar-close, .sidebar-backdrop { display: none; }
-  body.sidebar-collapsed .sidebar { display: none; }
+  body.sidebar-collapsed .sidebar { width: 0; padding: 0; border-right-width: 0; overflow: hidden; }
   .chat-window { padding: 18px; }
   .bubble { max-width: 78%; }
   .chat-input { gap: 10px; }
