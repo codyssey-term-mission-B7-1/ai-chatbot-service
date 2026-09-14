@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 from app.models.base import utcnow
+from app.policies import REQUEST_ID_CHARS
 
 if TYPE_CHECKING:
     from app.models.thread import Thread
@@ -28,7 +29,7 @@ class ChatLog(Base):
     answer: Mapped[str] = mapped_column(Text, default="", nullable=False)
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(20), default="success")  # success | ai_error
-    request_id: Mapped[str] = mapped_column(String(20), default="")
+    request_id: Mapped[str] = mapped_column(String(REQUEST_ID_CHARS), default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True
     )

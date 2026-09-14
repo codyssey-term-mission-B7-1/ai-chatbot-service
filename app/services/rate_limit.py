@@ -10,6 +10,7 @@ import time
 from collections import deque
 
 from app.config import settings
+from app.policies import RATE_WINDOW_SECONDS
 
 
 class SlidingWindowLimiter:
@@ -88,13 +89,15 @@ class SlidingWindowLimiter:
 login_limiter = SlidingWindowLimiter(settings.login_max_fails, settings.login_lockout_sec)
 
 # 채팅 사용자별 분당 요청 상한(#73) — AI 비용 남용 방어. 0이면 비활성화.
-chat_limiter = SlidingWindowLimiter(settings.chat_rate_per_min, 60.0)
+chat_limiter = SlidingWindowLimiter(settings.chat_rate_per_min, RATE_WINDOW_SECONDS)
 
 # 회원가입 IP별 분당 요청 상한 — 봇 계정 생성 남용 최소 방어(AUDIT_HARDENING B-1 P0).
-signup_ip_limiter = SlidingWindowLimiter(settings.signup_rate_per_ip_per_min, 60.0)
+signup_ip_limiter = SlidingWindowLimiter(settings.signup_rate_per_ip_per_min, RATE_WINDOW_SECONDS)
 
 # 비밀번호 재설정 IP별 분당 요청 상한 — 메일 폭탄/계정 존재 열거 속도 제한.
-password_reset_ip_limiter = SlidingWindowLimiter(settings.password_reset_rate_per_ip_per_min, 60.0)
+password_reset_ip_limiter = SlidingWindowLimiter(
+    settings.password_reset_rate_per_ip_per_min, RATE_WINDOW_SECONDS
+)
 
 
 def client_ip(request) -> str:
