@@ -7,9 +7,9 @@ import uuid
 
 from fastapi import Request
 
+from app.audit import E
 from app.exception_handlers import unhandled_exception_handler
 from app.logging_config import REQUEST_ID, log_event
-from app.audit import E
 
 logger = logging.getLogger("app")
 

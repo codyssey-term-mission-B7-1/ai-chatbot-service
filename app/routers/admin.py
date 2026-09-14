@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.audit import E
 from app.database import get_db
 from app.deps import get_admin_user
 from app.logging_config import log_event
@@ -21,7 +22,6 @@ from app.schemas import (
 from app.services.admin import is_admin
 from app.services.security import is_peppered_hash
 from app.services.sessions import revoke_user_sessions
-from app.audit import E
 
 logger = logging.getLogger("app.admin")
 router = APIRouter(prefix="/api/admin", tags=["admin"])

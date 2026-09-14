@@ -7,6 +7,7 @@ import time
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.audit import E  # noqa: E402
 from app.database import get_db
 from app.deps import (
     get_current_user,
@@ -36,8 +37,6 @@ from app.services.security import (
     verify_password,
     verify_password_legacy,
 )
-from app.audit import E  # noqa: E402
-
 
 logger = logging.getLogger("app.auth")
 router = APIRouter(prefix="/api/auth", tags=["auth"])

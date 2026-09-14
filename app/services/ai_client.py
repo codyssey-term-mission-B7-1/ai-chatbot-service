@@ -12,9 +12,9 @@ from abc import ABC, abstractmethod
 
 import httpx
 
+from app.audit import E
 from app.config import settings
 from app.logging_config import log_event
-from app.audit import E
 
 logger = logging.getLogger("app.ai")
 CHAT_COMPLETIONS_SUFFIX = "/chat/completions"

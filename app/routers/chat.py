@@ -8,6 +8,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from app.audit import E
 from app.config import settings
 from app.database import get_db
 from app.deps import get_chat_limiter, get_current_user
@@ -19,7 +20,6 @@ from app.schemas import ChatOut, ChatRequest
 from app.services.ai_client import AIError, AIProvider, AITimeoutError, get_ai_provider
 from app.services.context import SYSTEM_PROMPT, build_messages
 from app.services.rate_limit import SlidingWindowLimiter, retry_after_hint
-from app.audit import E
 
 logger = logging.getLogger("app.chat")
 router = APIRouter(prefix="/api", tags=["chat"])

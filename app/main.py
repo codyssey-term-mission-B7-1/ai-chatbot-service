@@ -15,13 +15,13 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 import app.models  # noqa: F401  # 모델 레지스트리 등록 — create_all/autogenerate에 필요
+from app.audit import E
 from app.config import settings
 from app.database import init_db
 from app.exception_handlers import register as register_exception_handlers
 from app.logging_config import log_event, setup_logging
 from app.middleware import register as register_middleware
 from app.routers import admin, auth, chat, health, logs, pages, threads
-from app.audit import E
 
 setup_logging()
 logger = logging.getLogger("app")
