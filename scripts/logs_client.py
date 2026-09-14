@@ -68,8 +68,8 @@ def _raise_for_api_error(action: str, response: httpx.Response) -> None:
 
 
 def login(client: httpx.Client, email: str, password: str) -> None:
-    """POST /api/auth/login — 성공 시 세션 쿠키가 클라이언트에 저장된다."""
-    response = client.post("/api/auth/login", json={"email": email, "password": password})
+    """POST /api/session — 세션 생성(201). 쿠키가 클라이언트에 저장된다."""
+    response = client.post("/api/session", json={"email": email, "password": password})
     _raise_for_api_error("로그인", response)
 
 
@@ -80,13 +80,13 @@ def fetch_my_chats(
     status: str | None = None,
     before_id: int | None = None,
 ) -> list[dict]:
-    """GET /api/me/chats — 본인 기록 최신순. 리스트 반환."""
+    """GET /api/users/me/chats — 본인 기록 최신순. 리스트 반환."""
     params: dict[str, object] = {"limit": limit}
     if status is not None:
         params["status"] = status
     if before_id is not None:
         params["before_id"] = before_id
-    response = client.get("/api/me/chats", params=params)
+    response = client.get("/api/users/me/chats", params=params)
     _raise_for_api_error("내 로그 조회", response)
     return response.json()
 
@@ -179,7 +179,7 @@ def main(argv: list[str] | None = None, *, transport: httpx.BaseTransport | None
     )
     sub = parser.add_subparsers(dest="command", required=True)
     common = _common_parser()
-    sub.add_parser("my", parents=[common], help="내 대화 로그 조회 (GET /api/me/chats)")
+    sub.add_parser("my", parents=[common], help="내 대화 로그 조회 (GET /api/users/me/chats)")
     admin = sub.add_parser(
         "all", parents=[common], help="관리자: 전체 대화 로그 조회 (GET /api/admin/chats)"
     )

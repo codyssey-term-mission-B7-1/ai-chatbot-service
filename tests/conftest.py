@@ -103,5 +103,5 @@ def client(db, fake_ai):
 
 def signup_and_login(client: TestClient, email="tester@example.com", password="Test1234!"):
     """통합 테스트용 헬퍼 — 가입 + 로그인(세션 쿠키 발급)."""
-    client.post("/api/auth/signup", json={"email": email, "password": password})
-    client.post("/api/auth/login", json={"email": email, "password": password})
+    client.post("/api/users", json={"email": email, "password": password})
+    client.post("/api/session", json={"email": email, "password": password})

@@ -4,7 +4,7 @@
 
 ## 공통
 
-- 인증: `POST /api/auth/login`이 발급한 **서명 세션 쿠키**를 보낸다. JWT가 아니다.
+- 인증: `POST /api/session`이 발급한 **서명 세션 쿠키**를 보낸다. JWT가 아니다.
 - Cookie payload는 `user_id`/`email_fp`; 값은 증빙에 복사하지 않는다. HttpOnly·SameSite=Lax·`SESSION_MAX_AGE_HOURS` Max-Age(기본 24시간, 상한 168), 운영 Secure.
 - 응답의 `X-Request-ID`는 앱 표준 이벤트·저장된 대화와 연결된다.
 - 질문·비밀번호 문자 수는 Unicode 코드 포인트 기준. 비밀번호는 UTF-8 72바이트 제한도 적용한다.
@@ -18,17 +18,17 @@
 
 | 메서드 | 경로 | 접근 / 성공 |
 |---|---|---|
-| POST | /api/auth/signup | 공개 / 201 (세션 미발급, 로그인 별도) |
-| POST | /api/auth/login | 공개 / 200 + 쿠키 |
-| POST | /api/auth/logout | 비로그인도 가능 / 200 |
-| GET | /api/auth/me | 로그인 / 200 |
-| POST | /api/auth/password/reset-request | 공개 / 202 (계정 존재 은닉) |
-| POST | /api/auth/password/reset | 공개 / 200 · 400 |
-| POST | /api/chat | 로그인 / 200 · 404 (thread_id 타인·부존재) |
+| POST | /api/users | 공개 / 201 (세션 미발급, 로그인 별도) |
+| POST | /api/session | 공개 / 200 + 쿠키 |
+| POST | /api/session | 비로그인도 가능 / 200 |
+| GET | /api/users/me | 로그인 / 200 |
+| POST | /api/password-resets | 공개 / 202 (계정 존재 은닉) |
+| POST | /api/password-resets/{token} | 공개 / 200 · 400 |
+| POST | /api/chats | 로그인 / 200 · 404 (thread_id 타인·부존재) |
 | POST | /api/threads | 로그인 / 201 · 409 (상한) |
 | GET | /api/threads | 로그인 / 내 대화 목록(최근 활동순, 최대 50) |
 | DELETE | /api/threads/{id} | 로그인 / 200 · 404 — 기록 CASCADE 삭제 |
-| GET | /api/me/chats | 로그인 / 본인 기록 (thread_id 필터 가능) |
+| GET | /api/users/me/chats | 로그인 / 본인 기록 (thread_id 필터 가능) |
 | GET | /api/admin/chats | 명시적 앱 관리자 / 전체 조회 |
 | GET | /health | 공개 / 200 |
 
@@ -39,7 +39,7 @@ HTML `/`, `/logs`, `/admin/logs`는 비로그인일 때 `/login`으로 302 이�
 ## 회원가입
 
 ```http
-POST /api/auth/signup
+POST /api/users
 Content-Type: application/json
 
 {"email":"hong@example.com","password":"HongG!ld0ng","nickname":"홍길동"}
@@ -52,12 +52,12 @@ Content-Type: application/json
 - 비밀번호는 8~64 코드 포인트, UTF-8 72바이트 이하, 공백만으로 구성 불가. 한글 25자(75바이트)나 스페이스 8자는 422다. 잘라 저장하지 않는다.
 - 닉네임 최대 20자. 생략하면 이메일 접두어 앞 20자를 사용한다.
 - 관리자 플래그 등 허용하지 않는 가입 필드는 422. 가입으로 권한이 생기지 않는다.
-- **가입은 세션 쿠키를 발급하지 않는다.** 201 반환 후에도 비로그인 상태이며, 채팅 등 로그인 API를 쓰려면 `POST /api/auth/login`을 별도로 호출해 세션을 받아야 한다. 웹 UI는 가입 성공 후 `/login?registered=1`로 이동해 로그인을 요구한다.
+- **가입은 세션 쿠키를 발급하지 않는다.** 201 반환 후에도 비로그인 상태이며, 채팅 등 로그인 API를 쓰려면 `POST /api/session`을 별도로 호출해 세션을 받아야 한다. 웹 UI는 가입 성공 후 `/login?registered=1`로 이동해 로그인을 요구한다.
 
 ## 로그인 / 내 정보 / 로그아웃
 
 ```http
-POST /api/auth/login
+POST /api/session
 Content-Type: application/json
 
 {"email":"hong@example.com","password":"HongG!ld0ng"}
@@ -70,15 +70,15 @@ Content-Type: application/json
 
 같은 이메일의 실패가 `LOGIN_MAX_FAILS`회(기본 5) 이상 누적되면 `LOGIN_LOCKOUT_SEC`초(기본 900) 동안 429 + `Retry-After`로 잠긴다. 잠금 중에는 올바른 비밀번호도 거부되며 로그인 성공 시 카운터가 초기화된다.
 
-`GET /api/auth/me`도 위 계정 정보를 반환한다. `POST /api/auth/logout`은 `{"detail":"로그아웃했어요."}`를 반환하며 현재 클라이언트 쿠키를 비운다. 복사된 쿠키를 중앙 세션 목록에서 개별 폐기하는 기능은 아니다.
+`GET /api/users/me`도 위 계정 정보를 반환한다. `POST /api/session`은 `{"detail":"로그아웃했어요."}`를 반환하며 현재 클라이언트 쿠키를 비운다. 복사된 쿠키를 중앙 세션 목록에서 개별 폐기하는 기능은 아니다.
 
 ## 비밀번호 재설정
 
 ```
-POST /api/auth/password/reset-request   {"email": "..."}
+POST /api/password-resets   {"email": "..."}
 → 202 {"detail": "요청을 받았어요. 이메일이 가입되어 있다면 재설정 안내를 보냈습니다."}
 
-POST /api/auth/password/reset           {"token": "메일 링크의 토큰", "new_password": "..."}
+POST /api/password-resets/{token}           {"token": "메일 링크의 토큰", "new_password": "..."}
 → 200 {"detail": "비밀번호를 변경했어요. 새 비밀번호로 로그인해 주세요."}
 ```
 
@@ -135,7 +135,7 @@ DELETE /api/threads/2      → 200 {"deleted":true}    (그 대화의 기록도 
 
 ## 본인 기록
 
-`GET /api/me/chats?limit=50&status=success&before_id=100&thread_id=2`
+`GET /api/users/me/chats?limit=50&status=success&before_id=100&thread_id=2`
 
 ```json
 [{"id":99,"question":"이전 질문","answer":"이전 응답","latency_ms":1200,

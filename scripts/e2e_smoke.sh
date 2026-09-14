@@ -31,24 +31,24 @@ if [ "$SCHEMA" != "ok" ]; then
   exit 1
 fi
 echo "    └ 스키마 동기화: ok"
-step "② 회원가입 ($EMAIL)"    201 -X POST "$BASE/api/auth/signup" -H 'Content-Type: application/json' \
+step "② 회원가입 ($EMAIL)"    201 -X POST "$BASE/api/users" -H 'Content-Type: application/json' \
      -d "{\"email\":\"$EMAIL\",\"password\":\"Test1234!\"}"
-step "③ 로그인 (쿠키 발급)"    200 -c "$COOKIE" -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
+step "③ 로그인 (쿠키 발급)"    201 -c "$COOKIE" -X POST "$BASE/api/session" -H 'Content-Type: application/json' \
      -d "{\"email\":\"$EMAIL\",\"password\":\"Test1234!\"}"
-step "④ 미로그인 채팅 차단"    401 -X POST "$BASE/api/chat" -H 'Content-Type: application/json' \
+step "④ 미로그인 채팅 차단"    401 -X POST "$BASE/api/chats" -H 'Content-Type: application/json' \
      -d '{"question":"hi"}'
-step "⑤ 빈 입력 검증 (422)"   422 -b "$COOKIE" -X POST "$BASE/api/chat" -H 'Content-Type: application/json' \
+step "⑤ 빈 입력 검증 (422)"   422 -b "$COOKIE" -X POST "$BASE/api/chats" -H 'Content-Type: application/json' \
      -d '{"question":"   "}'
-step "⑥ 채팅 (AI 호출)"       200 -b "$COOKIE" -X POST "$BASE/api/chat" -H 'Content-Type: application/json' \
+step "⑥ 채팅 (AI 호출)"       201 -b "$COOKIE" -X POST "$BASE/api/chats" -H 'Content-Type: application/json' \
      -d '{"question":"안녕, 한 줄로 자기소개해줘"}'
 echo "    └ 응답: $(echo "$LAST_BODY" | python3 -c 'import sys; sys.stdout.buffer.write(sys.stdin.buffer.read().decode("utf-8")[:200].encode("utf-8"))')"
-step "⑦ 내 대화 로그 조회"     200 -b "$COOKIE" "$BASE/api/me/chats"
+step "⑦ 내 대화 로그 조회"     200 -b "$COOKIE" "$BASE/api/users/me/chats"
 echo "    └ 로그: $(echo "$LAST_BODY" | python3 -c 'import sys; sys.stdout.buffer.write(sys.stdin.buffer.read().decode("utf-8")[:200].encode("utf-8"))')"
 step "⑧ 새 대화 시작 (스레드)"  201 -b "$COOKIE" -X POST "$BASE/api/threads"
 TID=$(echo "$LAST_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
-step "⑨ 새 대화 채팅 (thread_id)" 200 -b "$COOKIE" -X POST "$BASE/api/chat" -H 'Content-Type: application/json' \
+step "⑨ 새 대화 채팅 (thread_id)" 201 -b "$COOKIE" -X POST "$BASE/api/chats" -H 'Content-Type: application/json' \
      -d "{\"question\":\"새 대화 스모크 질문입니다.\",\"thread_id\":$TID}"
-step "⑩ 새 대화 로그 조회 (필터)"  200 -b "$COOKIE" "$BASE/api/me/chats?thread_id=$TID"
+step "⑩ 새 대화 로그 조회 (필터)"  200 -b "$COOKIE" "$BASE/api/users/me/chats?thread_id=$TID"
 echo "    └ 스레드 $TID 로그: $(echo "$LAST_BODY" | python3 -c 'import sys; sys.stdout.buffer.write(sys.stdin.buffer.read().decode("utf-8")[:200].encode("utf-8"))')"
 
 echo ""

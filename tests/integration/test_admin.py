@@ -9,7 +9,7 @@ from tests.conftest import signup_and_login
 
 def test_non_admin_cannot_access_admin_api_or_page(client):
     signup_and_login(client)
-    assert client.get("/api/auth/me").json()["is_admin"] is False
+    assert client.get("/api/users/me").json()["is_admin"] is False
     assert client.get("/api/admin/chats").status_code == 403
     assert client.get("/admin/logs").status_code == 403
     assert "관리자 조회" not in client.get("/").text
@@ -17,15 +17,15 @@ def test_non_admin_cannot_access_admin_api_or_page(client):
 
 def test_admin_reads_all_users_but_ordinary_endpoint_stays_isolated(client, db):
     signup_and_login(client, "one@example.com")
-    client.post("/api/chat", json={"question": "첫 사용자"})
+    client.post("/api/chats", json={"question": "첫 사용자"})
     signup_and_login(client, "two@example.com")
-    client.post("/api/chat", json={"question": "다른 사용자"})
+    client.post("/api/chats", json={"question": "다른 사용자"})
     user = grant_admin(db, "two@example.com")
-    assert client.get("/api/auth/me").json()["is_admin"] is True
+    assert client.get("/api/users/me").json()["is_admin"] is True
     response = client.get("/api/admin/chats")
     assert response.status_code == 200
     assert {r["question"] for r in response.json()["items"]} == {"첫 사용자", "다른 사용자"}
-    assert {r["question"] for r in client.get("/api/me/chats").json()} == {"다른 사용자"}
+    assert {r["question"] for r in client.get("/api/users/me/chats").json()} == {"다른 사용자"}
     filtered = client.get("/api/admin/chats", params={"user_id": user.id}).json()["items"]
     assert len(filtered) == 1 and filtered[0]["user_id"] == user.id
     assert client.get("/admin/logs").status_code == 200
@@ -60,7 +60,7 @@ def test_grant_requires_existing_user_and_binds_to_account_email(db):
 def test_admin_pagination_does_not_repeat_rows(client, db):
     signup_and_login(client, "pagination@example.com")
     for i in range(3):
-        client.post("/api/chat", json={"question": f"기록 {i}"})
+        client.post("/api/chats", json={"question": f"기록 {i}"})
     grant_admin(db, "pagination@example.com")
     first = client.get("/api/admin/chats?limit=2").json()
     second = client.get(
@@ -102,8 +102,8 @@ def test_password_hash_status_reports_migration_progress(client, db):
 def test_admin_deletes_user_with_chats_and_sessions(client, db):
     """사용자 삭제 — 대화 CASCADE·세션 폐기·재설정 토큰까지 정리된다."""
     signup_and_login(client, "victim@example.com")
-    client.post("/api/chat", json={"question": "지워질 질문"})
-    victim_id = client.get("/api/auth/me").json()["email"]  # 스키인지만 확인용
+    client.post("/api/chats", json={"question": "지워질 질문"})
+    victim_id = client.get("/api/users/me").json()["email"]  # 스키인지만 확인용
     from app.repositories.users import find_by_email
 
     victim = find_by_email(db, "victim@example.com")
@@ -156,9 +156,9 @@ def test_admin_page_filters_by_email_and_shows_user_identity(client, db, caplog)
     import logging
 
     signup_and_login(client, "filter-a@example.com")
-    client.post("/api/chat", json={"question": "A 사용자 질문"})
+    client.post("/api/chats", json={"question": "A 사용자 질문"})
     signup_and_login(client, "filter-b@example.com")  # 현재 세션
-    client.post("/api/chat", json={"question": "B 사용자 질문"})
+    client.post("/api/chats", json={"question": "B 사용자 질문"})
     grant_admin(db, "filter-b@example.com")  # 현재 세션 사용자에게 부여
 
     # 전체(필터 없음) — 두 사용자 기록 모두 + 사용자 열에 이메일·닉네임

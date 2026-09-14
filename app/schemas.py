@@ -87,9 +87,8 @@ class PasswordResetRequestIn(BaseModel):
 
 
 class PasswordResetCompleteIn(BaseModel):
-    """재설정 완료 — 토큰과 새 비밀번호(회원가입과 동일한 정책)."""
+    """재설정 완료 — 새 비밀번호(회원가입과 동일한 정책). 토큰은 경로 매개변수다."""
 
-    token: str = Field(min_length=20, max_length=128)
     new_password: str = Field(min_length=8, max_length=MAX_PASSWORD_CHARS)
     model_config = {"extra": "forbid"}
 

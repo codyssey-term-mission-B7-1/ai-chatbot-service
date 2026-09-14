@@ -68,12 +68,12 @@ def measure(n: int) -> dict:
 
     try:
         with TestClient(app, base_url="https://testserver") as c:
-            c.post("/api/auth/signup", json={"email": f"exp{n}@example.com",
+            c.post("/api/users", json={"email": f"exp{n}@example.com",
                                              "password": "Test1234!"})
-            c.post("/api/auth/login", json={"email": f"exp{n}@example.com",
+            c.post("/api/session", json={"email": f"exp{n}@example.com",
                                             "password": "Test1234!"})
             for i in range(1, TOTAL_TURNS + 1):
-                c.post("/api/chat", json={"question": f"{i}번째 질문입니다"})
+                c.post("/api/chats", json={"question": f"{i}번째 질문입니다"})
     finally:
         app.dependency_overrides.clear()
         app.dependency_overrides.update(old_overrides)
