@@ -4,7 +4,7 @@ import asyncio
 import logging
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from app.audit import E  # noqa: E402
@@ -39,11 +39,11 @@ from app.services.security import (
 )
 
 logger = logging.getLogger("app.auth")
-router = APIRouter(prefix="/api/auth", tags=["auth"])
+router = APIRouter(prefix="/api", tags=["auth"])
 
 
 @router.post(
-    "/signup",
+    "/users",
     response_model=UserOut,
     status_code=status.HTTP_201_CREATED,
     summary="회원가입",
@@ -89,7 +89,8 @@ def signup(
 
 
 @router.post(
-    "/login",
+    "/session",
+    status_code=status.HTTP_201_CREATED,
     response_model=UserOut,
     summary="로그인",
     description=(
@@ -97,6 +98,7 @@ def signup(
         "이메일별 실패 누적 잠금(LOGIN_MAX_FAILS회/LOGIN_LOCKOUT_SEC초)이 있어 초과 시 429입니다."
     ),
     responses={
+        201: {"description": "세션(쿠키) 생성"},
         401: {"description": "이메일 또는 비밀번호 불일치"},
         429: {"description": "반복 실패로 일시 잠금. Retry-After 헤더 참고"},
     },
@@ -164,7 +166,7 @@ def login(
 
 
 @router.post(
-    "/password/reset-request",
+    "/password-resets",
     status_code=status.HTTP_202_ACCEPTED,
     summary="비밀번호 재설정 요청",
     description=(
@@ -245,7 +247,7 @@ async def password_reset_request(
 
 
 @router.post(
-    "/password/reset",
+    "/password-resets/{token}",
     summary="비밀번호 재설정 완료",
     description=(
         "메일 링크의 토큰과 새 비밀번호로 재설정을 완료한다. 토큰은 단일 사용·시간 제한이며 "
@@ -256,8 +258,8 @@ async def password_reset_request(
         400: {"description": "유효하지 않거나 만료/사용된 토큰"},
     },
 )
-def password_reset(body: PasswordResetCompleteIn, db: Session = Depends(get_db)):
-    user = complete_password_reset(db, body.token, body.new_password)
+def password_reset(token: str, body: PasswordResetCompleteIn, db: Session = Depends(get_db)):
+    user = complete_password_reset(db, token, body.new_password)
     if user is None:
         log_event(logger, E.AUTH_PASSWORD_RESET_REJECTED, level=logging.WARNING)
         raise HTTPException(
@@ -268,18 +270,19 @@ def password_reset(body: PasswordResetCompleteIn, db: Session = Depends(get_db))
     return {"detail": "비밀번호를 변경했어요. 새 비밀번호로 로그인해 주세요."}
 
 
-@router.post(
-    "/logout",
+@router.delete(
+    "/session",
+    status_code=status.HTTP_204_NO_CONTENT,
     summary="로그아웃",
-    description="현재 클라이언트의 세션 쿠키를 비웁니다. 비로그인도 200입니다.",
+    description="현재 클라이언트의 세션 쿠키를 비웁니다. 비로그인도 204입니다.",
 )
 def logout(request: Request):
     request.session.clear()
-    return {"detail": "로그아웃했어요."}
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(
-    "/me",
+    "/users/me",
     response_model=UserOut,
     summary="내 정보",
     description="현재 계정 정보와 앱 관리자 권한 여부를 반환합니다.",

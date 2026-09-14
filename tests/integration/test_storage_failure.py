@@ -16,8 +16,8 @@ def test_db_failure_does_not_claim_persisted_chat_or_log_sensitive_text(
 
     monkeypatch.setattr(chat_logs, "save_log", fail)
     with caplog.at_level(logging.INFO):
-        response = client.post("/api/chat", json={"question": "private user question"})
-    assert response.status_code == 200
+        response = client.post("/api/chats", json={"question": "private user question"})
+    assert response.status_code == 200  # 저장 실패 — 자원 미생성(chat_id=-1)
     assert response.json()["status"] == "success" and response.json()["chat_id"] == -1
     assert "private user question" not in caplog.text
     assert "private query arguments" not in caplog.text

@@ -18,7 +18,7 @@ if (form) {
 
     let url, body;
     if (mode === 'forgot') {
-      url = '/api/auth/password/reset-request';
+      url = '/api/password-resets';
       body = { email: document.getElementById('email').value.trim() };
     } else {
       const password = document.getElementById('password').value;
@@ -32,8 +32,8 @@ if (form) {
       if (confirmInput && confirmInput.value !== password) {
         return showMessage('비밀번호가 일치하지 않아요. 두 입력을 다시 확인해 주세요.');
       }
-      url = '/api/auth/password/reset';
-      body = { token: document.getElementById('token').value, new_password: password };
+      url = '/api/password-resets/' + encodeURIComponent(document.getElementById('token').value);
+      body = { new_password: password };
     }
 
     button.disabled = true;

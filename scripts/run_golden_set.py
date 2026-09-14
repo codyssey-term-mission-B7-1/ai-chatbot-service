@@ -43,14 +43,14 @@ def main() -> int:
 
     # 1) 가입(이미 있으면 409) → 2) 로그인으로 쿠키 확보
     signup = client.post(
-        "/api/auth/signup",
+        "/api/users",
         json={"email": args.email, "password": args.password, "nickname": "골든세트"},
     )
     if signup.status_code not in (201, 409):
         print(f"가입 실패: {signup.status_code} {signup.text[:200]}", file=sys.stderr)
         return 2
     login = client.post(
-        "/api/auth/login", json={"email": args.email, "password": args.password}
+        "/api/session", json={"email": args.email, "password": args.password}
     )
     if login.status_code != 200:
         print(f"로그인 실패: {login.status_code}", file=sys.stderr)
@@ -63,7 +63,7 @@ def main() -> int:
         for question in case["turns"]:
             payload = {"question": question}
             for attempt in (1, 2):  # 429 시 Retry-After만큼 대기 후 1회 재시도
-                response = client.post("/api/chat", json=payload)
+                response = client.post("/api/chats", json=payload)
                 if response.status_code == 429 and attempt == 1:
                     wait = float(response.headers.get("retry-after", "10"))
                     print(f"  [{case['id']}] 429 — {wait}초 대기 후 재시도")

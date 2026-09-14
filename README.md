@@ -67,13 +67,13 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 | 메서드 | 경로 | 접근 |
 |---|---|---|
-| POST | `/api/auth/signup` | 공개, 201 / 중복 409 / 검증 422 |
-| POST | `/api/auth/login` | 성공 200 + 서명된 세션 쿠키 / 반복 실패 잠금 429 |
-| POST | `/api/auth/logout` | 비로그인도 200, 현재 쿠키 비움 |
-| GET | `/api/auth/me` | 로그인 필요 |
-| POST | `/api/auth/password/reset-request` · `/api/auth/password/reset` | 공개, 이메일 재설정(계정 존재 은닉·토큰 단일 사용·세션 전면 폐기) |
-| POST | `/api/chat` | 로그인 필요, 200 / 422 / 429 / 502 / 504 |
-| GET | `/api/me/chats` | 본인 기록만, 성공 필터·커서 지원 |
+| POST | `/api/users` | 공개, 201 / 중복 409 / 검증 422 |
+| POST | `/api/session` | 세션 생성 201 + 서명된 쿠키 / 불일치 401 / 잠금 429 |
+| DELETE | `/api/session` | 세션 삭제 204, 비로그인도 204 |
+| GET | `/api/users/me` | 로그인 필요 |
+| POST | `/api/password-resets` · `/api/password-resets/{token}` | 공개, 이메일 재설정(계정 존재 은닉·토큰 단일 사용·세션 전면 폐기) |
+| POST | `/api/chats` | 로그인 필요, 저장 성공 201(저장 실패 200) / 422 / 429 / 502 / 504 |
+| GET | `/api/users/me/chats` | 본인 기록만, 성공 필터·커서 지원 |
 | GET | `/api/admin/chats` | 명시적 앱 관리자만 |
 | GET | `/health` | 기동/버전/제공자 선택 모드; AI 연결 검증 아님 |
 

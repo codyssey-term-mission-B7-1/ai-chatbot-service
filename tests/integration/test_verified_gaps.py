@@ -26,7 +26,7 @@ from tests.conftest import signup_and_login
 )
 def test_password_byte_boundary_is_a_validation_error(client, value, expected):
     response = client.post(
-        "/api/auth/signup",
+        "/api/users",
         json={
             "email": "bytes@example.com",
             "password": value,
@@ -40,13 +40,13 @@ def test_password_byte_boundary_is_a_validation_error(client, value, expected):
 
 def test_generated_nickname_respects_maximum(client):
     email = "n" * 25 + "@example.com"
-    response = client.post("/api/auth/signup", json={"email": email, "password": "StrongP4ss!"})
+    response = client.post("/api/users", json={"email": email, "password": "StrongP4ss!"})
     assert response.status_code == 201 and len(response.json()["nickname"]) == 20
 
 
 def test_signup_does_not_accept_client_admin_flag(client):
     response = client.post(
-        "/api/auth/signup",
+        "/api/users",
         json={
             "email": "escalation@example.com",
             "password": "StrongP4ss!",
@@ -60,7 +60,7 @@ def test_html_redirects_and_api_auth_errors_are_separate(client):
     for path in ["/logs", "/admin/logs"]:
         response = client.get(path, follow_redirects=False)
         assert response.status_code == 302 and response.headers["location"] == "/login"
-    assert client.get("/api/me/chats").status_code == 401
+    assert client.get("/api/users/me/chats").status_code == 401
     assert client.get("/api/admin/chats").status_code == 401
 
 
@@ -71,7 +71,7 @@ def test_session_is_outermost_and_log_identity_is_explicit(client, caplog):
     signup_and_login(client)
     caplog.clear()
     with caplog.at_level(logging.INFO):
-        response = client.get("/api/auth/me")
+        response = client.get("/api/users/me")
     received = [r.message for r in caplog.records if "event=request_received" in r.message]
     finished = [r.message for r in caplog.records if "event=request_finished" in r.message]
     assert len(received) == len(finished) == 1
@@ -85,8 +85,8 @@ def test_one_http_received_event_and_no_question_logging(client, caplog):
     secret_question = "민감한 질문 첫째 줄\n둘째 줄"
     caplog.clear()
     with caplog.at_level(logging.INFO):
-        response = client.post("/api/chat", json={"question": secret_question})
-    assert response.status_code == 200
+        response = client.post("/api/chats", json={"question": secret_question})
+    assert response.status_code == 201
     events = [r.message for r in caplog.records if "event=" in r.message]
     assert sum("event=request_received " in m for m in events) == 1
     assert all(secret_question not in m and "첫째 줄" not in m for m in events)
@@ -106,7 +106,7 @@ def test_unhandled_500_has_security_headers_and_finished_log(client, monkeypatch
     caplog.clear()
     with caplog.at_level(logging.INFO):
         response = client.post(
-            "/api/auth/signup",
+            "/api/users",
             json={
                 "email": "failure@example.com",
                 "password": "StrongP4ss!",
@@ -130,21 +130,21 @@ def test_success_filter_precedes_limit_and_matches_ai_context(client, db, fake_a
     for i in range(50):
         db.add(ChatLog(user_id=1, question=f"error-{i}", answer="", status="ai_error"))
     db.commit()
-    restored = client.get("/api/me/chats?status=success&limit=5").json()
+    restored = client.get("/api/users/me/chats?status=success&limit=5").json()
     assert len(restored) == 5
-    client.post("/api/chat", json={"question": "다음 질문"})
+    client.post("/api/chats", json={"question": "다음 질문"})
     sent = [m["content"] for m in fake_ai.last_messages[1:-1] if m["role"] == "user"]
     assert sent == [r["question"] for r in reversed(restored)]
-    assert client.get("/api/me/chats?status=unknown").status_code == 422
+    assert client.get("/api/users/me/chats?status=unknown").status_code == 422
 
 
 def test_zero_context_disables_history(client, monkeypatch, fake_ai):
     from app.config import settings
 
     signup_and_login(client)
-    client.post("/api/chat", json={"question": "첫 질문"})
+    client.post("/api/chats", json={"question": "첫 질문"})
     monkeypatch.setattr(settings, "context_turns", 0)
-    client.post("/api/chat", json={"question": "두 번째 질문"})
+    client.post("/api/chats", json={"question": "두 번째 질문"})
     assert len(fake_ai.last_messages) == 2
 
 
@@ -160,7 +160,7 @@ def test_utc_marker_survives_sqlite_roundtrip(client, db):
         )
     )
     db.commit()
-    record = client.get("/api/me/chats?limit=1").json()[0]
+    record = client.get("/api/users/me/chats?limit=1").json()[0]
     assert record["created_at"] == "2026-09-08T00:00:00Z"
     # 로그 화면은 KST 기본 표기 + UTC 병기 — UTC 원본 명시 원칙 유지
     page_text = client.get("/logs").text
@@ -193,9 +193,9 @@ def test_malformed_multipart_maps_to_502_and_is_saved(client, monkeypatch):
     monkeypatch.setattr(httpx.AsyncClient, "post", malformed)
     provider = OpenAICompatClient("not-real", "https://example.test/v1", "test", 2, 0)
     app.dependency_overrides[get_ai_provider] = lambda: provider
-    response = client.post("/api/chat", json={"question": "합성 응답 오류"})
+    response = client.post("/api/chats", json={"question": "합성 응답 오류"})
     assert response.status_code == 502 and "AI_ERROR" in response.json()["detail"]
-    assert client.get("/api/me/chats?limit=1").json()[0]["status"] == "ai_error"
+    assert client.get("/api/users/me/chats?limit=1").json()[0]["status"] == "ai_error"
 
 
 def test_swagger_links_are_absolute_and_descriptions_match_contract(client):
@@ -214,7 +214,9 @@ def test_swagger_links_are_absolute_and_descriptions_match_contract(client):
 def test_invalid_unicode_question_returns_422_without_echoing_input(client):
     signup_and_login(client)
     response = client.post(
-        "/api/chat", content=b'{"question":"\\ud800"}', headers={"Content-Type": "application/json"}
+        "/api/chats",
+        content=b'{"question":"\\ud800"}',
+        headers={"Content-Type": "application/json"},
     )
     assert response.status_code == 422
     assert all("input" not in x for x in response.json()["detail"])
@@ -233,5 +235,5 @@ def test_router_budget_also_bounds_an_injected_slow_provider(client, fake_ai, mo
 
     monkeypatch.setattr(fake_ai, "generate", slow)
     monkeypatch.setattr(settings, "ai_timeout_sec", 0.01)
-    assert client.post("/api/chat", json={"question": "느린 제공자"}).status_code == 504
+    assert client.post("/api/chats", json={"question": "느린 제공자"}).status_code == 504
     assert client.get("/health").status_code == 200

@@ -15,7 +15,7 @@ NEW_PASSWORD = "NewPass456!"
 
 
 def request_reset(client, email=EMAIL):
-    return client.post("/api/auth/password/reset-request", json={"email": email})
+    return client.post("/api/password-resets", json={"email": email})
 
 
 def extract_token(sent):
@@ -94,21 +94,19 @@ def test_complete_changes_password_and_revokes_sessions(client, db, fake_smtp):
     request_reset(client)
     token = extract_token(fake_smtp)
 
-    response = client.post(
-        "/api/auth/password/reset", json={"token": token, "new_password": NEW_PASSWORD}
-    )
+    response = client.post("/api/password-resets/" + token, json={"new_password": NEW_PASSWORD})
     assert response.status_code == 200
 
     # 기존 세션은 즉시 폐기 — 재설정 즉시 재로그인 유도
-    assert client.get("/api/auth/me").status_code == 401
+    assert client.get("/api/users/me").status_code == 401
     # 이전 비밀번호로는 로그인 불가, 새 비밀번호로 로그인 성공
     assert (
-        client.post("/api/auth/login", json={"email": EMAIL, "password": OLD_PASSWORD}).status_code
+        client.post("/api/session", json={"email": EMAIL, "password": OLD_PASSWORD}).status_code
         == 401
     )
     assert (
-        client.post("/api/auth/login", json={"email": EMAIL, "password": NEW_PASSWORD}).status_code
-        == 200
+        client.post("/api/session", json={"email": EMAIL, "password": NEW_PASSWORD}).status_code
+        == 201
     )
 
 
@@ -119,13 +117,9 @@ def test_token_is_single_use(client, db, fake_smtp):
     request_reset(client)
     token = extract_token(fake_smtp)
 
-    first = client.post(
-        "/api/auth/password/reset", json={"token": token, "new_password": NEW_PASSWORD}
-    )
+    first = client.post("/api/password-resets/" + token, json={"new_password": NEW_PASSWORD})
     assert first.status_code == 200
-    second = client.post(
-        "/api/auth/password/reset", json={"token": token, "new_password": "Again789!"}
-    )
+    second = client.post("/api/password-resets/" + token, json={"new_password": "Again789!"})
     assert second.status_code == 400
 
 
@@ -139,17 +133,15 @@ def test_expired_token_is_rejected(client, db, fake_smtp):
     db.execute(update(PasswordReset).values(expires_epoch=int(time.time()) - 60))
     db.commit()
 
-    response = client.post(
-        "/api/auth/password/reset", json={"token": token, "new_password": NEW_PASSWORD}
-    )
+    response = client.post("/api/password-resets/" + token, json={"new_password": NEW_PASSWORD})
     assert response.status_code == 400
 
 
 def test_invalid_token_is_rejected(client):
     signup_and_login(client, email=EMAIL, password=OLD_PASSWORD)
     response = client.post(
-        "/api/auth/password/reset",
-        json={"token": "x" * 43, "new_password": NEW_PASSWORD},
+        "/api/password-resets/" + "x" * 43,
+        json={"new_password": NEW_PASSWORD},
     )
     assert response.status_code == 400
 
@@ -200,7 +192,7 @@ def test_reset_pages_render_according_to_token_validity(client, db, fake_smtp):
     db.commit()
     request_reset(client)
     token = extract_token(fake_smtp)
-    client.post("/api/auth/logout")
+    client.delete("/api/session")
 
     forgot = client.get("/forgot-password")
     assert forgot.status_code == 200

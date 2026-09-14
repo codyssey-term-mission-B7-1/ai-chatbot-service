@@ -136,7 +136,7 @@ async function send(e) {
 
   try {
     const body = currentThreadId ? { question, thread_id: currentThreadId } : { question };
-    const res = await fetch('/api/chat', {
+    const res = await fetch('/api/chats', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -206,8 +206,8 @@ async function loadHistory() {
   let logs;
   try {
     const url = currentThreadId
-      ? `/api/me/chats?status=success&limit=${HISTORY_TURNS}&thread_id=${currentThreadId}`
-      : `/api/me/chats?status=success&limit=${HISTORY_TURNS}`;
+      ? `/api/users/me/chats?status=success&limit=${HISTORY_TURNS}&thread_id=${currentThreadId}`
+      : `/api/users/me/chats?status=success&limit=${HISTORY_TURNS}`;
     const res = await fetch(url);
     if (res.status === 401) {  // 세션 만료 → 입력 전에 로그인 페이지로 (입력 유실 방지)
       location.href = '/login';
@@ -252,7 +252,7 @@ async function restoreInflight() {
   const threadQ = currentThreadId != null ? `&thread_id=${currentThreadId}` : '';
   const findSaved = async () => {
     // status 미지정 = 전체 — 성공/실패 확정 여부를 함께 봐야 한다(#148)
-    const res = await fetch(`/api/me/chats?limit=5${threadQ}`);
+    const res = await fetch(`/api/users/me/chats?limit=5${threadQ}`);
     if (res.status === 401) { location.href = '/login'; return null; }
     if (!res.ok) return undefined;  // 일시적 조회 실패 — 폴링에서 재시도
     return res.json();
@@ -356,7 +356,7 @@ SidebarUI.register({
 async function init() {
   // 첫 목록 로드(전역 sidebar.js) 후 현재 대화 결정:
   //  1) URL ?thread=<id> (다른 페이지의 사이드바에서 대화 고른 경우)
-  //  2) 그게 아니면 가장 오래된 대화(기본 대화 — /api/chat 미전달 때 서버와 정렬)
+  //  2) 그게 아니면 가장 오래된 대화(기본 대화 — /api/chats 미전달 때 서버와 정렬)
   const threads = await SidebarUI.ready();
   const urlId = Number(new URLSearchParams(location.search).get('thread') || 0);
   if (threads.some((t) => t.id === urlId)) {

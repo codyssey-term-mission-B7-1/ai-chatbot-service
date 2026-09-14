@@ -41,7 +41,8 @@ authForm.addEventListener('submit', async (event) => {
   button.disabled = true;
   button.textContent = '처리 중…';
   try {
-    const response = await fetch('/api/auth/' + authMode, {
+    const url = authMode === 'signup' ? '/api/users' : '/api/session';
+    const response = await fetch(url, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
     const data = await response.json();

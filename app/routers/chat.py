@@ -5,7 +5,8 @@ import logging
 import time
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.audit import E
@@ -69,7 +70,7 @@ def _save_log(
 
 
 @router.post(
-    "/chat",
+    "/chats",
     response_model=ChatOut,
     summary="질문 → AI 응답",
     description=(
@@ -192,4 +193,9 @@ async def chat(
         db, user.id, body.question, answer, latency_ms, "success", request_id, thread_id=thread.id
     )
     threads_repo.touch_after_message(db, thread.id, body.question)
-    return ChatOut(answer=answer, latency_ms=latency_ms, chat_id=chat_id or -1, status="success")
+    payload = ChatOut(answer=answer, latency_ms=latency_ms, chat_id=chat_id or -1, status="success")
+    # 저장까지 완료되면 생성(201), 저장 실패(chat_id=-1)면 200 — 자원 생성 여부로 구분
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED if chat_id else status.HTTP_200_OK,
+        content=payload.model_dump(),
+    )
