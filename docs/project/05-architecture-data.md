@@ -86,7 +86,7 @@ erDiagram
 - `pydantic-settings`로 .env 로딩. 모든 선택 변수는 **기본값·단위·허용 범위**를 config에 명시(Field 제약 포함: `session_max_age_hours` 1~168 등).
 - **시크릿 게이트**: 운영(DEBUG=false)에서 약한 SESSION_SECRET/PEPPER(공개 예시값·32자 미만)는 `RuntimeError`로 기동 거부, 개발은 경고+임시 키 대체(평가자가 .env.example 복사만으로 기동 가능하게) — 이슈 #54 완료 기준 그대로.
 - 배포 변수는 **GitHub Secrets가 유일한 원본** — CD가 변수 동기화로 Railway에 주입, Railway 직접 수정은 다음 CD에 덮어써진다(M1 회고 리스크 기록).
-- AI 제공자 교체는 환경변수만으로: `AI_BASE_URL`/`AI_MODEL`/`AI_API_KEY` (OpenAI·Groq·네이토 호환).
+- AI 제공자 교체는 환경변수만으로: `AI_BASE_URL`/`AI_MODEL`/`AI_API_KEY` (실제 제공사: 네이토. OpenAI·Groq 등도 호환).
 
 ## 6. 배포·운영 파이프라인 (GitHub Actions)
 
