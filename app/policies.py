@@ -35,3 +35,9 @@ SECURITY_HEADERS = {
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 }
 DEMO_EMAILS = frozenset({"demo@demo.com", "tester@demo.com", "admin@demo.com"})
+
+# ── 라우팅/미들웨어 공용 상수(#150) — main.py에서 app/middleware 쪽으로 옮겨졌던 값 ──
+# /docs·/redoc·/openapi.json — DOCS_ENABLED 게이트와 CSP 예외 경로가 함께 쓴다(#75)
+DOCS_PATHS = frozenset({"/docs", "/docs/", "/redoc", "/redoc/", "/openapi.json"})
+# 교차 출처 차단 대상(상태 변경) 메서드 — request_guard가 Origin 검증에 사용(#75)
+STATE_CHANGING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})

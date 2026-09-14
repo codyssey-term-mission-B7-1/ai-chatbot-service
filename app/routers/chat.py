@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import get_chat_limiter, get_current_user
 from app.logging_config import log_event
 from app.models import User
 from app.repositories import chat_logs
@@ -18,7 +18,7 @@ from app.repositories import threads as threads_repo
 from app.schemas import ChatOut, ChatRequest
 from app.services.ai_client import AIError, AIProvider, AITimeoutError, get_ai_provider
 from app.services.context import SYSTEM_PROMPT, build_messages
-from app.services.rate_limit import chat_limiter, retry_after_hint
+from app.services.rate_limit import SlidingWindowLimiter, retry_after_hint
 
 logger = logging.getLogger("app.chat")
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -91,6 +91,7 @@ async def chat(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     ai: AIProvider = Depends(get_ai_provider),
+    chat_limiter: SlidingWindowLimiter = Depends(get_chat_limiter),
 ):
     request_id = request.state.request_id
     # 비용 남용 방어(#73): 사용자별 분당 상한 — 제한되면 AI를 호출하지 않고 429로 안내한다.

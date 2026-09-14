@@ -172,13 +172,8 @@
   }
 
   // 서버 오류 메시지를 안전하고 읽기 쉽게 정규화
-  function errorText(data, status) {
-    const d = data && data.detail;
-    if (typeof d === 'string' && d) return '오류: ' + d;
-    if (Array.isArray(d) && d.length) return '오류: ' + FormUtils.validationText(data);
-    if (status === 504) return '응답 지연 — AI가 시간이 걸리고 있어요.';
-    return '오류가 발생했어요. 다시 시도해 주세요.';
-  }
+  // 서버 오류 메시지 정규화는 form-utils.js 공용(FormUtils.errorText)으로 위임(#150)
+  const errorText = (data, status) => FormUtils.errorText(data, status);
 
   // ---- 사이드바 열기/닫기 ------------------------------------------------
   // 히스테리시스: 700px 이하 → 모바일, 900px 이상 → 데스크톱,

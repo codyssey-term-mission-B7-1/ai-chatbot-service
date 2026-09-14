@@ -8,7 +8,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.deps import get_current_user
+from app.deps import (
+    get_current_user,
+    get_login_limiter,
+    get_password_reset_ip_limiter,
+    get_signup_ip_limiter,
+)
 from app.logging_config import log_event
 from app.models import User
 from app.repositories.users import DuplicateEmailError, create_user, find_by_email
@@ -21,13 +26,7 @@ from app.services.password_reset import (
     create_reset_token,
     deliver_reset_email,
 )
-from app.services.rate_limit import (
-    client_ip,
-    login_limiter,
-    password_reset_ip_limiter,
-    retry_after_hint,
-    signup_ip_limiter,
-)
+from app.services.rate_limit import SlidingWindowLimiter, client_ip, retry_after_hint
 from app.services.security import (
     email_fingerprint,
     hash_password,
@@ -53,7 +52,12 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
         422: {"description": "이메일/비밀번호/닉네임 검증 실패"},
     },
 )
-def signup(body: SignupIn, request: Request, db: Session = Depends(get_db)):
+def signup(
+    body: SignupIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    signup_ip_limiter: SlidingWindowLimiter = Depends(get_signup_ip_limiter),
+):
     # IP 기반 회원가입 상한 — 봇 대량 계정 생성 최소 방어. CAPTCHA/이메일 인증은 다음 마일스톤.
     ip = client_ip(request)
     retry = signup_ip_limiter.try_acquire(f"ip:{ip}")
@@ -96,7 +100,12 @@ def signup(body: SignupIn, request: Request, db: Session = Depends(get_db)):
         429: {"description": "반복 실패로 일시 잠금. Retry-After 헤더 참고"},
     },
 )
-def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
+def login(
+    body: LoginIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    login_limiter: SlidingWindowLimiter = Depends(get_login_limiter),
+):
     # 무차별 대입 방어(#72): 이메일별 실패 누적 — 잠금 중에는 올바른 비밀번호도 거부한다.
     retry_after = login_limiter.blocked_for(body.email)
     if retry_after > 0:
@@ -170,7 +179,10 @@ def login(body: LoginIn, request: Request, db: Session = Depends(get_db)):
     },
 )
 async def password_reset_request(
-    body: PasswordResetRequestIn, request: Request, db: Session = Depends(get_db)
+    body: PasswordResetRequestIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    password_reset_ip_limiter: SlidingWindowLimiter = Depends(get_password_reset_ip_limiter),
 ):
     generic_ok = {"detail": "요청을 받았어요. 이메일이 가입되어 있다면 재설정 안내를 보냈습니다."}
     # IP 기반 상한 — 분당 N회로 메일 폭탄/계정 존재 열거 속도를 늦춘다.
