@@ -22,8 +22,8 @@
 | DEPLOY_URL | 예 | 실제 HTTPS 서비스 URL, 끝 `/` 없음 |
 | SESSION_SECRET | 예 | 새 무작위 32자 이상 값. 코드/대화/증빙에 공개하지 않음 |
 | AI_API_KEY | 선택 | 실제 AI 키. 없으면 **빈 값으로 동기화**하여 데모 모드 |
-| AI_BASE_URL | 선택 | 기본 `https://api.openai.com/v1/chat/completions` |
-| AI_MODEL | 선택 | 기본 `gpt-4o-mini` |
+| AI_BASE_URL | 선택 | 기본 `https://api.openai.com/v1/chat/completions`. 실제 제공사(네이토) 사용 시 Secrets에 등록 필수 |
+| AI_MODEL | 선택 | 기본 `gpt-4o-mini`. 실제 제공사(네이토) 사용 시 Secrets에 등록 필수 |
 | AI_TIMEOUT_SEC | 선택 | 기본 45초, AI 전체 호출 예산 |
 | AI_MAX_RETRIES | 선택 | 기본 1, 추가 시도 0~5 |
 | CONTEXT_TURNS | 선택 | 기본 5, 0~200 |

@@ -19,7 +19,7 @@
 | FR-07 | 채팅 질의응답 | POST /api/chat — 검증→문맥→AI 호출→저장→응답(§3) | 07 | test_chat_flow |
 | FR-08 | 문맥 유지 | 같은 사용자 직전 성공 Q/A N쌍(CONTEXT_TURNS 기본 5, 0~200) | 07 | test_context |
 | FR-09 | 채팅 rate limit | 사용자별 분당 상한(기본 10, 0=비활성), 초과 429+Retry-After | 07(확장) | test_chat_rate_limit |
-| FR-10 | AI 연동 | OpenAI 호환(네이토 포함), 전체 시간 예산 45초, 재시도 정책(§3.2) | 06 | test_ai_client, test_ai_http_budget |
+| FR-10 | AI 연동 | 네이토(OpenAI 호환), 전체 시간 예산 45초, 재시도 정책(§3.2) | 06 | test_ai_client, test_ai_http_budget |
 | FR-11 | 대화 저장 | question/answer/status/latency_ms/request_id 저장, UTC, 실패 시 chat_id=-1로 계약 | 08 | test_chat_flow |
 | FR-12 | 내 기록 조회 | 본인만, 성공 필터·커서·limit 상한(음수·초대값 차단) | 08 | test_verified_gaps |
 | FR-13 | 관리자 전체 조회 | 명시적 grants 부여 계정만, 필터·페이징 | 13평가 | test_admin |

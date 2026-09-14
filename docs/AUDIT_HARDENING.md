@@ -39,7 +39,7 @@
 - **조치**: per-attempt timeout은 연결·쓰기·풀·읽기를 세분화해 `connect/write/pool`을 짧게 고정하고 전체 상한은 바깥 `asyncio.timeout`이 유일하게 보장하도록 정리. 재시도 이벤트(`ai_retry`)는 backoff sleep *후*에 기록해 "대기 중 타임아웃으로 재시도를 안 했는데 재시도 로그만 남는" 모순을 해소(기존 테스트 의미와 일치).
 
 ### F-4. 엔드포인트 중복 접미사 버그 (심각도: LOW)
-- **증상**: 사용자가 문서 그대로 `AI_BASE_URL=https://api.openai.com/v1/chat/completions`(기본 예시값)을 사용하면 `normalize_endpoint`가 접미사를 한 번 더 붙여 `/v1/chat/completions/chat/completions`가 됐다. 실제 기본값이 이 형태라 운영 real 모드에서도 잠재 위험.
+- **증상**: 사용자가 `AI_BASE_URL=https://api.openai.com/v1/chat/completions` 또는 네이토 등 `/v1/chat/completions`로 끝나는 URL을 사용하면 `normalize_endpoint`가 접미사를 한 번 더 붙여 `/v1/chat/completions/chat/completions`가 됐다. 실제 기본값이 이 형태라 운영 real 모드에서도 잠재 위험.
 - **조치**: `normalize_endpoint`가 이미 접미사로 끝나면 정리(strip)한 뒤 한 번만 붙이도록 수정. 회귀 테스트 `test_normalize_endpoint_dedupes_double_suffix` 추가.
 
 ### F-5. httpx 클라이언트가 매 요청마다 연결을 맺어 비효율이던 문제 (심각도: LOW)
