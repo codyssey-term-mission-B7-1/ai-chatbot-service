@@ -26,12 +26,12 @@ import httpx
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.audit import E
 from app.config import settings
 from app.logging_config import log_event
 from app.models import PasswordReset, User
 from app.services.security import hash_password
 from app.services.sessions import revoke_user_sessions
-from app.audit import E
 
 logger = logging.getLogger("app.password_reset")
 

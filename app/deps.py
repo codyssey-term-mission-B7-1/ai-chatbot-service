@@ -5,6 +5,7 @@ import logging
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from app.audit import E
 from app.database import get_db
 from app.logging_config import log_event
 from app.models import User
@@ -18,7 +19,6 @@ from app.services.rate_limit import (
 )
 from app.services.security import email_fingerprint
 from app.services.sessions import is_session_revoked
-from app.audit import E
 
 logger = logging.getLogger("app.auth")
 

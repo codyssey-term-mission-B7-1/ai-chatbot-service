@@ -10,6 +10,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.audit import E
 from app.config import settings
 from app.database import get_db
 from app.deps import get_current_user
@@ -17,7 +18,6 @@ from app.logging_config import log_event
 from app.models import User
 from app.repositories import threads as threads_repo
 from app.schemas import ThreadOut
-from app.audit import E
 
 logger = logging.getLogger("app.threads")
 router = APIRouter(prefix="/api/threads", tags=["threads"])

@@ -12,11 +12,11 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.audit import E
 from app.config import settings
 from app.database import engine
 from app.logging_config import log_event
 from app.policies import SECURITY_HEADERS
-from app.audit import E
 
 router = APIRouter(tags=["ops"])
 logger = logging.getLogger("app")

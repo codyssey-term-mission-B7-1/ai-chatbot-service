@@ -10,7 +10,9 @@ import되지 않은 모델은 create_all/autogenerate가 릴레이션을 찾지 
 """
 
 from app.database import Base
-from app.models.base import utcnow  # noqa: F401 (재노출 — 기존 `from app.models import utcnow` 호환)
+from app.models.base import (  # noqa: F401 (재노출 — 기존 `from app.models import utcnow` 호환)
+    utcnow,
+)
 from app.models.chat_log import ChatLog  # noqa: F401 (재노출용)
 from app.models.password_reset import PasswordReset  # noqa: F401
 from app.models.session import AdminGrant  # noqa: F401

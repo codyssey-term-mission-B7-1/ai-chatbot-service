@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
+from app.audit import E
 from app.config import settings
 from app.database import get_db
 from app.deps import resolve_session_user
@@ -17,7 +18,6 @@ from app.repositories.chat_logs import list_logs
 from app.repositories.users import find_by_email
 from app.services.admin import is_admin
 from app.services.password_reset import is_reset_token_valid
-from app.audit import E
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))

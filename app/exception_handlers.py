@@ -14,9 +14,9 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from app.audit import E
 from app.logging_config import log_event
 from app.policies import SECURITY_HEADERS
-from app.audit import E
 
 logger = logging.getLogger("app")
 
