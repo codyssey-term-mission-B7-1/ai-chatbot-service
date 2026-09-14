@@ -21,6 +21,7 @@ from app.schemas import (
 from app.services.admin import is_admin
 from app.services.security import is_peppered_hash
 from app.services.sessions import revoke_user_sessions
+from app.audit import E
 
 logger = logging.getLogger("app.admin")
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -57,7 +58,7 @@ def all_chats(
     }
     if reason.strip():
         audit["reason"] = reason.strip()[:200]
-    log_event(logger, "admin_logs_viewed", **audit)
+    log_event(logger, E.ADMIN_LOGS_VIEWED, **audit)
     return AdminLogPage(
         items=[AdminChatLogOut.model_validate(row) for row in rows],
         next_before_id=rows[-1].id if len(rows) == effective_limit else None,
@@ -83,7 +84,7 @@ def password_hash_status(
     peppered = sum(1 for u in rows if is_peppered_hash(u.password_hash))
     log_event(
         logger,
-        "admin_hash_status_viewed",
+        E.ADMIN_HASH_STATUS_VIEWED,
         user_id=user.id,
         total=len(rows),
         legacy=len(rows) - peppered,
@@ -128,7 +129,7 @@ def delete_user(
     db.commit()
     log_event(
         logger,
-        "admin_user_deleted",
+        E.ADMIN_USER_DELETED,
         user_id=user.id,
         deleted_user_id=deleted_id,
         email_domain=deleted_email.split("@")[-1],

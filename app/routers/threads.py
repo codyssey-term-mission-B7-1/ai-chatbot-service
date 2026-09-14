@@ -17,6 +17,7 @@ from app.logging_config import log_event
 from app.models import User
 from app.repositories import threads as threads_repo
 from app.schemas import ThreadOut
+from app.audit import E
 
 logger = logging.getLogger("app.threads")
 router = APIRouter(prefix="/api/threads", tags=["threads"])
@@ -46,7 +47,7 @@ def create_thread(
             ),
         )
     thread = threads_repo.create_thread(db, user_id=user.id)
-    log_event(logger, "thread_created", user_id=user.id, thread_id=thread.id)
+    log_event(logger, E.THREAD_CREATED, user_id=user.id, thread_id=thread.id)
     return thread
 
 
@@ -82,5 +83,5 @@ def delete_my_thread(
     if thread is None:
         raise HTTPException(status_code=404, detail="대화를 찾을 수 없어요.")
     threads_repo.delete_thread(db, thread_id)
-    log_event(logger, "thread_deleted", user_id=user.id, thread_id=thread_id)
+    log_event(logger, E.THREAD_DELETED, user_id=user.id, thread_id=thread_id)
     return {"deleted": True}

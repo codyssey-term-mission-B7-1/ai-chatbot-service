@@ -18,6 +18,7 @@ from app.services.rate_limit import (
 )
 from app.services.security import email_fingerprint
 from app.services.sessions import is_session_revoked
+from app.audit import E
 
 logger = logging.getLogger("app.auth")
 
@@ -57,7 +58,7 @@ def resolve_session_user(request: Request, db: Session) -> User | None:
     except (TypeError, ValueError):
         user = None
     if user is None or email_fingerprint(user.email) != request.session.get("email_fp"):
-        log_event(logger, "auth_stale_session", user_id=user_id, level=logging.WARNING)
+        log_event(logger, E.AUTH_STALE_SESSION, user_id=user_id, level=logging.WARNING)
         request.session.clear()
         return None
     # 서버 측 폐기(#74): 계정별 폐기 기준 이전에 발급(iat)된 세션은 거부한다.
@@ -66,7 +67,7 @@ def resolve_session_user(request: Request, db: Session) -> User | None:
     if not isinstance(iat, int) or isinstance(iat, bool):
         iat = 0
     if is_session_revoked(db, user.id, iat):
-        log_event(logger, "auth_session_revoked", user_id=user.id, level=logging.WARNING)
+        log_event(logger, E.AUTH_SESSION_REVOKED, user_id=user.id, level=logging.WARNING)
         request.session.clear()
         return None
     return user

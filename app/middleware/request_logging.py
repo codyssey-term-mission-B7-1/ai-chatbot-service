@@ -9,6 +9,7 @@ from fastapi import Request
 
 from app.exception_handlers import unhandled_exception_handler
 from app.logging_config import REQUEST_ID, log_event
+from app.audit import E
 
 logger = logging.getLogger("app")
 
@@ -25,7 +26,7 @@ async def log_requests(request: Request, call_next):
         session = request.scope.get("session", {})
         log_event(
             logger,
-            "request_received",
+            E.REQUEST_RECEIVED,
             method=request.method,
             path=request.url.path,
             session_user_id=session.get("user_id") if isinstance(session, dict) else None,
@@ -45,7 +46,7 @@ async def log_requests(request: Request, call_next):
         if is_api:
             log_event(
                 logger,
-                "request_finished",
+                E.REQUEST_FINISHED,
                 method=request.method,
                 path=request.url.path,
                 user_id=getattr(request.state, "authenticated_user_id", None),

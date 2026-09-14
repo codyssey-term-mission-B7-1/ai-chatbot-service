@@ -21,6 +21,7 @@ from app.exception_handlers import register as register_exception_handlers
 from app.logging_config import log_event, setup_logging
 from app.middleware import register as register_middleware
 from app.routers import admin, auth, chat, health, logs, pages, threads
+from app.audit import E
 
 setup_logging()
 logger = logging.getLogger("app")
@@ -58,7 +59,7 @@ async def lifespan(application: FastAPI):
     except Exception as exc:  # DB 장애 시 프로세스는 뜨고 /readyz가 503을 반환하게
         log_event(
             logger,
-            "readyz_db_failure",
+            E.READYZ_DB_FAILURE,
             reason="init_db_failed",
             error=type(exc).__name__,
             level=logging.ERROR,

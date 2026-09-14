@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse
 
 from app.logging_config import log_event
 from app.policies import SECURITY_HEADERS
+from app.audit import E
 
 logger = logging.getLogger("app")
 
@@ -50,7 +51,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     request_id = getattr(request.state, "request_id", uuid.uuid4().hex[:20])
     log_event(
         logger,
-        "unhandled_error",
+        E.UNHANDLED_ERROR,
         path=request.url.path,
         error=type(exc).__name__,
         request_id=request_id,
