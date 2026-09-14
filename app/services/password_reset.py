@@ -31,6 +31,7 @@ from app.logging_config import log_event
 from app.models import PasswordReset, User
 from app.services.security import hash_password
 from app.services.sessions import revoke_user_sessions
+from app.audit import E
 
 logger = logging.getLogger("app.password_reset")
 
@@ -64,7 +65,7 @@ def create_reset_token(db: Session, user: User, request_ip: str = "") -> str | N
     if requested >= settings.password_reset_max_requests:
         log_event(
             logger,
-            "auth_password_reset_rate_limited",
+            E.AUTH_PASSWORD_RESET_RATE_LIMITED,
             user_id=user.id,
             level=logging.WARNING,
         )

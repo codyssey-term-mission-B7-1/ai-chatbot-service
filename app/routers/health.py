@@ -16,6 +16,7 @@ from app.config import settings
 from app.database import engine
 from app.logging_config import log_event
 from app.policies import SECURITY_HEADERS
+from app.audit import E
 
 router = APIRouter(tags=["ops"])
 logger = logging.getLogger("app")
@@ -65,7 +66,7 @@ def readyz(request: Request):
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
     except SQLAlchemyError:
-        log_event(logger, "readyz_db_failure", level=logging.ERROR)
+        log_event(logger, E.READYZ_DB_FAILURE, level=logging.ERROR)
         return JSONResponse(
             status_code=503,
             headers=SECURITY_HEADERS,
@@ -77,7 +78,7 @@ def readyz(request: Request):
     if schema_sync["status"] == "error":
         log_event(
             logger,
-            "readyz_schema_failure",
+            E.READYZ_SCHEMA_FAILURE,
             error=schema_sync["error"],
             level=logging.ERROR,
         )

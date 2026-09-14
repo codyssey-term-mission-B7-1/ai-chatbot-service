@@ -17,6 +17,7 @@ from app.repositories.chat_logs import list_logs
 from app.repositories.users import find_by_email
 from app.services.admin import is_admin
 from app.services.password_reset import is_reset_token_valid
+from app.audit import E
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -144,7 +145,7 @@ def admin_logs_page(
     cleaned_reason = reason.strip()[:200]
     if cleaned_reason:
         audit["reason"] = cleaned_reason
-    log_event(logger, "admin_logs_viewed", **audit)
+    log_event(logger, E.ADMIN_LOGS_VIEWED, **audit)
     # '사용자' 열 — 이메일·닉네임 표시(ID 숫자만으로는 특정 사용자가 누군지 알기 어려움)
     user_infos = {}
     if rows:

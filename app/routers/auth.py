@@ -36,6 +36,8 @@ from app.services.security import (
     verify_password,
     verify_password_legacy,
 )
+from app.audit import E  # noqa: E402
+
 
 logger = logging.getLogger("app.auth")
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -64,7 +66,7 @@ def signup(
     if retry > 0:
         log_event(
             logger,
-            "signup_rate_limited",
+            E.SIGNUP_RATE_LIMITED,
             ip_hash=ip[:16],
             retry_after_sec=retry,
             level=logging.WARNING,
@@ -83,7 +85,7 @@ def signup(
         )
     except DuplicateEmailError:
         raise HTTPException(status_code=409, detail="이미 가입된 이메일이에요.") from None
-    log_event(logger, "user_signup", user_id=user.id, email_domain=body.email.split("@")[-1])
+    log_event(logger, E.USER_SIGNUP, user_id=user.id, email_domain=body.email.split("@")[-1])
     return UserOut(email=user.email, nickname=user.nickname, is_admin=False)
 
 
@@ -111,7 +113,7 @@ def login(
     if retry_after > 0:
         log_event(
             logger,
-            "user_login_locked",
+            E.USER_LOGIN_LOCKED,
             email_domain=body.email.split("@")[-1],
             retry_after_sec=retry_after,
             level=logging.WARNING,
@@ -132,7 +134,7 @@ def login(
             if verify_password_legacy(body.password, user.password_hash):
                 user.password_hash = hash_password(body.password)
                 db.commit()
-                log_event(logger, "auth_password_rehashed", user_id=user.id)
+                log_event(logger, E.AUTH_PASSWORD_REHASHED, user_id=user.id)
                 password_ok = True
         elif not is_peppered_hash(user.password_hash):
             # 마커 도입 직후 창구에 저장된 비표시 페퍼 해시 — 마킹만 보강한다.
@@ -146,7 +148,7 @@ def login(
         login_limiter.record(body.email)
         log_event(
             logger,
-            "user_login_fail",
+            E.USER_LOGIN_FAIL,
             user_id=user.id if user is not None else None,
             email_domain=body.email.split("@")[-1],
             level=logging.WARNING,
@@ -158,7 +160,7 @@ def login(
     request.session["email_fp"] = email_fingerprint(user.email)
     request.session["iat"] = int(time.time())  # 서버 측 폐기(#74) 기준이 되는 발급 시각
     request.state.authenticated_user_id = user.id
-    log_event(logger, "user_login", user_id=user.id)
+    log_event(logger, E.USER_LOGIN, user_id=user.id)
     return UserOut(email=user.email, nickname=user.nickname, is_admin=is_admin(db, user))
 
 
@@ -191,7 +193,7 @@ async def password_reset_request(
     if ip_retry > 0:
         log_event(
             logger,
-            "auth_password_reset_ip_rate_limited",
+            E.AUTH_PASSWORD_RESET_IP_RATE_LIMITED,
             ip_hash=ip[:16],
             retry_after_sec=ip_retry,
             level=logging.WARNING,
@@ -209,13 +211,13 @@ async def password_reset_request(
     token = create_reset_token(db, user, request.client.host if request.client else "")
     if token is None:  # 요청 상한 초과 — 응답은 동일하게 유지(존재 누출 방지)
         return generic_ok
-    log_event(logger, "auth_password_reset_requested", user_id=user.id)
+    log_event(logger, E.AUTH_PASSWORD_RESET_REQUESTED, user_id=user.id)
     link = build_reset_link(str(request.base_url), token)
     try:
         # 동기 smtplib을 이벤트 루프 밖에서 실행 — 다른 요청을 차단하지 않는다.
         result = await asyncio.to_thread(deliver_reset_email, user.email, link)
     except SmtpNotConfigured:
-        log_event(logger, "auth_password_reset_email_unconfigured", level=logging.WARNING)
+        log_event(logger, E.AUTH_PASSWORD_RESET_EMAIL_UNCONFIGURED, level=logging.WARNING)
         raise HTTPException(
             status_code=503,
             detail=(
@@ -228,7 +230,7 @@ async def password_reset_request(
         # 예외 타입만 기록해 원문 누출을 막는다(#104와 동일 원칙).
         log_event(
             logger,
-            "auth_password_reset_email_failed",
+            E.AUTH_PASSWORD_RESET_EMAIL_FAILED,
             error=type(exc).__name__,
             level=logging.ERROR,
         )
@@ -236,9 +238,9 @@ async def password_reset_request(
             status_code=502, detail="재설정 메일 발송에 실패했어요. 잠시 후 다시 시도해 주세요."
         ) from None
     if result == "dev_console":
-        event_name = "auth_password_reset_email_dev_console"
+        event_name = E.AUTH_PASSWORD_RESET_EMAIL_DEV_CONSOLE
     else:
-        event_name = "auth_password_reset_email_sent"
+        event_name = E.AUTH_PASSWORD_RESET_EMAIL_SENT
     log_event(logger, event_name, user_id=user.id)
     return generic_ok
 
@@ -258,12 +260,12 @@ async def password_reset_request(
 def password_reset(body: PasswordResetCompleteIn, db: Session = Depends(get_db)):
     user = complete_password_reset(db, body.token, body.new_password)
     if user is None:
-        log_event(logger, "auth_password_reset_rejected", level=logging.WARNING)
+        log_event(logger, E.AUTH_PASSWORD_RESET_REJECTED, level=logging.WARNING)
         raise HTTPException(
             status_code=400,
             detail="재설정 링크가 유효하지 않거나 만료되었어요. 다시 요청해 주세요.",
         )
-    log_event(logger, "auth_password_reset_completed", user_id=user.id)
+    log_event(logger, E.AUTH_PASSWORD_RESET_COMPLETED, user_id=user.id)
     return {"detail": "비밀번호를 변경했어요. 새 비밀번호로 로그인해 주세요."}
 
 
