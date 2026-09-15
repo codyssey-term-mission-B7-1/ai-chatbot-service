@@ -256,6 +256,7 @@ def admin_events_page(
     page = all_events(
         user=user,
         db=db,
+        filter_query="",
         event=fq.get("event", event.strip()) or None,
         user_id=fq.int_or("user"),
         search=fq.search,
@@ -295,6 +296,7 @@ def admin_network_page(
     page = all_requests(
         user=user,
         db=db,
+        filter_query="",
         status_=fq.int_or("status", status),
         path=fq.get("path"),
         method=fq.get("method"),

@@ -33,10 +33,24 @@ python scripts/manage_admin.py revoke --email operator@example.com
 | 메뉴 | 경로 | 내용 |
 |---|---|---|
 | 대시보드 | `/admin` | 사용자·스레드·대화·성공률·최근 24h 요청/이벤트 카드 |
-| 채팅 로그 | `/admin/logs` | 전체 대화 원문 조회 — 이메일·스레드 콤보 필터, 열람 사유 |
-| 이벤트 로그 | `/admin/events` | 감사 이벤트 DB 영속분(audit_events, 보존 5,000건) — 이벤트명 필터 |
-| 네트워크 로그 | `/admin/network` | /api/ 요청 기록(request_logs, 보존 5,000건) — 상태코드 필터 |
+| 채팅 로그 | `/admin/logs` | 전체 대화 원문 조회 — 필터 쿼리, 열람 사유 |
+| 이벤트 로그 | `/admin/events` | 감사 이벤트 DB 영속분(audit_events, 보존 5,000건) — 필터 쿼리 |
+| 네트워크 로그 | `/admin/network` | /api/ 요청 기록(request_logs, 보존 5,000건) — 필터 쿼리 |
 | 데이터베이스 | `/admin/db` | 테이블 목록·행수·최근 행 미리보기(읽기 전용, 화이트리스트) |
+
+### 필터 쿼리 문법(#201)
+
+`키:값` 토큰을 공백으로 나열하면 AND. 접두사 없는 단어는 전체 검색어. 입력 중 힌트가 지원 키·적용 요약·미지 키를 표시한다.
+
+| 화면 | 키 | 예 |
+|---|---|---|
+| 채팅 로그 | `email:` `thread:` `status:` `q:` | `email:user@example.com thread:3 q:배포` |
+| 이벤트 로그 | `event:` `user:` `q:` | `event:ai_call_fail user:2` |
+| 네트워크 로그 | `path:` `method:` `status:` `user:` | `path:/api/chats method:POST status:500` |
+| 데이터베이스 | `table:` | `table:users` |
+
+- 같은 키는 API에서도 `?filter=` 로 사용 가능(CLI `logs_client` 호환).
+- 미지 키는 화면 하단 오류 힌트로 표시되고 무시된다. 값은 모두 바인딩 파라미터로만 사용된다(임의 SQL 없음).
 
 - 웹 셸 터미널은 의도적으로 제공하지 않는다 — 관리자 세션 탈취 시 서버 전체 장악(RCE)으로 이어지는 안티패턴.
 - 이벤트·네트워크 로그 기록은 best-effort다. 기록 실패가 사용자 요청 처리에 영향을 주지 않는다(테스트 `test_recorder_failure_never_breaks_requests`).

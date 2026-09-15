@@ -175,8 +175,8 @@ def test_admin_page_filters_by_email_and_shows_user_identity(client, db, caplog)
     assert "사용자를 찾을 수 없어요" in body
     assert "A 사용자 질문" not in body
 
-    # JS가 참조하는 이메일 입력이 실제 렌더에 존재(유실 시 폼 제출이 깨짐)
-    assert 'id="admin-user-email"' in body
+    # 필터 쿼리 입력이 네이티브 제출 가능해야 한다(유실 시 필터가 조용히 무시됨)
+    assert 'id="admin-filter-query"' in body and 'name="filter"' in body
 
     # 감사 로그 — filter_email 기록
     caplog.clear()
@@ -223,7 +223,9 @@ def test_admin_chat_logs_filter_by_thread(client, db, fake_ai):
     assert page.status_code == 200
     assert "A 스레드 질문" in page.text
     assert "B 스레드 질문" not in page.text
-    assert f'value="{tid_a}" selected' in page.text
+    # 쿼리 방식도 동일하게 동작
+    qpage = client.get("/admin/logs", params={"filter": f"thread:{tid_a}"})
+    assert "A 스레드 질문" in qpage.text and "B 스레드 질문" not in qpage.text
 
     # 존재하지 않는 스레드는 빈 결과(404 아님 — 필터일 뿐)
     assert client.get("/admin/logs", params={"thread": 999999}).status_code == 200
