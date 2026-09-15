@@ -7,10 +7,10 @@
   {% include "admin-nav.html" %}
   <p class="muted small">명시적으로 부여된 앱 관리자만 접근할 수 있습니다. 원문에는 개인정보가 포함될 수 있습니다.</p>
   <form id="admin-filter" class="admin-filter" action="/admin/logs" method="get">
-    <label>사용자 이메일 <input id="admin-user-email" type="email" value="{{ filter_email or '' }}" placeholder="전체 사용자 (예: user@example.com)"></label>
+    <label>사용자 이메일 <input id="admin-user-email" name="email" type="email" value="{{ filter_email or '' }}" placeholder="전체 사용자 (예: user@example.com)"></label>
     <label>열람 사유 <input id="admin-reason" name="reason" type="text" maxlength="200" value="{{ filter_reason or '' }}" placeholder="왜 열람하나요? (감사 로그에 기록)"></label>
     <label>스레드
-      <select id="admin-thread">
+      <select id="admin-thread" name="thread">
         <option value="">전체 스레드</option>
         {% for opt in thread_options %}
         <option value="{{ opt.id }}" {{ 'selected' if filter_thread == opt.id else '' }}>{{ opt.label }}</option>
@@ -44,9 +44,9 @@
   </div>
   {% if next_before_id %}
   <a class="next-page" href="/admin/logs?before_id={{ next_before_id }}{% if filter_email %}&amp;email={{ filter_email | urlencode }}{% endif %}{% if filter_thread %}&amp;thread={{ filter_thread }}{% endif %}{% if filter_reason %}&amp;reason={{ filter_reason | urlencode }}{% endif %}">이전 기록 더 보기</a>
+  {% else %}
+  <p class="muted small">이전 기록이 더 없습니다.</p>
   {% endif %}
 </div>
 {% endblock %}
-{% block scripts %}
-<script src="/static/js/admin-logs.js?v={{ asset_v }}"></script>
-{% endblock %}
+

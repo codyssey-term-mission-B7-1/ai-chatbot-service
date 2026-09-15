@@ -96,3 +96,77 @@ def test_recorder_failure_never_breaks_requests(client, db, monkeypatch, fake_ai
     monkeypatch.setattr(database, "SessionLocal", broken_session)
     r = client.post("/api/chats", json={"question": "장애 중 질문"})
     assert r.status_code == 201
+
+
+def test_admin_logs_filter_is_native_form(client, db, fake_ai):
+    """필터가 name 속성 기반 네이티브 GET으로 동작 — JS 없이 엔터 제출로 검색된다(#195)."""
+    import re
+
+    signup_and_login(client, "native@example.com")
+    tid = client.post("/api/thread").json()["id"]
+    client.post("/api/chats", json={"question": "네이티브 필터 질문", "thread_id": tid})
+    grant_admin(db, "native@example.com")
+
+    page = client.get("/admin/logs").text
+    email_input = re.search(r'<input id="admin-user-email"[^>]*>', page).group(0)
+    thread_select = re.search(r'<select id="admin-thread"[^>]*>', page).group(0)
+    assert 'name="email"' in email_input, "이메일 필터가 네이티브 제출 가능해야 한다"
+    assert 'name="thread"' in thread_select, "스레드 필터가 네이티브 제출 가능해야 한다"
+    assert "admin-logs.js" not in page, "JS 리다이렉트 없이 폼이 스스로 제출해야 한다"
+
+
+def test_admin_logs_pagination_with_full_page(client, db, fake_ai):
+    """50건이 채워지면 더 보기 링크가 생기고, before_id로 이전(오래된) 페이지를 본다(#195)."""
+    signup_and_login(client, "paging@example.com")
+    for i in range(55):
+        r = client.post("/api/chats", json={"question": f"페이지네이션{i:02d}"})
+        assert r.status_code == 201, i
+    grant_admin(db, "paging@example.com")
+
+    first = client.get("/admin/logs")
+    assert first.text.count("페이지네이션") == 50
+    assert "이전 기록 더 보기" in first.text
+
+    cursor = 1  # 첫 페이지의 마지막(가장 오래된) 행 id — desc라 마지막이 최소 id
+    rows = client.get("/api/admin/chats", params={"limit": 50}).json()["items"]
+    cursor = rows[-1]["id"]
+    second = client.get("/admin/logs", params={"before_id": cursor})
+    assert second.status_code == 200
+    assert second.text.count("페이지네이션") == 5
+    assert "이전 기록이 더 없습니다" in second.text  # 소진 안내
+
+
+def test_ai_call_fail_is_persisted_and_visible(client, db, fake_ai):
+    """AI 실패 시 ai_call_fail이 DB에 남고 콘솔에서 필터해 볼 수 있다(#195)."""
+    from app.services.ai_client import AIError
+
+    signup_and_login(client, "fail@example.com")
+    fake_ai.error = AIError("외부 AI 장애")
+    r = client.post("/api/chats", json={"question": "실패할 질문"})
+    assert r.status_code == 502
+    fake_ai.error = None
+    grant_admin(db, "fail@example.com")
+
+    events_page = client.get("/admin/events").text
+    assert 'value="ai_call_fail"' in events_page, "드롭다운에 카탈로그 전체가 있어야 한다"
+
+    page = client.get("/admin/events", params={"event": "ai_call_fail"})
+    assert page.status_code == 200 and "ai_call_fail" in page.text
+    assert "실패할 질문" not in page.text  # 원문은 저장하지 않는다
+
+    api_items = client.get("/api/admin/events", params={"event": "ai_call_fail"}).json()["items"]
+    assert api_items and all(e["event"] == "ai_call_fail" for e in api_items)
+
+
+def test_network_status_dropdown_covers_whole_table(client, db, fake_ai):
+    """상태 드롭다운이 현재 페이지가 아니라 테이블 전체 DISTINCT를 담는다(#195)."""
+    import re
+
+    signup_and_login(client, "net@example.com")
+    client.post("/api/chats", json={"question": "상태 드롭다운 질문"})
+    grant_admin(db, "net@example.com")
+
+    # 50건을 채우지 않아도(현재 페이지에 없는 상태라도) 전체 테이블의 상태가 옵션에 있다
+    page = client.get("/admin/network").text
+    select = re.search(r'<select name="status".*?</select>', page, re.S).group(0)
+    assert 'value="201"' in select
