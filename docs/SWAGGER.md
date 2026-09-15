@@ -131,9 +131,11 @@ AI_TIMEOUT_SEC는 AI 호출 전체 예산(재시도/대기 포함)이며 DB 처�
 
 | 메서드 | 경로 | summary | 주요 responses |
 |---|---|---|---|
-| POST | `/api/threads` | 새 대화 시작 | 401 로그인, 409 상한 도달 |
-| GET | `/api/threads` | 내 대화 목록 | 401 로그인 |
-| DELETE | `/api/threads/{id}` | 대화 삭제 | 401 로그인, 404 부존재/타인 |
+| POST | `/api/thread` | 새 대화 시작 | 401 로그인, 409 상한 도달 |
+| GET | `/api/thread/list` | 내 대화 목록 | 401 로그인 |
+| GET | `/api/thread/{id}` | 대화 단건 조회 | 401 로그인, 404 부존재/타인 |
+| GET | `/api/thread/{id}/chats` | 대화별 기록 | 401 로그인, 404 부존재/타인 |
+| DELETE | `/api/thread/{id}` | 대화 삭제(204) | 401 로그인, 404 부존재/타인 |
 
 **상한**: `MAX_THREADS_PER_USER` (기본 100). **삭제**: 해당 스레드의 `chat_logs`도 CASCADE로 함께 삭제.
 
