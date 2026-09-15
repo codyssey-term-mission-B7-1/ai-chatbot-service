@@ -7,7 +7,7 @@
 | #1 | 문제 정의·대상·시나리오 | README §1 | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
 | #2 | 아키텍처·컴포넌트 책임 | README §2 · app/routers/ · app/repositories/ | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
 | #3 | API 요청·응답 예제 | docs/API.md · /openapi.json | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
-| #4 | DB 구조·ERD·제약 | README ERD · app/models.py | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
+| #4 | DB 구조·ERD·제약 | README ERD · app/models/ | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
 | #5 | 사용자별 로그·SQL 조회 | app/routers/logs.py · scripts/check_logs.sql | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
 | #6 | 역할·개인별 기여 증빙 | README 역할표 · docs/commit-audit.md | 실제 개인 기여와 과거 PR의 원래 기록을 대조. 실제 기여 증빙으로 확인한다. |
 | #7 | 회원가입 UI | templates/login.html · static/js/auth.js · 로컬 UI 캡처 | 실제 Chromium의 로컬 캡처 제공. 실기기·운영 환경 검증은 별도. |
@@ -21,10 +21,10 @@
 | #15 | 오류 코드·사용자 안내 | docs/API.md · static/js/form-utils.js | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
 | #16 | 입력 검증 | app/schemas.py · test_schema_edge_cases.py | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
 | #17 | 라우터·서비스·모델·스키마 분리 | app/routers/ · app/services/ · app/repositories/ | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
-| #18 | 목적별 라우트 분리 | auth/chat/logs/admin/pages 라우트 분리 | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
+| #18 | 목적별 라우트 분리 | auth/chat/logs/threads/admin/pages/health 라우트 분리 | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
 | #19 | Pydantic 실제 사용 | app/schemas.py 및 라우트 response_model | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
 | #20 | 인증 DI·미들웨어 분리 | app/deps.py · SessionMiddleware | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
-| #21 | 모델·세션·CRUD 계층 | app/models.py · app/database.py · app/repositories/ | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
+| #21 | 모델·세션·CRUD 계층 | app/models/ · app/database.py · app/repositories/ | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
 | #22 | 민감정보 제외 정책 | .gitignore · 실제 비밀값 제외 | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
 | #23 | .env.example 제공 | .env.example · README 실행 방법 | 구현 및 로컬 테스트 근거 확인. 실제 평가 대상에 전체 소스를 포함. |
 | #24 | PR·병합 증빙 | GitHub PR 기록 · 이 PR의 CI · 과거/현재 SHA 구분 | 실제 개인 기여와 과거 PR의 원래 기록을 대조. 실제 기여 증빙으로 확인한다. |

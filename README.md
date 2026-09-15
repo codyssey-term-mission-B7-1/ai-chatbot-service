@@ -13,35 +13,37 @@ FastAPI + SQLite 기반의 로그인형 AI 챗봇입니다. **현재 소스에�
 |---|---|
 | 문제 | 질문·답변이 흩어지면 이전 대화의 맥락과 개인 기록을 다시 확인하기 어렵다. |
 | 대상 | 계정별 질의응답·자신의 대화 기록을 추적하려는 사용자 |
-| 핵심 흐름 | 가입 → 로그인 → 질문 → AI 응답 → 성공 대화 문맥 유지 → 본인 기록 조회 · 비밀번호 재설정(이메일 링크) |
-| 운영자 흐름 | 명시적 앱 관리자 권한을 부여받은 계정만 전체 기록 조회·필터 가능 |
-| 한계 | 실제 AI 키가 없으면 Fake 데모. 계정별 rate limit·요금 상한·중앙 세션 폐기는 별도 미구현 |
+| 핵심 흐름 | 가입 → 로그인 → 질문 → AI 응답 → 성공 대화 문맥 유지 → 멀티 스레드 대화 분리 → 본인 기록 조회 · 비밀번호 재설정(이메일 링크) |
+| 운영자 흐름 | 명시적 앱 관리자 권한을 부여받은 계정만 관리자 콘솔(`/admin`) 5종(통계/채팅/이벤트/네트워크/DB) 및 REST API 접근 가능 |
+| 한계 | 실제 외부 AI 키가 없으면 Fake 데모 모드로 동작. 분당 요청 상한(429)·로그인 잠금(429)·IP별 가입/재설정 제한·서버 세션 폐기(iat 기반)는 프로세스 메모리 및 SQLite 기반으로 구현 완료됨(다중 프로세스/서버리스 환경 확장 시 Redis 및 분산 캐시 전환 필요). |
 
 ## 2. 구조와 실제 파일
 
 ```mermaid
 flowchart LR
-  UI[HTML · JS] --> AUTH[auth 라우터 · 세션 검증]
-  UI --> CHAT[chat 라우터]
+  UI[HTML · Vanilla JS] --> AUTH[auth 라우터 · 세션 검증]
+  UI --> CHAT[chat · threads 라우터]
   UI --> LOGS[logs 라우터]
   UI --> ADMIN[admin 라우터 · 별도 권한 검사]
-  CHAT --> AI[AIProvider · 전체 시간 예산]
-  CHAT --> REPO[repositories 계층]
-  LOGS --> REPO
-  ADMIN --> REPO
-  REPO --> DB[(SQLite)]
+  CHAT --> SERVICES[services 도메인 계층]
+  LOGS --> SERVICES
+  ADMIN --> SERVICES
+  SERVICES --> AI[AIProvider · 전체 시간 예산]
+  SERVICES --> REPO[repositories 데이터 접근 계층]
+  REPO --> DB[(SQLite · Railway Volume)]
 ```
 
 | 책임 | 파일 |
 |---|---|
 | 앱·미들웨어·오류 헤더 | `app/main.py`, `app/middleware/`, `app/exception_handlers.py` |
-| 인증·관리자 의존성 | `app/deps.py`, `app/services/security.py`, `app/services/admin.py` |
-| 목적별 라우트 | `app/routers/auth.py`, `chat.py`, `logs.py`, `threads.py`, `admin.py`, `pages.py`, `health.py` |
-| DB·모델·CRUD | `app/database.py`, `app/models/`, `app/repositories/` |
-| 입력·응답 계약 | `app/schemas.py`, `app/policies.py` |
-| 서버 AI 호출·문맥 | `app/services/ai_client.py`, `context.py` |
-| 회원가입/로그인 UI | `/signup`, `/login` → `templates/login.html`, `static/js/auth.js` |
-| 채팅/기록/관리자 UI | `templates/chat.html`, `logs.html`, `admin-logs.html`, `static/js/chat.js` |
+| 인증·보안·의존성 | `app/deps.py`, `app/services/security.py`, `app/services/sessions.py`, `app/services/rate_limit.py`, `app/services/password_reset.py` |
+| 목적별 라우트 | `app/routers/` (`auth.py`, `chat.py`, `threads.py`, `logs.py`, `admin.py`, `pages.py`, `health.py`) |
+| 비즈니스 도메인 서비스 | `app/services/` (`ai_client.py`, `context.py`, `chat.py`, `admin.py`, `filter_query.py`, `suggest.py` 등) |
+| DB·모델·CRUD | `app/database.py`, `app/models/` (8종), `app/repositories/` (`users.py`, `threads.py`, `chat_logs.py`, `admin.py`) |
+| 입력·응답 계약 | `app/schemas.py`, `app/policies.py`, `app/enums.py` |
+| 사용자 Web UI | `templates/` (`login.html`, `chat.html`, `logs.html`, `forgot-password.html`, `reset-password.html`) |
+| 관리자 콘솔 UI | `templates/` (`admin.html`, `admin-logs.html`, `admin-events.html`, `admin-network.html`, `admin-db.html`) |
+| 프론트엔드 스크립트 | `static/js/` (`chat.js`, `threads.js`, `auth.js`, `form-utils.js`, `admin-console.js`, `filter-query.js`, `suggest.js`) |
 
 처리 순서는 **입력 검증 → 같은 사용자의 성공 Q/A → AI 응답 수신 → DB 저장 시도 → HTTP 응답**입니다. DB 저장 실패 시 `status=success`라도 `chat_id=-1`일 수 있습니다.
 
@@ -59,25 +61,40 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 운영에서는 `DEBUG=false`와 새로 생성한 32자 이상 무작위 `SESSION_SECRET`이 필요합니다. 값은 GitHub/배포 플랫폼의 비밀변수로 관리하고 저장소에 넣지 않습니다.
 
-비밀번호는 **페퍼 + bcrypt(자동 솔트)** 이중 구조로 저장합니다. `PASSWORD_PEPPER`(서버 비밀)로 먼저 HMAC-SHA256 변환한 뒤 비밀번호마다 무작위 솔트가 붙은 bcrypt 해시를 만듭니다. DB가 유출돼도 페퍼를 모르면 오프라인 대조가 불가능하고, 동일 비밀번호도 해시가 매번 달라 무지개 테이블이 무의미해집니다. 운영 배포에는 32자 이상의 `PASSWORD_PEPPER`가 필수이며(CD가 사전 검증), 페퍼 도입 전 계정은 다음 로그인 때 자동으로 재해싱됩니다.
+비밀번호는 **페퍼(HMAC-SHA256, PASSWORD_PEPPER) + Argon2id(메모리 하드 함수, argon2-cffi)** 구조로 저장합니다. 신규 가입 및 비밀번호 변경 시 Argon2id로 즉시 해싱되며, 페퍼 도입 전 레거시 bcrypt 계정은 로그인 시 투명하게 자동 재해싱(Lazy Migration)됩니다. 관리자 콘솔(`/admin/security/password-hashes`)에서 두 해시의 마이그레이션 현황을 실시간 집계합니다. 운영 배포에는 32자 이상의 `PASSWORD_PEPPER`가 필수입니다(CD가 사전 검증).
 
 ## 4. API·인증
 
 상세 요청/응답: **[docs/API.md](docs/API.md)**. `DOCS_ENABLED=true`인 개발·검증 환경에서 실행 중 `/docs`, `/redoc`, `/openapi.json`의 대화형 명세를 확인할 수 있습니다(운영 CD는 기본 `false`로 동기화).
 
-| 메서드 | 경로 | 접근 |
+| 메서드 | 경로 | 접근 / 설명 |
 |---|---|---|
-| POST | `/api/users` | 공개, 201 / 중복 409 / 검증 422 |
+| POST | `/api/users` | 공개, 201 / 중복 409 / 검증 422 / IP제한 429 |
 | POST | `/api/session` | 세션 생성 201 + 서명된 쿠키 / 불일치 401 / 잠금 429 |
 | DELETE | `/api/session` | 세션 삭제 204, 비로그인도 204 |
-| GET | `/api/users/me` | 로그인 필요 |
-| POST | `/api/password-resets` · `/api/password-resets/{token}` | 공개, 이메일 재설정(계정 존재 은닉·토큰 단일 사용·세션 전면 폐기) |
-| POST | `/api/chats` | 로그인 필요, 저장 성공 201(저장 실패 200) / 422 / 429 / 502 / 504 |
-| GET | `/api/users/me/chats` | 본인 기록만, 성공 필터·커서 지원 |
-| GET | `/api/admin/chats` | 명시적 앱 관리자만 |
-| GET | `/health` | 기동/버전/제공자 선택 모드; AI 연결 검증 아님 |
+| GET | `/api/users/me` | 로그인 필요, 200 (내 정보) |
+| POST | `/api/password-resets` | 공개, 202 (계정 존재 은닉·IP제한 429·SMTP미설정 503) |
+| POST | `/api/password-resets/{token}` | 공개, 200 / 만료·무효 400 |
+| POST | `/api/chats` | 로그인 필요, 201 (저장 성공) · 200 (저장 실패) / 404 (thread_id 부존재) / 422 / 429 / 502 / 504 |
+| POST | `/api/threads` | 로그인 필요, 201 (새 대화) · 409 (스레드 상한) |
+| GET | `/api/threads` | 로그인 필요, 200 (내 대화 목록, 최근 활동순) |
+| GET | `/api/threads/{id}` | 로그인 필요, 200 (대화 단건) / 404 |
+| DELETE | `/api/threads/{id}` | 로그인 필요, 204 (대화 및 하위 기록 삭제) / 404 |
+| GET | `/api/threads/{id}/chats` | 로그인 필요, 200 (해당 대화의 기록) / 404 |
+| GET | `/api/users/me/chats` | 로그인 필요, 본인 기록만, 성공 필터·커서 지원 |
+| GET | `/api/admin/stats` | 앱 관리자만, 200 (대시보드 메트릭 집계) |
+| GET | `/api/admin/chats` | 앱 관리자만, 200 (전체 채팅 로그 필터 조회) |
+| GET | `/api/admin/events` | 앱 관리자만, 200 (감사 이벤트 목록) |
+| GET | `/api/admin/network` | 앱 관리자만, 200 (API 네트워크 로그) |
+| GET | `/api/admin/db/tables` | 앱 관리자만, 200 (화이트리스트 테이블 목록·행수) |
+| GET | `/api/admin/db/tables/{name}/rows` | 앱 관리자만, 200 (테이블 행 미리보기) |
+| GET | `/api/admin/security/password-hashes` | 앱 관리자만, 200 (해시 마이그레이션 현황) |
+| DELETE | `/api/admin/users/{id}` | 앱 관리자만, 200 (사용자 삭제 및 세션 폐기) |
+| GET | `/api/admin/suggest` | 앱 관리자만, 200 (필터 자동완성 추천) |
+| GET | `/health` | 공개, 200 (기동/버전/AI모드) |
+| GET | `/readyz` | 공개, 200 (DB 연결 및 스키마 검증, 장애 시 503) |
 
-JWT가 아니라 `SessionMiddleware`의 서명 쿠키입니다. 로그인은 이메일별 실패 누적 잠금(`LOGIN_MAX_FAILS`회/`LOGIN_LOCKOUT_SEC`초, 기본 5회/15분, 429+`Retry-After`)이 적용되고, 미가입 이메일에도 동일한 bcrypt 연산을 수행해 이메일 열거 타이밍을 차단합니다. 내용은 `user_id`와 `email_fp`이며 쿠키 서명은 암호화가 아닙니다. HttpOnly·SameSite=Lax·`SESSION_MAX_AGE_HOURS` Max-Age(기본 24시간), 운영 Secure를 사용합니다. 세션에는 발급 시각(iat)이 들어가 `scripts/revoke_sessions.py --email`로 계정별 기존 세션을 서버 측에서 폐기할 수 있습니다. 비밀번호를 잊은 경우 `/forgot-password`에서 이메일로 재설정 링크를 받을 수 있습니다(토큰은 해시 저장·단일 사용, 완료 시 기존 세션 전면 폐기). [접근 제어](docs/ACCESS_CONTROL.md)
+JWT가 아니라 `SessionMiddleware`의 서명 쿠키입니다. 로그인은 이메일별 실패 누적 잠금(`LOGIN_MAX_FAILS`회/`LOGIN_LOCKOUT_SEC`초, 기본 5회/15분, 429+`Retry-After`)이 적용되고, 미가입 이메일에도 동일한 더미 비밀번호 연산을 수행해 이메일 열거 타이밍을 차단합니다. 내용은 `user_id`와 `email_fp`이며 쿠키 서명은 암호화가 아닙니다. HttpOnly·SameSite=Lax·`SESSION_MAX_AGE_HOURS` Max-Age(기본 24시간), 운영 Secure를 사용합니다. 세션에는 발급 시각(iat)이 들어가 `scripts/revoke_sessions.py --email`로 계정별 기존 세션을 서버 측에서 폐기할 수 있습니다. 비밀번호를 잊은 경우 `/forgot-password`에서 이메일로 재설정 링크를 받을 수 있습니다(토큰은 해시 저장·단일 사용, 완료 시 기존 세션 전면 폐기). [접근 제어](docs/ACCESS_CONTROL.md)
 
 관리자 권한은 기본적으로 없고 GitHub 역할이나 닉네임으로 생기지 않습니다. 전용 계정을 만든 뒤 **신뢰된 서버 운영자**가 `scripts/manage_admin.py`로 부여합니다. [관리자 운영](docs/ADMIN.md)
 
@@ -109,7 +126,9 @@ alembic upgrade head
 
 ```mermaid
 erDiagram
+  users ||--o{ threads : owns
   users ||--o{ chat_logs : owns
+  threads ||--o{ chat_logs : contains
   users ||--o| admin_grants : explicitly_granted
   users ||--o{ session_revocations : revokes
   users ||--o{ password_resets : requests
@@ -118,8 +137,14 @@ erDiagram
     string password_hash
     string nickname
     datetime created_at }
+  threads { int id PK
+    int user_id FK
+    string title
+    datetime created_at
+    datetime updated_at }
   chat_logs { int id PK
     int user_id FK
+    int thread_id FK
     text question
     text answer
     string status
@@ -129,11 +154,35 @@ erDiagram
   admin_grants { int user_id PK,FK
     string granted_email
     datetime created_at }
+  session_revocations { int user_id PK,FK
+    int revoked_before_epoch
+    datetime updated_at }
+  password_resets { int id PK
+    int user_id FK
+    string token_hash UK
+    int expires_epoch
+    int used_epoch
+    int created_epoch
+    string request_ip }
+  audit_events { int id PK
+    datetime created_at
+    string event
+    int user_id
+    string request_id
+    text fields_json }
+  request_logs { int id PK
+    datetime created_at
+    string method
+    string path
+    int status
+    int user_id
+    int latency_ms
+    string request_id }
 ```
 
-`chat_logs.user_id/created_at`는 인덱스 대상입니다. 시간은 UTC로 저장하고 API는 `Z`를 포함합니다. `latency_ms`는 AI 논리 호출 시간이며 저장 성공을 보장하지 않습니다. `X-Request-ID`와 DB/이벤트의 `request_id`로 연결합니다.
+`chat_logs.user_id/thread_id/created_at`, `threads.user_id`, `audit_events.event/created_at`, `request_logs.path/created_at`는 인덱스 대상입니다. 시간은 UTC로 저장하고 API는 `Z`를 포함합니다. `latency_ms`는 AI 논리 호출 시간이며 저장 성공을 보장하지 않습니다. `X-Request-ID`와 DB/이벤트의 `request_id`로 연결합니다.
 
-앱 시작의 `create_all`은 없는 테이블만 추가합니다. 기존 열/FK의 마이그레이션이나 데이터 삭제를 하지 않습니다. 새 `admin_grants` 테이블은 기본 비어 있습니다. 오래된 FK 스키마를 바꿀 때는 데이터 보존 계획과 별도 마이그레이션이 필요합니다.
+앱 시작의 `init_db()`는 `Base.metadata.create_all()`과 Alembic 자동 업그레이드(`alembic upgrade head`)를 안전하게 병행하여 비어 있는 DB 및 기존 DB의 스키마 동기화를 보장합니다.
 
 ```bash
 sqlite3 app.db < scripts/check_logs.sql
@@ -150,7 +199,7 @@ pip install -r requirements-dev.txt
 ruff check app tests
 black --check app tests
 isort --check-only app tests
-pytest --cov=app --cov-report=term-missing
+pytest --cov=app --cov-report=term-missing  # 전체 334 tests
 
 # 선택: 실제 로컬 브라우저 검증
 pip install -r requirements-evidence.txt

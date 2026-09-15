@@ -28,11 +28,17 @@
 
 ## 추가 기능과 구조
 
-- `app/repositories/`: 사용자·대화 기록 CRUD 계층
+- `app/repositories/`: 사용자·대화 기록·스레드·관리자 데이터 접근(CRUD) 계층
+- `app/services/`: 비즈니스 로직·외부 I/O·암호화·세션 관리 분리
+- `app/routers/threads.py`: 멀티 스레드 대화 세션 관리 (`POST/GET/DELETE /api/threads`)
 - `app/routers/logs.py`: 사용자 로그와 성공 문맥 복원 API
-- `app/routers/admin.py`, `/admin/logs`: 명시적 관리자 전용 조회
+- `app/routers/admin.py`, `/admin`: 명시적 관리자 전용 대시보드·채팅·이벤트·네트워크·DB 콘솔 5종 및 REST API 9종
 - `admin_grants`: 기존 users 열을 바꾸지 않는 별도 권한 테이블
-- `tests/integration/test_admin.py`: 권한 기본 없음, 비관리자 403, 전체 조회, 본인 API 격리, 즉시 회수
+- `session_revocations`: 발급 시각(iat) 기반 즉시 세션 서버 폐기 테이블
+- `password_resets`: SHA-256 해시 토큰·만료·단일 사용 비밀번호 재설정 테이블
+- `audit_events` / `request_logs`: 관리자 콘솔용 이벤트 및 네트워크 로깅 영속 테이블
+- `Argon2id` + `PASSWORD_PEPPER`: 최신 메모리 하드 비밀번호 저장 및 레거시 bcrypt 자동 재해싱
+- `tests/integration/test_admin.py`, `test_admin_console.py`: 관리자 권한 및 콘솔 기능 전수 검증 (334 tests)
 
 ## 재현 명령
 

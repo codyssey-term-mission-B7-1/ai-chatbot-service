@@ -16,9 +16,9 @@
       (2026-09-10 17:41·19:37 CD 성공 후 실측, https://ai-chatbot-service-production-4aa1.up.railway.app)
 - [x] 실 AI 동작 증명 — 운영에서 실제 AI 응답 확인(한국어 자기소개 응답, latency 1.6~2.0초, 2회 실측).
       `scripts/ai_check.py --require-real` 로컬 캡처는 선택(운영 real이 상위 증거)
-- [x] pytest **221 passed**(2026-09-11, PR #107 병합 시점 전체 스위트 — 평가 대비 하드닝 테스트 5건 포함)
-      / ruff·black·isort 전부 통과 (CI run: PR #107 ci·browser 녹색, CD run 34557356968 전 구간 성공)
-      · 이전 실측: 205 passed(2026-09-10, PR #101 시점)
+- [x] pytest **334 passed**(2026-09-15 기준 전체 스위트 — 스레드·관리자 콘솔·보안 하드닝 포함)
+      / ruff·black·isort 전부 통과 (CI run: ci·browser 녹색, CD 전 구간 성공)
+      · 이전 실측: 221 passed(2026-09-11, PR #107 시점) · 205 passed(2026-09-10, PR #101 시점)
 
 ## 2. 사전평가 31항 연결표 (증거 위치)
 > 각 행은 `docs/EVALUATION_CHECKLIST.md`와 1:1. 증거 기준 = 실제 소스 경로 + 테스트명 또는 캡처.
@@ -28,7 +28,7 @@
 | 1 | 문제·사용자·시나리오 | README §1 | [x] |
 | 2 | 아키텍처·컴포넌트 책임 | README §2 · app/routers,app/services,app/repositories | [x] |
 | 3 | API 요청·응답 예제 | docs/API.md · /openapi.json | [x] |
-| 4 | DB 구조·ERD·제약 | README ERD · app/models.py | [x] |
+| 4 | DB 구조·ERD·제약 | README ERD · app/models/ | [x] |
 | 5 | 사용자별 로그·SQL | app/routers/logs.py · scripts/check_logs.sql | [x] |
 | 6 | 역할·개인별 기여 증빙 | README 역할표 · docs/commit-audit.md · shortlog 표(§1) | [x] |
 | 7 | 회원가입 UI | templates/login.html · evidence 캡처 | [x] |
@@ -42,10 +42,10 @@
 | 15 | 오류 코드·안내 | docs/API.md · form-utils.js | [x] |
 | 16 | 입력 검증 | app/schemas.py · test_schema_edge_cases.py | [x] |
 | 17 | 라우터·서비스·모델·스키마 분리 | app/ 구조 | [x] |
-| 18 | 목적별 라우트 분리 | routers/auth·chat·logs·admin·pages | [x] |
+| 18 | 목적별 라우트 분리 | routers/auth·chat·logs·threads·admin·pages·health | [x] |
 | 19 | Pydantic 실제 사용 | app/schemas.py · response_model | [x] |
 | 20 | 인증 DI·미들웨어 | app/deps.py · SessionMiddleware | [x] |
-| 21 | 모델·세션·CRUD 계층 | app/models.py · repositories | [x] |
+| 21 | 모델·세션·CRUD 계층 | app/models/ · app/database.py · repositories | [x] |
 | 22 | 민감정보 제외 | .gitignore · 시크릿은 GitHub Secrets(값 비공개)만 | [x] |
 | 23 | .env.example | .env.example(RESEND_* 포함) · README 실행법 | [x] |
 | 24 | PR·병합 증빙 | PR #101(이슈 #100 자동종료)·CI 기록 외 전원 PR | [x] |

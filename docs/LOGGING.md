@@ -38,6 +38,10 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 > app-local.log 2>&1
 | user_login_locked | 실패 누적 잠금 발동 | email_domain, retry_after_sec, request_id. 이메일 평문 제외 |
 | auth_password_rehashed | 레거시 해시 자동 재해싱 | user_id. 페퍼 도입 전 가입자의 다음 로그인 때 기록 |
 | admin_logs_viewed | 민감 기록 접근 감사 | user_id(검증된 관리자), filter_user_id, result_count, before_id, request_id |
+| admin_stats_viewed | 관리자 대시보드 통계 조회 감사 | user_id(검증된 관리자), request_id |
+| admin_events_viewed | 관리자 이벤트 로그 조회 감사 | user_id(검증된 관리자), filter_event, result_count, request_id |
+| admin_network_viewed | 관리자 네트워크 로그 조회 감사 | user_id(검증된 관리자), filter_path, filter_status, result_count, request_id |
+| admin_db_viewed | 관리자 DB 테이블 조회 감사 | user_id(검증된 관리자), table_name, request_id |
 | admin_hash_status_viewed | 해시 현황 조회 감사 | user_id(검증된 관리자), total, legacy |
 | admin_user_deleted | 사용자 삭제 감사 | user_id(검증된 관리자), deleted_user_id, email_domain. 평문 이메일 제외, WARNING |
 | thread_created | 대화(스레드) 생성 | user_id, thread_id |
