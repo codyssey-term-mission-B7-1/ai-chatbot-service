@@ -7,12 +7,12 @@
 | `GET /` | 302 → `/login` | 200 | 200 |
 | `GET /logs` | 302 → `/login` | 200, 본인 기록 | 200, 본인 기록 |
 | `GET /login`, `/signup` | 200 | 302 → `/` | 302 → `/` |
-| `POST /api/auth/signup` | 201 / 검증 422 / 중복 409 | 동일 | 동일 |
-| `POST /api/auth/login` | 성공 200 + 쿠키 / 실패 401 / 반복 실패 잠금 429 | 동일 | 동일 |
-| `POST /api/auth/logout` | 200 | 200 + 현재 쿠키 비움 | 동일 |
-| `GET /api/auth/me` | 401 | 200 | 200 |
-| `POST /api/chat` | 401 | 200 / 422 / 429 / 502 / 504 | 동일 |
-| `GET /api/me/chats` | 401 | 200, 본인 기록만 | 200, 본인 기록만 |
+| `POST /api/users` | 201 / 검증 422 / 중복 409 | 동일 | 동일 |
+| `POST /api/session` | 성공 201 + 쿠키 / 실패 401 / 반복 실패 잠금 429 | 동일 | 동일 |
+| `DELETE /api/session` | 204 | 204 + 현재 쿠키 비움 | 동일 |
+| `GET /api/users/me` | 401 | 200 | 200 |
+| `POST /api/chats` | 401 | 201(저장 성공)·200(저장 실패, chat_id=-1) / 422 / 429 / 502 / 504 | 동일 |
+| `GET /api/users/me/chats` | 401 | 200, 본인 기록만 | 200, 본인 기록만 |
 | `GET /api/admin/chats` | 401 | 403 | 200, 전체/필터 조회 |
 | `GET /admin/logs` | 302 → `/login` | 403 | 200 |
 | `GET /health` | 200 | 200 | 200 |

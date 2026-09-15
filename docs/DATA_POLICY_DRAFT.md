@@ -33,7 +33,7 @@
 
 ## 4. 열람 통제
 
-- 본인: `/api/me/chats`만. 타인 기록은 401/404로 차단(테스트 `test_verified_gaps`).
+- 본인: `/api/users/me/chats`만. 타인 기록은 401/404로 차단(테스트 `test_verified_gaps`).
 - 관리자: `grants` 테이블에 명시 부여된 계정만. 열람 시 `admin_logs_viewed` 이벤트(누가/무엇을/몇 건/사유) 기록 — **사유 필드는 2026-09-11 패치로 추가**.
 - 관리자 계정은 최소 유지(원칙 1~2개)하고, 부여/회수를 `manage_admin.py` 감사 기록과 함께 운영.
 
