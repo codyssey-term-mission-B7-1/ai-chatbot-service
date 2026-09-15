@@ -32,6 +32,7 @@ from app.services.admin import is_admin
 from app.services.filter_query import parse_filter
 from app.services.security import is_peppered_hash
 from app.services.sessions import revoke_user_sessions
+from app.services.suggest import MAX_SUGGESTIONS, SUGGESTORS
 
 logger = logging.getLogger("app.admin")
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -395,3 +396,19 @@ def db_table_rows(
         rows=rows,
         next_before_id=rows_raw[-1]["id"] if len(rows_raw) == effective else None,
     )
+
+
+@router.get("/suggest", summary="필터 값 자동완성 후보")
+def suggest_values(
+    field: str = Query(max_length=16, description="후보 종류 — 화이트리스트"),
+    q: str = Query(default="", max_length=64, description="입력 중인 값"),
+    user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """관리자 콘솔 필터박스의 값 후보. 화이트리스트 밖 필드는 400."""
+    suggestor = SUGGESTORS.get(field)
+    if suggestor is None:
+        raise HTTPException(status_code=400, detail="지원하지 않는 필드예요.")
+    clean = q.strip()[:64]
+    items = suggestor(db, clean)
+    return {"field": field, "items": items[:MAX_SUGGESTIONS]}
