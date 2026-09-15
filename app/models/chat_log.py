@@ -21,14 +21,14 @@ class ChatLog(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
-    )  # SQL 레벨 cascade (#51)
+    )
     thread_id: Mapped[int | None] = mapped_column(
         ForeignKey("threads.id", ondelete="CASCADE"), index=True, nullable=True
-    )  # 스레드 단위 대화 — NULL은 마이그레이션 이전 레거시 기록(기본 대화로 귀속)
+    )
     question: Mapped[str] = mapped_column(Text, nullable=False)
     answer: Mapped[str] = mapped_column(Text, default="", nullable=False)
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
-    status: Mapped[str] = mapped_column(String(20), default="success")  # success | ai_error
+    status: Mapped[str] = mapped_column(String(20), default="success")
     request_id: Mapped[str] = mapped_column(String(REQUEST_ID_CHARS), default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, index=True

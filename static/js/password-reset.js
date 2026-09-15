@@ -1,4 +1,3 @@
-// 비밀번호 찾기/재설정 화면 — 서버 API 호출과 안내 표시만 담당 (CSP: 인라인 금지, 외부 의존 없음)
 const form = document.getElementById('forgot-form') || document.getElementById('reset-form');
 const message = document.getElementById('msg');
 
@@ -22,7 +21,6 @@ if (form) {
       body = { email: document.getElementById('email').value.trim() };
     } else {
       const password = document.getElementById('password').value;
-      // 회원가입과 동일한 클라이언트 측 정책 점검 — 서버 검증이 최종 기준
       const length = FormUtils.codepointLength(password);
       if (length < 8 || length > 64) return showMessage('비밀번호는 8~64자여야 해요.');
       if (FormUtils.utf8Length(password) > 72) {

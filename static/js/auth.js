@@ -20,7 +20,6 @@ authForm.addEventListener('submit', async (event) => {
     email: document.getElementById('email').value.trim(),
     password: document.getElementById('password').value,
   };
-  // 빈 값은 서버 왕복 없이 안내 — 스페이스/개행만 입력된 경우도 '비어 있음'으로 취급한다.
   if (!body.email || !body.password) return showAuthMessage('이메일과 비밀번호를 모두 입력해 주세요.');
   if (authMode === 'signup') {
     if (!body.password.trim()) return showAuthMessage('비밀번호는 공백만으로 구성될 수 없어요.');

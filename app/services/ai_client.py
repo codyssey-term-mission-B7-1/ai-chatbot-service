@@ -1,10 +1,4 @@
-"""서버 전용 네이토(OpenAI 호환) 클라이언트.
-
-AI_TIMEOUT_SEC는 한 generate 호출의 전체 예산(연결·읽기·재시도·대기 포함).
-타임아웃/응답 형식 오류/429 외 4xx는 재시도하지 않는다.
-전송 오류·429·5xx만 AI_MAX_RETRIES 횟수만큼 추가 시도한다.
-키가 없을 때의 Fake는 설정에 따른 데모이며 실제 AI 실패 시 폴백이 아니다.
-"""
+"""서버 전용 네이토(OpenAI 호환) 클라이언트."""
 
 import asyncio
 import logging
@@ -30,12 +24,7 @@ def normalize_endpoint(url: str) -> str:
 
 
 def extract_content(data: dict) -> str:
-    """문자열/텍스트 multipart만 수용한다. 잘못된 응답은 민감 원문 없이 ValueError.
-
-    finish_reason=length(응답이 max_tokens로 잘림)에는 말줄임 표식을 붙여
-    사용자에게 응답이 끊겼음을 알린다(종전에는 조용히 잘린 문자열을 돌려주어
-    다음 문맥이 오염될 수 있었음).
-    """
+    """문자열/텍스트 multipart만 수용한다. 잘못된 응답은 민감 원문 없이 ValueError."""
     try:
         choice = data["choices"][0]
         message = choice["message"]
@@ -49,7 +38,7 @@ def extract_content(data: dict) -> str:
             if not isinstance(part, dict):
                 raise ValueError("AI multipart 응답 항목은 객체여야 합니다.")
             if "text" not in part:
-                continue  # 텍스트가 아닌 부가 항목은 응답 텍스트에서 제외
+                continue
             if not isinstance(part["text"], str):
                 raise ValueError("AI multipart 응답의 text는 문자열이어야 합니다.")
             pieces.append(part["text"])
@@ -90,8 +79,6 @@ class OpenAICompatClient(AIProvider):
         self.model = model
         self.timeout_sec = timeout_sec
         self.max_retries = max_retries
-        # 전체 예산 안에서 개별 시도(연결+읽기)의 시간 상한을 둔다.
-        # 재시도 대기(0.5s)까지 포함한 전체 상한은 바깥 asyncio.timeout이 보장한다.
         self._per_attempt_timeout = httpx.Timeout(
             connect=min(10.0, timeout_sec),
             read=timeout_sec,
@@ -109,8 +96,6 @@ class OpenAICompatClient(AIProvider):
         }
 
     async def generate(self, messages: list[dict]) -> str:
-        # 전체 시간 예산은 이 바깥 타임아웃이 1회만 보장한다. httpx 내부 timeout과 이중으로
-        # 걸지 않음 — 이중 설정 시 재시도 경로에서 예산이 누적되어 상한을 깨뜨릴 수 있다.
         try:
             async with asyncio.timeout(self.timeout_sec):
                 return await self._attempts(messages)
@@ -120,7 +105,6 @@ class OpenAICompatClient(AIProvider):
     async def _attempts(self, messages: list[dict]) -> str:
         payload = self.build_payload(messages)
         headers = {"Authorization": f"Bearer {self.api_key}"}
-        # 연결 풀·HTTP/2 유지로 단기 다중 요청(TCP 핸드셰이크) 비용을 줄인다.
         async with httpx.AsyncClient(
             timeout=self._per_attempt_timeout,
             limits=httpx.Limits(max_connections=20, max_keepalive_connections=5),
@@ -128,9 +112,6 @@ class OpenAICompatClient(AIProvider):
             previous_error = ""
             for attempt in range(self.max_retries + 1):
                 if attempt > 0:
-                    # 대기 중 전체 예산이 끝나면 바깥 asyncio.timeout이 캔슬시킨다
-                    # → 재시도를 "실제로 시작하지 않은" 것으로 취급한다.
-                    # 그래서 ai_retry 이벤트는 sleep *후*에 기록한다(테스트가 이 의미를 고정).
                     await asyncio.sleep(0.5)
                     log_event(
                         logger,
@@ -145,7 +126,7 @@ class OpenAICompatClient(AIProvider):
                     response.raise_for_status()
                     return extract_content(response.json())
                 except httpx.TimeoutException:
-                    raise  # 시간 초과는 재시도하지 않는다(전체 예산을 바깥에서 이미 소진 중).
+                    raise
                 except (ValueError, KeyError, IndexError, TypeError) as exc:
                     raise AIError("AI 응답 형식 오류") from exc
                 except httpx.HTTPError as exc:

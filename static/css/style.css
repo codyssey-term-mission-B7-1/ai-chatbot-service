@@ -1,14 +1,8 @@
-/* ============================================================
-   AI Chatbot Service — 공통 스타일 (모바일 퍼스트)
-   - 기본 스타일 = 모바일 (16px 입력창, 44px 탭 타깃, 100dvh)
-   - @media (min-width: 768px) = 데스크톱 조정
-   - 테마: <html data-theme="light|dark"> — theme-init.js가 페인트 전 적용.
-     모든 요소 색상은 토큰(--)만 사용 → 다크 전환은 토큰 재지정만으로 완료.
-   ============================================================ */
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  /* 라이트 토큰 (기본) — 대비: --muted 흰색 5.95:1, --danger 흰색 5.23:1 (WCAG AA) */
+  
   --bg: #f4f6fb; --card: #ffffff; --ink: #1f2430; --muted: #5c6474;
   --brand: #4f6df5; --brand-dark: #3b55d9; --user: #4f6df5; --ai: #ffffff;
   --danger: #c43a3a; --ok: #2e9e5b; --border: #e3e7f0;
@@ -18,11 +12,10 @@
   --row-error: #fff7f7;
   --hover: rgba(0,0,0,.06);
   --shadow: 0 8px 24px rgba(20,25,40,.12);
-  /* 데스크톱 앱 페이지 네비 높이(40px 콘텐츠+1px 테두리) — 사이드바 sticky top 계산용(#149) */
+  
   --nav-h: 41px;
 }
 
-/* 다크 토큰 — 사용자 선택(data-theme="dark")일 때만 전체 재지정 */
 :root[data-theme="dark"] {
   --bg: #14161b; --card: #1d2027; --ink: #e6e8ef; --muted: #a6adbf;
   --brand: #4f6df5; --brand-dark: #8ea2ff; --user: #4f6df5; --ai: #1d2027;
@@ -35,7 +28,6 @@
   --shadow: 0 8px 24px rgba(0,0,0,.5);
 }
 
-/* no-JS 폴백 — data-theme 속성이 없다면 시스템 설정을 따른다 (위 블록과 동일한 값) */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     --bg: #14161b; --card: #1d2027; --ink: #e6e8ef; --muted: #a6adbf;
@@ -50,12 +42,9 @@
   }
 }
 
-/* 최소 폭 320px — 가장 작은 모바일 기기(iPhone SE/고급 Android 기준) 이하로는
-   줄이지 않고 가로 스크롤을 둔다(더 줄면 카드·테이블·채팅 입력이 깨짐). */
 body { min-width: 320px; font-family: 'Pretendard', 'Malgun Gothic', system-ui, sans-serif; background: var(--bg); color: var(--ink); }
 [hidden] { display: none !important; }
 
-/* ---------- 내비게이션 (모바일 기본: 2줄 랩 + 44px 타깃) ---------- */
 .nav { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
        gap: 4px 6px; padding: 8px 12px; background: var(--card);
        border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 30; }
@@ -76,14 +65,12 @@ body { min-width: 320px; font-family: 'Pretendard', 'Malgun Gothic', system-ui, 
 .user-chip { background: var(--tint-brand); color: var(--brand-dark); border-radius: 999px;
              padding: 6px 12px; font-size: 13px; font-weight: 600; }
 
-/* ---------- 공용 ---------- */
 .container { padding: 14px 12px 24px; }
 .muted { color: var(--muted); } .small { font-size: 13px; }
 .msg { margin-top: 12px; padding: 12px 14px; border-radius: 10px; font-size: 14px; }
 .msg.error { background: var(--tint-error); color: var(--danger); }
 .msg.ok { background: var(--tint-ok); color: var(--ok); }
 
-/* ---------- 인증 카드 ---------- */
 .auth-card { max-width: 420px; margin: 24px auto; background: var(--card);
              border: 1px solid var(--border); border-radius: 16px; padding: 26px 20px; }
 .auth-card h1 { font-size: 22px; margin-bottom: 6px; }
@@ -96,16 +83,13 @@ body { min-width: 320px; font-family: 'Pretendard', 'Malgun Gothic', system-ui, 
                     border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; }
 .auth-card button:disabled { opacity: .6; }
 
-/* ---------- 채팅 페이지 레이아웃 ----------
-   채팅 페이지는 뷰포트 전체를 채운다(네비 자동 높이 + 나머지가 채팅) —
-   calc로 네비 높이를 추정한 방식은 여백이 남거나 넘쳤다(입력창 아래 빈 공간). */
 .page-shell { display: contents; }
 body.chat-page { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 body.chat-page .page-shell.chat-layout { flex: 1; min-height: 0; }
 body.chat-page .container { height: 100%; padding: 10px 10px 8px; }
-/* 앱 페이지(채팅·기록·관리자) 네비는 ☰+브랜드만 — padding 최소화(슬림). 사용자 메뉴는 사이드바 하단으로. */
+
 body.app-page .nav { padding: 0 6px; }
-/* 사이드바 하단 사용자 메뉴(기록/관리자/테마/로그아웃) */
+
 .sidebar-foot { border-top: 1px solid var(--border); padding-top: 8px; }
 .sidebar-foot .user-chip { display: inline-block; margin-bottom: 8px; }
 .sidebar-links { display: flex; flex-direction: column; }
@@ -119,14 +103,11 @@ body.app-page .nav { padding: 0 6px; }
 
 .chat-wrap { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 
-/* 햄버거 버튼 — 사이드바(대화 메뉴) 토글 */
 .nav-left { display: flex; align-items: center; gap: 2px; }
 .menu-toggle { border: none; background: none; cursor: pointer; font-size: 22px; line-height: 1;
                min-width: 44px; min-height: 44px; padding: 0 8px; border-radius: 10px; color: var(--ink); }
 .menu-toggle:hover { background: var(--hover); }
 
-/* 사이드바 — 모바일 기본: 왼쪽 오프캔버스 드로어 (☰/백드롭/✕/Esc 닫기)
-   easing: 로그 함수처럼 빠르게 시작해 점점 느려지며 수렴하는 커브 (#139) */
 .sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
            width: min(320px, 85vw); background: var(--card); border-right: 1px solid var(--border);
            display: flex; flex-direction: column; gap: 10px; padding: 12px;
@@ -156,7 +137,7 @@ body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
 .thread-delete { border: none; background: none; color: var(--muted); font-size: 18px; line-height: 1;
                  min-width: 44px; min-height: 44px; border-radius: 10px; cursor: pointer; flex: none; }
 .thread-delete:hover { background: var(--tint-error); color: var(--danger); }
-/* 비동기 상태 — 로드 중 / 실패(다시 시도) / 빈 목록 */
+
 .thread-state { padding: 14px 8px; font-size: 14px; color: var(--muted); text-align: left; line-height: 1.5; }
 .thread-retry { margin-top: 8px; border: 1px solid var(--border); background: var(--card); color: var(--brand);
                 border-radius: 8px; padding: 8px 16px; min-height: 40px;
@@ -200,16 +181,15 @@ body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
 .counter { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px;
            font-size: 12px; color: var(--muted); }
 .input-hint { text-align: left; }
-/* 터치 디바이스 — 키보드 조합키 힌트 없음 */
+
 @media (hover: none) { .kbd-only { display: none; } }
 
-/* ---------- 로그 (모바일 기본: 카드 / 데스크톱: 테이블) ---------- */
 .logs-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 16px;
              padding: 16px 14px; }
 .logs-wrap h1 { font-size: 19px; margin-bottom: 10px; }
 .table-scroll { overflow: visible; }
 .logs-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-/* 모바일 기본 — 행을 카드로 (thead 숨김, td를 flex 배치로 재배열) */
+
 .logs-table thead { display: none; }
 .logs-table, .logs-table tbody { display: block; }
 .logs-table tr { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px;
@@ -223,7 +203,6 @@ body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
 .logs-table .q { font-weight: 600; }
 .logs-table .a { color: var(--muted); }
 
-/* ---------- 관리자 읽기 전용 조회 ---------- */
 .admin-filter { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 18px 0; }
 .admin-filter input { padding: 10px; min-height: 44px; border: 1px solid var(--border); border-radius: 8px;
                       font-size: 16px; background: var(--input-bg); color: var(--ink); }
@@ -233,9 +212,6 @@ body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
 .status-cell, .request-id { white-space: nowrap; }
 .request-id { font-family: ui-monospace, monospace; font-size: 12px; }
 
-/* ============================================================
-   데스크톱 (≥768px) — 탭 타깃 축소 불허(44px 유지), 레이아웃만 조정
-   ============================================================ */
 @media (min-width: 768px) {
   .nav { padding: 10px 24px; gap: 8px 14px; }
   .brand { font-size: 18px; }
@@ -243,19 +219,18 @@ body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
   .container:has(.admin-panel) { max-width: 1200px; }
   .auth-card { margin: 48px auto; padding: 32px; }
 
-  /* 앱 페이지(채팅·기록·관리자) — 사이드바 상시 표시(좌측 280px) + 콘텐츠 나머지. ☰로 접기 가능(저장 유지) */
+  
   .page-shell.app-layout { display: flex; align-items: stretch; }
   .page-shell.app-layout > main.container { flex: 1; min-width: 0; max-width: none; margin: 0; }
   .container:has(.admin-panel) { max-width: none; }
-  /* 채팅 — 페이지가 뷰포트 전체를 채운다(기록·관리자는 자연 높이) */
+  
   body.chat-page .page-shell.chat-layout { flex: 1; min-height: 0; }
   body.chat-page .container { height: 100%; padding: 16px 20px 12px; }
-  /* 데스크톱: 네비 더 슬림(40px) — 마우스 디바이스라 44px 타깃 유지 불필요 */
+  
   body.app-page .nav { padding: 0 10px; }
   body.app-page .brand, body.app-page .menu-toggle { min-height: 40px; }
   .side-link { min-height: 40px; }
-  /* 데스크톱 사이드바 — width 트랜지션으로 부드러운 접기/펼치기 (#139)
-     easing: cubic-bezier(.22,1,.36,1) = 빠르게 시작→점점 느려지며 수렴 (로그 함수 느낌) */
+  
   .sidebar { position: static; transform: none; width: 280px; flex: none;
              border-right: 1px solid var(--border); box-shadow: none;
              overflow: hidden;
@@ -268,7 +243,7 @@ body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
   .bubble { max-width: 78%; }
   .chat-input { gap: 10px; }
 
-  /* 로그 — 테이블 복원 */
+  
   .logs-wrap { padding: 24px; }
   .logs-wrap h1 { font-size: 20px; margin-bottom: 14px; }
   .table-scroll { overflow-x: auto; }
