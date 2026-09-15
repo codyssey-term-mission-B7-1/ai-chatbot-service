@@ -306,3 +306,15 @@ body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
   border: 0; background: none; border-radius: 7px; font-size: 13px; color: inherit; cursor: pointer;
 }
 .suggest-item.active, .suggest-item:hover { background: rgba(79, 109, 245, 0.12); }
+
+/* ── 고정 뷰포트 레이아웃(#207): 창 크기 고정, 본문만 내부 스크롤 ── */
+html { height: 100%; }
+body { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+.nav { flex: none; }
+.page-shell { display: contents; }
+.container { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.table-scroll { overflow: auto; }
+@media (min-width: 768px) {
+  .page-shell.app-layout { flex: 1 1 auto; min-height: 0; }
+  .page-shell.app-layout > main.container { min-height: 0; overflow-y: auto; }
+}
