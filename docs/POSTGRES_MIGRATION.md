@@ -55,7 +55,7 @@ Railway 배포 시에는 **앱 시작이 자동으로 `alembic upgrade head`를 
 1. SQLite를 CSV로 내보내고 Postgres로 COPY:
    ```bash
    sqlite3 /data/app.db ".mode csv" ".headers on" ".once users.csv" "SELECT id,email,password_hash,nickname,created_at FROM users;"
-   # chat_logs / admin_grants / session_revocations / password_resets 도 동일하게
+   # chat_logs / threads / admin_grants / session_revocations / password_resets / audit_events / request_logs 도 동일하게
    psql "$DATABASE_URL" -c "\copy users(id,email,password_hash,nickname,created_at) FROM 'users.csv' WITH (FORMAT csv, HEADER);"
    ```
    주의: `password_resets`는 만료된 토큰이 많을 수 있으니 전환 직후 `DELETE FROM password_resets;` 로 비우는 것이 안전하다.
