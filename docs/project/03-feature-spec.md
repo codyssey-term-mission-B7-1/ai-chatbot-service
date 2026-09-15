@@ -12,12 +12,12 @@
 |---|---|---|---|---|
 | FR-01 | 회원가입 | 이메일 정규화(공백제거·소문자)·중복 409·비밀번호 정책(§2.1)·닉네임 ≤20자(생략 시 이메일 접두어) | 04 | test_auth_flow, test_schema_edge_cases |
 | FR-02 | 로그인 | 성공 시 서명 세션 쿠키 발급, 실패 누적 잠금 429+Retry-After(5회/15분), 미가입 이메일도 더미 bcrypt로 타이밍 평탄화 | 04 | test_login_rate_limit |
-| FR-03 | 로그아웃 | 비로그인도 200, 현재 쿠키 비움 | 04 | test_auth_flow |
+| FR-03 | 로그아웃 | DELETE /api/session — 204 No Content, 현재 쿠키 비움 | 04 | test_auth_flow |
 | FR-04 | 내 정보 | GET /api/users/me — 로그인 필요, email·nickname·is_admin | 04·05 | test_auth_flow |
 | FR-05 | 비밀번호 재설정 | 이메일 요청 202(계정 존재 은닉)→토큰(해시 저장·단일 사용·30분)→완료 시 세션 전면 폐기, 요청 상한 3회/15분 | 04(확장) | test_password_reset |
 | FR-06 | 접근 제어 | API 비로그인 401, HTML 보호화면 /login 302, 관리자 아님 403 | 05 | test_pages, test_verified_gaps |
 | FR-07 | 채팅 질의응답 | POST /api/chats — 검증→문맥→AI 호출→저장→응답(§3) | 07 | test_chat_flow |
-| FR-08 | 문맥 유지 | 같은 사용자 직전 성공 Q/A N쌍(CONTEXT_TURNS 기본 5, 0~200) | 07 | test_context |
+| FR-08 | 문맥 유지 | 같은 사용자·스레드 직전 성공 Q/A N쌍(CONTEXT_TURNS 기본 5, 0~200) | 07 | test_context |
 | FR-09 | 채팅 rate limit | 사용자별 분당 상한(기본 10, 0=비활성), 초과 429+Retry-After | 07(확장) | test_chat_rate_limit |
 | FR-10 | AI 연동 | 네이토(OpenAI 호환), 전체 시간 예산 45초, 재시도 정책(§3.2) | 06 | test_ai_client, test_ai_http_budget |
 | FR-11 | 대화 저장 | question/answer/status/latency_ms/request_id 저장, UTC, 실패 시 chat_id=-1로 계약 | 08 | test_chat_flow |
@@ -25,13 +25,15 @@
 | FR-13 | 관리자 전체 조회 | 명시적 grants 부여 계정만, 필터·페이징 | 13평가 | test_admin |
 | FR-14 | 관리자 운영 | 사용자 삭제(FK CASCADE), 페퍼 재해싱 현황 API | 12(확장) | test_admin |
 | FR-15 | 관리자 부트스트랩 | scripts/manage_admin.py grant/revoke — 기본 관리자 없음 | 13평가 | 수동 운영 절차 |
-| FR-16 | 헬스체크 | /health — status·version·ai_mode(real/demo), AI 연결 검증 아님 | 03·12 | test_pages |
+| FR-16 | 헬스체크 | /health — status·version·ai_mode(real/demo), AI 연결 검증 아님; /readyz — DB/앱 준비 검증 | 03·12 | test_pages |
 | FR-17 | 입력 검증 | 빈 질문·공백 차단, 질문 ≤1000 코드포인트(MAX_QUESTION_LENGTH 서버→화면 공유) | 11 | test_validation |
 | FR-18 | 표준 로그 | 38종 이벤트 stderr 구조화, 원문·시크릿 금지, 값 이스케이프, request_id 추적 | 11 | test_logging_* |
 | FR-19 | 보안 헤더/Origin | CSP 등 보안 헤더 전 응답, 교차 출처 상태변경 403, 운영 /docs 404 | (감사#75) | test_request_guard |
 | FR-20 | 세션 수명/폐기 | 쿠키 Max-Age 24시간(환경변수 1~168), 계정별 서버 폐기(iat 비교) | (감사#74) | test_session_revocation |
 | FR-21 | 백업/복원 | backups/ 7세대·온라인 백업·무결성·해시 검증 | 12 | scripts/backup_db.sh |
 | FR-22 | 스모크 검사 | scripts/e2e_smoke.sh URL — CD 마지막 게이트 7항목 | 12 | CD 로그 |
+| FR-23 | 멀티 스레드 대화 | POST /api/threads, GET /api/threads, DELETE /api/threads/{id} — 대화 세션 분리 및 스레드별 격리 | 07(확장) | test_threads |
+| FR-24 | 관리자 통합 콘솔 | /admin 하위 5종 대시보드(통계/채팅/이벤트/네트워크/DB), 필터 자동완성, SQL 인젝션 방어 | 13(확장) | test_admin |
 
 ## 2. 상세 규칙
 
@@ -112,11 +114,11 @@
 | 선택지 | 장점 | 단점 |
 |---|---|---|
 | bcrypt | 널리 검증됨, 솔트 자동, passlib 표준 지원 | 72바이트 입력 절단 사양 |
-| **bcrypt + 페퍼(HMAC-SHA256 사전 변환)** | DB 유출 시에도 페퍼 없으면 오프라인 대조 불가, 절단 문제도 우회(먼저 HMAC 출력으로 고정 길이) | 서버 비밀(PEPPER) 운영 관리 필요 — CD Secrets 게이트로 강제 |
-| Argon2id | 최신 메모리 하드 함수 | passlib에서 별도 패키지(argon2-cffi), 검증·문서 자료 상대적으로 적음 |
+| bcrypt + 페퍼(HMAC-SHA256 사전 변환) | DB 유출 시에도 페퍼 없으면 오프라인 대조 불가, 절단 문제 우회 | 서버 비밀(PEPPER) 관리 필요 |
+| **Argon2id (argon2-cffi) + 페퍼** | OWASP 최우선 권고, 메모리 하드(GPU/ASIC 내성), 사이드채널 방어, 72바이트 절단 없음 | 연산/메모리 비용 세밀한 튜닝 필요 |
 | PBKDF2/SHA-256 | 표준 라이브러리만으로 가능 | GPU 공격에 약함 — 비밀번호 저장용으로는 설명 난처 |
 
-**최종 선택: (2)** — 이유: bcrypt의 검증된 안전성을 유지하면서 "DB만 유출되는" 현실적 시나리오에 대한 방어를 얹는다. 72바이트 절단 문제를 HMAC 고정 출력으로 자연 해결하는 점도 결정적이었다. 운영 필수값으로 CD가 32자 이상 PEPPER를 사전 검증하고, 기존 계정은 로그인 시 자동 재해싱해 마이그레이션 비용을 0으로 만들었다(PR #90).
+**최종 선택: Argon2id (레거시 bcrypt 투명 검증 및 로그인 시 점진적 업그레이드)** — 이유: 초기에는 bcrypt + HMAC 페퍼를 채택했으나, 최신 OWASP 보안 권고에 맞춰 메모리 하드 함수인 `Argon2id`로 고도화했다. 신규 가입 및 비밀번호 변경 시 Argon2id로 즉시 해싱되며, 기존 bcrypt 해시는 로그인 성공 시 투명하게 Argon2id로 무중단 재해싱(Lazy Migration)된다. 관리자 콘솔(`/admin/security/password-hashes`)에서 두 해시의 마이그레이션 현황을 실시간 집계한다(#202).
 
 ### D-12. 로그인·채팅 남용 방어 구현 위치
 

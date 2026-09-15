@@ -79,3 +79,32 @@ def test_retry_after_is_at_least_one_second():
     limiter.record("a")
     # 창이 끝나기 직전이어도 대기 시간은 최소 1초로 반올림한다.
     assert limiter.blocked_for("a") >= 1
+
+
+def test_client_ip_parses_forwarded_headers():
+    from unittest.mock import Mock
+
+    from app.services.rate_limit import client_ip
+
+    assert client_ip(None) == "unknown"
+
+    req_no_headers = Mock(headers={}, client=Mock(host="192.168.1.1"))
+    assert client_ip(req_no_headers) == "192.168.1.1"
+
+    req_xff = Mock(
+        headers={"x-forwarded-for": "203.0.113.195, 70.41.3.18, 150.172.238.178"},
+        client=Mock(host="10.0.0.1"),
+    )
+    assert client_ip(req_xff) == "203.0.113.195"
+
+    req_xreal = Mock(headers={"x-real-ip": "198.51.100.1"}, client=Mock(host="10.0.0.1"))
+    assert client_ip(req_xreal) == "198.51.100.1"
+
+
+def test_limiter_cleans_up_stale_keys_when_large():
+    limiter = SlidingWindowLimiter(10, 0.05)
+    for i in range(600):
+        limiter._events[f"key_{i}"] = [time.time() - 1.0]  # already stale
+    limiter.try_acquire("active_key")
+    # stale keys should be cleaned up
+    assert len(limiter._events) < 500
