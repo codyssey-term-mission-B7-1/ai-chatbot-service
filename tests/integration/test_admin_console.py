@@ -1,6 +1,5 @@
 """관리자 콘솔 — 대시보드·이벤트 로그·네트워크 로그·DB 브라우저(#189)."""
 
-
 from app.services.admin import grant_admin
 from tests.conftest import signup_and_login
 
