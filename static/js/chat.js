@@ -3,6 +3,7 @@ const input = document.getElementById('question');
 const window_ = document.getElementById('chat-window');
 const sendBtn = document.getElementById('send-btn');
 const counter = document.getElementById('count');
+const liveHint = document.getElementById('input-live-hint');
 const welcomeBubble = document.getElementById('welcome-bubble');
 
 const MAX_LEN = parseInt(window_.dataset.maxQuestionLength || '1000', 10);
@@ -30,10 +31,29 @@ function readInflight() {
   return null;
 }
 
+function updateLiveHint() {
+  const raw = input.value;
+  const len = FormUtils.codepointLength(raw);
+  if (len > MAX_LEN) {
+    liveHint.textContent = `상한을 ${len - MAX_LEN}자 넘었어요. ${MAX_LEN}자 이하로 줄여 주세요.`;
+    liveHint.className = 'input-live-hint error';
+  } else if (len > 0 && !raw.trim()) {
+    liveHint.textContent = '공백만으로는 보낼 수 없어요. 내용을 입력해 주세요.';
+    liveHint.className = 'input-live-hint warn';
+  } else if (len >= Math.floor(MAX_LEN * 0.9)) {
+    liveHint.textContent = `남은 글자 ${MAX_LEN - len}자`;
+    liveHint.className = 'input-live-hint warn';
+  } else {
+    liveHint.textContent = '';
+    liveHint.className = 'input-live-hint';
+  }
+}
+
 input.addEventListener('input', () => {
   input.style.height = 'auto';
   input.style.height = Math.min(input.scrollHeight, 120) + 'px';
   counter.textContent = FormUtils.codepointLength(input.value);
+  updateLiveHint();
 });
 
 input.addEventListener('keydown', (e) => {
@@ -107,6 +127,10 @@ async function send(e) {
   addBubble(question, 'user', nowTime());
   input.value = '';
   counter.textContent = '0';
+  if (liveHint) {
+    liveHint.textContent = '';
+    liveHint.className = 'input-live-hint';
+  }
   input.style.height = 'auto';
 
   const loading = addBubble('AI가 생각 중…', 'ai loading');

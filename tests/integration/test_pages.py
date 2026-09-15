@@ -80,3 +80,6 @@ def test_chat_textarea_html_guards(client):
     assert "required" in tag, "빈 입력 HTML 차단(required)이 있어야 한다"
     max_len = re.search(r'maxlength="(\d+)"', tag)
     assert max_len and int(max_len.group(1)) >= 1000, "길이 상한 maxlength가 있어야 한다"
+    assert (
+        'id="input-live-hint"' in page and 'aria-live="polite"' in page
+    ), "타이핑 실시간 도움말 요소가 있어야 한다(#198)"

@@ -126,6 +126,26 @@ async def browser_checks(base: str, output: Path, grant) -> dict:
         assert await page.locator("#count").inner_text() == "501"
         checks.append("이모지 501개를 501자로 계산")
 
+        live = page.locator("#input-live-hint")
+        assert await live.get_attribute("aria-live") == "polite"
+        await page.locator("#question").fill("   ")
+        assert "공백만" in await live.inner_text()
+        checks.append("공백만 입력 실시간 경고")
+        await page.evaluate(
+            "() => { const q = document.querySelector('#question');"
+            " q.value = '가'.repeat(901);"
+            " q.dispatchEvent(new Event('input', { bubbles: true })); }"
+        )
+        assert "남은 글자" in await live.inner_text()
+        checks.append("상한 임박 실시간 안내")
+        await page.evaluate(
+            "() => { const q = document.querySelector('#question');"
+            " q.value = '가'.repeat(1001);"
+            " q.dispatchEvent(new Event('input', { bubbles: true })); }"
+        )
+        assert "넘었어요" in await live.inner_text()
+        checks.append("상한 초과 실시간 경고")
+
         await page.locator("#question").fill("줄바꿈")
         await page.locator("#question").press("Shift+Enter")
         assert "\n" in await page.locator("#question").input_value()
