@@ -83,11 +83,15 @@ async def browser_checks(base: str, output: Path, grant) -> dict:
         await page.locator('#question').fill(' ')
         await page.locator('#send-btn').click()
         assert len(requests) == before
+        max_len = await page.locator('#question').get_attribute('maxlength')
+        assert max_len and int(max_len) >= 1000
         await page.locator('#question').fill('🙂' * 1001)
-        assert await page.locator('#count').inner_text() == '1001'
+        overflow = await page.locator('#question').input_value()
+        assert len(overflow) <= int(max_len)  # 파이썬 len == 코드포인트 수 (JS 카운터와 동일)
+        assert await page.locator('#count').inner_text() == str(len(overflow))
         await page.locator('#send-btn').click()
         assert len(requests) == before
-        checks.append('공백/1001 코드 포인트 전송 차단')
+        checks.append('공백/maxlength 초과 입력 차단')
         await page.locator('#question').fill('🙂' * 501)
         assert await page.locator('#count').inner_text() == '501'
         checks.append('이모지 501개를 501자로 계산')
