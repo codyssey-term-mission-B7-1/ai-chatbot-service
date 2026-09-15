@@ -7,7 +7,7 @@ import time
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
-from app.audit import E  # noqa: E402
+from app.audit import E
 from app.database import get_db
 from app.deps import (
     get_current_user,

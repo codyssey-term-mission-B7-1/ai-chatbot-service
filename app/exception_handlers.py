@@ -58,6 +58,10 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 
 def register(app: FastAPI) -> None:
-    """예외 핸들러를 앱에 등록한다 — main.py는 이 함수만 호출한다."""
+    """예외 핸들러를 앱에 등록한다 — main.py는 이 함수만 호출한다.
+
+    422 정규화는 라우트 층, Exception 핸들러는 요청 로깅 미들웨어보다
+    바깥층에서 발생한 오류의 최후 안전망이다(라우트 오류는 미들웨어가 1차 처리).
+    """
     app.add_exception_handler(RequestValidationError, validation_error_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
