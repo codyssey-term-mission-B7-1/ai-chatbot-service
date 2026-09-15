@@ -34,6 +34,11 @@ def test_templates_have_no_inline_event_handlers():
         "login.html",
         "logs.html",
         "admin-logs.html",
+        "admin-dashboard.html",
+        "admin-events.html",
+        "admin-network.html",
+        "admin-db.html",
+        "admin-nav.html",
         "forgot-password.html",
         "reset-password.html",
     ]:

@@ -1,20 +1,93 @@
 {% extends "base.html" %}
-{% block title %}관리자 콘솔{% endblock %}
+{% block title %}관리자 콘솔 — 대시보드{% endblock %}
 {% block body_class %}admin-page{% endblock %}
 {% block content %}
 <div class="logs-wrap admin-panel">
-  <h1>관리자 콘솔</h1>
-  {% include "admin-nav.html" %}
-  <div class="stat-cards">
-    <div class="stat-card"><span class="stat-num">{{ users }}</span><span class="stat-label">사용자</span></div>
-    <div class="stat-card"><span class="stat-num">{{ threads }}</span><span class="stat-label">대화(스레드)</span></div>
-    <div class="stat-card"><span class="stat-num">{{ chats }}</span><span class="stat-label">대화 기록</span></div>
-    <div class="stat-card"><span class="stat-num">{{ chats_success }}</span><span class="stat-label">성공 응답</span></div>
-    <div class="stat-card"><span class="stat-num">{{ chats_ai_error }}</span><span class="stat-label">AI 오류</span></div>
-    <div class="stat-card"><span class="stat-num">{{ requests_24h }}</span><span class="stat-label">최근 24h 요청</span></div>
-    <div class="stat-card"><span class="stat-num">{{ events_24h }}</span><span class="stat-label">최근 24h 이벤트</span></div>
-    <div class="stat-card"><span class="stat-num">{{ requests_total }}</span><span class="stat-label">누적 요청</span></div>
+  <div class="admin-header">
+    <div class="admin-title-row">
+      <h1>🛡️ 관리자 콘솔</h1>
+      <span class="status-badge ok">● 운영 정상 가동 중</span>
+    </div>
+    {% include "admin-nav.html" %}
   </div>
-  <p class="muted small">명시적으로 부여된 앱 관리자만 접근할 수 있습니다. 열람 행위는 감사 이벤트로 기록됩니다.</p>
+
+  <div class="stat-cards">
+    <a href="/admin/db?table=users" class="stat-card" title="사용자 테이블 조회">
+      <span class="stat-label">👥 전체 사용자</span>
+      <span class="stat-num">{{ users }}</span>
+      <span class="stat-card-foot">데이터베이스 보기 →</span>
+    </a>
+    <a href="/admin/db?table=threads" class="stat-card" title="대화 스레드 조회">
+      <span class="stat-label">🗂️ 대화(스레드)</span>
+      <span class="stat-num">{{ threads }}</span>
+      <span class="stat-card-foot">데이터베이스 보기 →</span>
+    </a>
+    <a href="/admin/logs" class="stat-card" title="채팅 로그 전체 조회">
+      <span class="stat-label">💬 전체 대화 기록</span>
+      <span class="stat-num">{{ chats }}</span>
+      <span class="stat-card-foot">채팅 로그 보기 →</span>
+    </a>
+    <a href="/admin/logs?filter=status:success" class="stat-card" title="성공한 대화 조회">
+      <span class="stat-label">✅ 성공 응답</span>
+      <span class="stat-num">{{ chats_success }}</span>
+      <span class="stat-card-foot">성공 필터링 →</span>
+    </a>
+    <a href="/admin/logs?filter=status:ai_error" class="stat-card {{ 'card-warn' if chats_ai_error > 0 else '' }}" title="AI 장애 대화 조회">
+      <span class="stat-label">⚠️ AI 응답 오류</span>
+      <span class="stat-num">{{ chats_ai_error }}</span>
+      <span class="stat-card-foot">오류 필터링 →</span>
+    </a>
+    <a href="/admin/network" class="stat-card" title="네트워크 로그 조회">
+      <span class="stat-label">📈 최근 24h 요청</span>
+      <span class="stat-num">{{ requests_24h }}</span>
+      <span class="stat-card-foot">네트워크 로그 보기 →</span>
+    </a>
+    <a href="/admin/events" class="stat-card" title="감사 이벤트 로그 조회">
+      <span class="stat-label">🧾 최근 24h 이벤트</span>
+      <span class="stat-num">{{ events_24h }}</span>
+      <span class="stat-card-foot">이벤트 로그 보기 →</span>
+    </a>
+    <a href="/admin/network" class="stat-card" title="누적 네트워크 요청">
+      <span class="stat-label">🌐 누적 요청</span>
+      <span class="stat-num">{{ requests_total }}</span>
+      <span class="stat-card-foot">네트워크 로그 보기 →</span>
+    </a>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="dashboard-panel">
+      <h2>📊 서비스 품질 요약</h2>
+      <div class="stat-card-foot">
+        {% set success_rate = ((chats_success / chats * 100) | round(1)) if chats > 0 else 100.0 %}
+        <span class="status-badge {{ 'ok' if success_rate >= 95 else 'warn' }}">AI 성공률: {{ success_rate }}%</span>
+        <span>(전체 {{ chats }}건 중 {{ chats_success }}건 성공)</span>
+      </div>
+      <p class="muted small">
+        비밀번호 해시: Argon2id (OWASP 권고 메모리 하드) + PASSWORD_PEPPER 사전 변환으로 안전하게 보호됩니다.
+        로그인 실패 잠금(429) 및 사용자별 분당 요청 한도가 프로세스 메모리 슬라이딩 윈도우로 적용 중입니다.
+      </p>
+      <div class="stat-card-foot">
+        <a href="/health" target="_blank" rel="noopener">🩺 헬스체크 (/health)</a> · 
+        <a href="/readyz" target="_blank" rel="noopener">🔍 준비성 검사 (/readyz)</a> · 
+        <a href="/api/admin/security/password-hashes" target="_blank" rel="noopener">🔐 해시 현황 API</a>
+      </div>
+    </div>
+
+    <div class="dashboard-panel">
+      <h2>⚡ 빠른 관리자 바로가기</h2>
+      <div class="quick-link-list">
+        <a href="/admin/logs" class="quick-link-item">💬 채팅 원문 로그</a>
+        <a href="/admin/events" class="quick-link-item">🧾 감사 이벤트 로그</a>
+        <a href="/admin/network" class="quick-link-item">🌐 API 네트워크 로그</a>
+        <a href="/admin/db" class="quick-link-item">🗄️ 데이터베이스</a>
+        <a href="/admin/logs?filter=status:ai_error" class="quick-link-item">⚠️ AI 오류 대화</a>
+        <a href="/admin/events?filter=event:ai_call_fail" class="quick-link-item">🚨 AI 호출 장애</a>
+        <a href="/admin/events?filter=event:user_login_fail" class="quick-link-item">🔒 로그인 실패 기록</a>
+        <a href="/admin/network?filter=status:500" class="quick-link-item">💥 500 서버 오류</a>
+      </div>
+    </div>
+  </div>
+
+  <p class="muted small" style="margin-top: 24px;">명시적으로 부여된 앱 관리자만 접근할 수 있습니다. 관리자 화면 열람 행위는 감사 이벤트(admin_*_viewed)로 기록됩니다.</p>
 </div>
 {% endblock %}
