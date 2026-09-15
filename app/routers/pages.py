@@ -13,7 +13,7 @@ from app.config import settings
 from app.database import get_db
 from app.deps import resolve_session_user
 from app.logging_config import log_event
-from app.models import User
+from app.models import Thread, User
 from app.repositories.chat_logs import list_logs
 from app.repositories.users import find_by_email
 from app.services.admin import is_admin
@@ -117,6 +117,9 @@ def logs_page(request: Request, db: Session = Depends(get_db)):
 def admin_logs_page(
     request: Request,
     email: str = Query(default="", max_length=255, description="사용자 이메일 — 정확히 일치"),
+    thread: int | None = Query(
+        default=None, gt=0, description="스레드 ID — 같은 대화끼리 묶어 본다"
+    ),
     before_id: int | None = Query(default=None, gt=0),
     reason: str = Query(default="", max_length=200, description="열람 사유 — 감사 로그에 기록"),
     db: Session = Depends(get_db),
@@ -129,10 +132,19 @@ def admin_logs_page(
     clean_email = email.strip().lower()
     target = find_by_email(db, clean_email) if clean_email else None
     user_not_found = bool(clean_email) and target is None
-    if user_not_found:
+    thread_exists = (
+        thread is None or db.query(Thread.id).filter(Thread.id == thread).first() is not None
+    )
+    if user_not_found or not thread_exists:
         rows = []
     else:
-        rows = list_logs(db, user_id=(target.id if target else None), before_id=before_id, limit=50)
+        rows = list_logs(
+            db,
+            user_id=(target.id if target else None),
+            thread_id=thread,
+            before_id=before_id,
+            limit=50,
+        )
     audit = {
         "user_id": user.id,
         "filter_email": clean_email or None,
@@ -149,6 +161,25 @@ def admin_logs_page(
         users_q = db.query(User.id, User.email, User.nickname).filter(User.id.in_(ids))
         for uid, u_email, nick in users_q:
             user_infos[uid] = {"email": u_email, "nickname": nick}
+    # 스레드 콤보 옵션: 이메일 필터면 그 사용자의 스레드, 아니면 화면의 스레드들
+    if target is not None:
+        thread_rows = (
+            db.query(Thread.id, Thread.title).filter(Thread.user_id == target.id).limit(50).all()
+        )
+    else:
+        log_thread_ids = {row.thread_id for row in rows if row.thread_id is not None}
+        thread_rows = (
+            db.query(Thread.id, Thread.title).filter(Thread.id.in_(log_thread_ids)).all()
+            if log_thread_ids
+            else []
+        )
+    thread_options = [
+        {
+            "id": tid,
+            "label": f"#{tid} · {title or '기본 대화'}",
+        }
+        for tid, title in sorted(thread_rows)
+    ]
     return templates.TemplateResponse(
         request,
         "admin-logs.html",
@@ -159,6 +190,8 @@ def admin_logs_page(
             "user_not_found": user_not_found,
             "user_infos": user_infos,
             "filter_reason": cleaned_reason,
+            "filter_thread": thread,
+            "thread_options": thread_options,
             "next_before_id": rows[-1].id if len(rows) == 50 else None,
         },
     )
