@@ -247,3 +247,18 @@ def test_sidebar_hamburger_contract():
     # 다른 페이지에서 새 채팅 — 방금 만든 대화가 ?thread=로 열림(기본 대화로 복귀 금지)
     nt_start = sidebar_js.index("async function newThread")
     assert "/?thread=" in sidebar_js[nt_start : nt_start + 1200]
+
+
+def test_layout_locked_viewport():
+    """창 크기 고정 + 본문(사이드바 제외) 내부 스크롤 계약(#207) — CSS 회귀 잠금."""
+    css = Path("static/css/style.css").read_text()
+    body_rule = (
+        "body { height: 100vh; height: 100dvh; display: flex;"
+        " flex-direction: column; overflow: hidden; }"
+    )
+    assert body_rule in css, "본문이 항상 창 크기로 고정되어야 한다"
+    assert (
+        ".container { flex: 1 1 auto; min-height: 0; overflow-y: auto; }" in css
+    ), "본문 컨테이너가 내부 스크롤을 가져야 한다"
+    assert ".page-shell.app-layout > main.container { min-height: 0; overflow-y: auto; }" in css
+    assert ".table-scroll { overflow: auto; }" in css, "넓은 표도 본문 안에서 스크롤되어야 한다"
