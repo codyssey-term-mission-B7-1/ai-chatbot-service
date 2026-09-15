@@ -9,7 +9,7 @@
 - 응답의 `X-Request-ID`는 앱 표준 이벤트·저장된 대화와 연결된다.
 - 질문·비밀번호 문자 수는 Unicode 코드 포인트 기준. 비밀번호는 UTF-8 72바이트 제한도 적용한다.
 - 비밀번호는 공백만으로 구성될 수 없다(스페이스/개행/탭만 입력하면 422).
-- 비밀번호 저장은 페퍼(HMAC-SHA256, PASSWORD_PEPPER) + bcrypt(비밀번호별 무작위 솔트) 구조다.
+- 비밀번호 저장은 페퍼(HMAC-SHA256, PASSWORD_PEPPER) + Argon2id(신규 가입·재설정 기본, 레거시 bcrypt 투명 호환 및 로그인 시 점진적 업그레이드) 구조다.
 - 모든 시각 응답은 UTC `Z` 형식이다. SQLite가 tzinfo를 보존하지 않아도 UTC 계약을 적용해 직렬화한다.
 
 모든 상태 변경 요청(POST 등)은 `Origin` 헤더의 출처가 서버 호스트와 다르면 403으로 차단된다(#75). 같은 출처 브라우저 요청과 Origin을 보내지 않는 curl/스모크 클라이언트는 통과한다. `/docs`·`/redoc`·`/openapi.json`은 `DOCS_ENABLED=false`면 404다(운영 기본).

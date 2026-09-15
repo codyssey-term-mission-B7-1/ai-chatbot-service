@@ -68,6 +68,20 @@ python scripts/manage_admin.py revoke --email operator@example.com
 - 응답: `{ "items": [...], "next_before_id": 51 }`. 마지막 페이지가 정확히 limit개이면 다음 페이지가 비어 있을 수도 있다.
 - 일반 `/api/users/me/chats`는 관리자로 로그인해도 본인 기록만 반환한다.
 
+### 관리자 REST API 명세
+
+| 엔드포인트 | 메서드 | 설명 | 주요 쿼리/바디 파라미터 |
+|---|---|---|---|
+| `/api/admin/stats` | `GET` | 대시보드 메트릭 집계 | (없음) |
+| `/api/admin/chats` | `GET` | 전체 채팅 로그 조회 | `user_id`, `thread_id`, `status`, `search`, `before_id`, `limit` |
+| `/api/admin/events` | `GET` | 감사 이벤트 목록 | `event_type`, `user_id`, `search`, `before_id`, `limit` |
+| `/api/admin/network` | `GET` | HTTP 네트워크 로그 | `path`, `method`, `status`, `user_id`, `before_id`, `limit` |
+| `/api/admin/db/tables` | `GET` | 화이트리스트 테이블 목록 및 행 수 | (없음) |
+| `/api/admin/db/tables/{name}/rows` | `GET` | 특정 테이블 레코드 미리보기 | `limit`, `offset` |
+| `/api/admin/security/password-hashes` | `GET` | argon2id / sha256 해시 분포 | (없음) |
+| `/api/admin/users/{user_id}` | `DELETE` | 사용자 계정 및 연관 데이터 삭제 | (자신 및 타 관리자는 삭제 불가) |
+| `/api/admin/suggest` | `GET` | 필터 입력 자동완성 추천 | `field`, `q` |
+
 대화 원문에는 개인정보가 있을 수 있다. 화면 접근 자체를 `admin_logs_viewed`로 기록하지만 이 이벤트에는 질문·응답 원문을 넣지 않는다. 증빙을 공유할 때는 실제 개인정보·쿠키·키를 제거한다.
 
 ## 검증 범위

@@ -12,6 +12,11 @@ from app.policies import DEFAULT_PAGE_SIZE, MAX_LOG_PAGE_SIZE
 from app.services.security import is_peppered_hash
 
 
+def _escape_like(value: str) -> str:
+    """LIKE 와일드카드를 문자 그대로 취급하게 이스케이프한다(인젝션 방어)."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def get_admin_dashboard_counts(db: Session, horizon: datetime) -> dict:
     """사용자·스레드·대화·성공률·최근 24시간 요청 수를 집계한다."""
     return {
@@ -43,7 +48,7 @@ def list_audit_events(
     if user_id:
         query = query.filter(AuditEvent.user_id == user_id)
     if search:
-        query = query.filter(AuditEvent.fields_json.ilike(f"%{search}%"))
+        query = query.filter(AuditEvent.fields_json.ilike(f"%{_escape_like(search)}%", escape="\\"))
     if before_id:
         query = query.filter(AuditEvent.id < before_id)
     return query.order_by(AuditEvent.id.desc()).limit(effective_limit).all()
@@ -65,7 +70,7 @@ def list_request_logs(
     if status_:
         query = query.filter(RequestLog.status == status_)
     if path:
-        query = query.filter(RequestLog.path.ilike(f"%{path}%"))
+        query = query.filter(RequestLog.path.ilike(f"%{_escape_like(path)}%", escape="\\"))
     if method:
         query = query.filter(RequestLog.method == method.upper())
     if user_id:
@@ -126,7 +131,7 @@ def count_password_hashes(db: Session) -> tuple[int, int, int]:
 
 def find_user_by_email_substring(db: Session, email_pattern: str) -> User | None:
     """이메일 부분일치로 사용자를 검색한다."""
-    escaped = email_pattern.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    escaped = _escape_like(email_pattern)
     return (
         db.query(User)
         .filter(User.email.ilike(f"%{escaped}%", escape="\\"))
