@@ -152,7 +152,7 @@
 - **기본 대화** = 가장 오래된(id 최소) 스레드. `thread_id` 미전달 채팅은 `resolve_default_thread`로 해제되며, **없으면 '기본 대화'로 생성하고 thread_id=NULL인 레거시 기록을 이 스레드에 레이지 백필**한다(운영은 마이그레이션이 이미 백필 → 0행 갱신).
 - **문맥 경계**: `successful_context`는 **스레드 단위**(스레드 내 직전 N개 성공 Q/A). "보인 것 = AI가 본 것" 불변식은 스레드 안에 유지 — UI 복원도 같은 `thread_id` 필터.
 - **제목**: 기본 대화는 고정 '기본 대화'. 그 외 스레드는 첫 질문에서 자동 생성(공백 압축, 코드포인트 20자 — policies 상수). 이후 제목은 불변.
-- **삭제**: `DELETE /api/threads/{id}` — 그 스레드의 기록도 CASCADE로 함께 삭제(개인정보 자기결정권, MEMORY_ROADMAP 공통 과제 "사용자가 지울 수 있다"의 첫 수단). 남의 스레드는 404.
+- **삭제**: `DELETE /api/thread/{id}` — 그 스레드의 기록도 CASCADE로 함께 삭제(개인정보 자기결정권, MEMORY_ROADMAP 공통 과제 "사용자가 지울 수 있다"의 첫 수단). 남의 스레드는 404.
 - **상한**: 사용자당 `MAX_THREADS_PER_USER`(기본 100) — 초과 409.
 - **오류**: 타인·부존재 `thread_id` 채팅은 **AI 호출 전** 404(비용 방어 + 타인 대화 존재 은닉 — 존재 여부를 404/403으로 노출하지 않음).
 - **로깅**: `thread_created`/`thread_deleted` 이벤트 등록, `ai_call_start`에 `thread_id` 필드(LOGGING.md 30종).

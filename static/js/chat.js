@@ -174,7 +174,7 @@ async function loadHistory() {
   let logs;
   try {
     const url = currentThreadId
-      ? `/api/users/me/chats?status=success&limit=${HISTORY_TURNS}&thread_id=${currentThreadId}`
+      ? `/api/thread/${currentThreadId}/chats?status=success&limit=${HISTORY_TURNS}`
       : `/api/users/me/chats?status=success&limit=${HISTORY_TURNS}`;
     const res = await fetch(url);
     if (res.status === 401) {
@@ -211,9 +211,11 @@ async function restoreInflight() {
   const pendingThread = inflight.threadId ?? currentThreadId;
   if (pendingThread !== currentThreadId) return;
 
-  const threadQ = currentThreadId != null ? `&thread_id=${currentThreadId}` : '';
   const findSaved = async () => {
-    const res = await fetch(`/api/users/me/chats?limit=5${threadQ}`);
+    const url = currentThreadId != null
+      ? `/api/thread/${currentThreadId}/chats?limit=5`
+      : '/api/users/me/chats?limit=5';
+    const res = await fetch(url);
     if (res.status === 401) { location.href = '/login'; return null; }
     if (!res.ok) return undefined;
     return res.json();

@@ -26,7 +26,7 @@
   async function loadThreads() {
     let res;
     try {
-      res = await fetch('/api/threads');
+      res = await fetch('/api/thread/list');
     } catch {
       if (!threadsLoaded) threadsLoadError = true;
       renderThreadList();
@@ -112,7 +112,7 @@
   async function newThread() {
     let res;
     try {
-      res = await fetch('/api/threads', { method: 'POST' });
+      res = await fetch('/api/thread', { method: 'POST' });
     } catch {
       if (hooks.error) hooks.error('네트워크 오류예요. 연결을 확인하고 다시 시도해 주세요.');
       return;
@@ -137,7 +137,7 @@
     if (!confirm('이 대화와 그 기록을 삭제할까요? 되돌릴 수 없어요.')) return;
     let res;
     try {
-      res = await fetch('/api/threads/' + id, { method: 'DELETE' });
+      res = await fetch('/api/thread/' + id, { method: 'DELETE' });
     } catch {
       if (hooks.error) hooks.error('네트워크 오류예요. 연결을 확인하고 다시 시도해 주세요.');
       return;
