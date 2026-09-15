@@ -54,3 +54,13 @@ def test_load_settings_bootstraps_a_secret_in_debug(monkeypatch):
     monkeypatch.setenv("SESSION_SECRET", "change-me-to-random-string")
     monkeypatch.setenv("DEBUG", "true")
     assert len(load_settings().session_secret) >= MIN_SECRET_LEN
+
+
+def test_operational_settings_defaults():
+    """운영 튜닝 파라미터가 Settings에 정상 반영되고 기본값을 유지하는지 확인."""
+    from app.policies import ADMIN_LOG_KEEP_ROWS, DEFAULT_PAGE_SIZE, RATE_WINDOW_SECONDS
+
+    s = Settings()
+    assert s.rate_window_seconds == RATE_WINDOW_SECONDS
+    assert s.admin_log_keep_rows == ADMIN_LOG_KEEP_ROWS
+    assert s.default_page_size == DEFAULT_PAGE_SIZE

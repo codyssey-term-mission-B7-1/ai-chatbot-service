@@ -7,7 +7,14 @@ from functools import lru_cache
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.policies import MAX_CONTEXT_TURNS, QUESTION_ABS_MAX_CHARS
+from app.policies import (
+    ADMIN_LOG_KEEP_ROWS,
+    DEFAULT_PAGE_SIZE,
+    MAX_CONTEXT_TURNS,
+    MAX_LOG_PAGE_SIZE,
+    QUESTION_ABS_MAX_CHARS,
+    RATE_WINDOW_SECONDS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -94,10 +101,14 @@ class Settings(BaseSettings):
     login_lockout_sec: float = Field(default=900, gt=0)
 
     chat_rate_per_min: int = Field(default=10, ge=0)
+    rate_window_seconds: float = Field(default=RATE_WINDOW_SECONDS, gt=0)
 
     signup_rate_per_ip_per_min: int = Field(default=5, ge=0)
 
     password_reset_rate_per_ip_per_min: int = Field(default=5, ge=0)
+
+    default_page_size: int = Field(default=DEFAULT_PAGE_SIZE, ge=1, le=MAX_LOG_PAGE_SIZE)
+    admin_log_keep_rows: int = Field(default=ADMIN_LOG_KEEP_ROWS, ge=100)
 
     smtp_host: str = ""
     smtp_port: int = Field(default=587, ge=1, le=65535)

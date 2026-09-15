@@ -6,7 +6,6 @@ import time
 from collections import deque
 
 from app.config import settings
-from app.policies import RATE_WINDOW_SECONDS
 
 
 class SlidingWindowLimiter:
@@ -83,12 +82,14 @@ class SlidingWindowLimiter:
 
 login_limiter = SlidingWindowLimiter(settings.login_max_fails, settings.login_lockout_sec)
 
-chat_limiter = SlidingWindowLimiter(settings.chat_rate_per_min, RATE_WINDOW_SECONDS)
+chat_limiter = SlidingWindowLimiter(settings.chat_rate_per_min, settings.rate_window_seconds)
 
-signup_ip_limiter = SlidingWindowLimiter(settings.signup_rate_per_ip_per_min, RATE_WINDOW_SECONDS)
+signup_ip_limiter = SlidingWindowLimiter(
+    settings.signup_rate_per_ip_per_min, settings.rate_window_seconds
+)
 
 password_reset_ip_limiter = SlidingWindowLimiter(
-    settings.password_reset_rate_per_ip_per_min, RATE_WINDOW_SECONDS
+    settings.password_reset_rate_per_ip_per_min, settings.rate_window_seconds
 )
 
 
