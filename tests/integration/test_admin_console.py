@@ -112,7 +112,7 @@ def test_admin_logs_filter_is_native_form(client, db, fake_ai):
     thread_select = re.search(r'<select id="admin-thread"[^>]*>', page).group(0)
     assert 'name="email"' in email_input, "이메일 필터가 네이티브 제출 가능해야 한다"
     assert 'name="thread"' in thread_select, "스레드 필터가 네이티브 제출 가능해야 한다"
-    assert 'admin-logs.js' not in page, "JS 리다이렉트 없이 폼이 스스로 제출해야 한다"
+    assert "admin-logs.js" not in page, "JS 리다이렉트 없이 폼이 스스로 제출해야 한다"
 
 
 def test_admin_logs_pagination_with_full_page(client, db, fake_ai):
