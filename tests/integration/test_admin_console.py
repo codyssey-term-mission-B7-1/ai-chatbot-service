@@ -178,3 +178,39 @@ def test_network_filter_query(client, db, fake_ai):
     # status 결합 — 성공한 채팅 요청만
     page = client.get("/admin/network", params={"filter": "path:/api/chats status:201"})
     assert page.status_code == 200
+
+
+def test_admin_console_ui_improvements_render(client, db):
+    """관리자 콘솔 UI 개선 요소 렌더링 확인 (통일된 탭 네비, 빠른 필터 칩, 요약 패널)."""
+    signup_and_login(client, "admin_ui@example.com")
+    grant_admin(db, "admin_ui@example.com")
+
+    dash = client.get("/admin")
+    assert dash.status_code == 200
+    assert "서비스 품질 요약" in dash.text
+    assert "빠른 관리자 바로가기" in dash.text
+
+    logs = client.get("/admin/logs")
+    assert logs.status_code == 200
+    assert "filter-chips" in logs.text
+    assert "filter-chip" in logs.text
+
+    events = client.get("/admin/events")
+    assert events.status_code == 200
+    assert "filter-chips" in events.text
+    assert "ai_call_fail" in events.text
+
+    network = client.get("/admin/network")
+    assert network.status_code == 200
+    assert "filter-chips" in network.text
+    assert "status:500" in network.text
+
+
+def test_sidebar_flicker_prevention_script_contract():
+    """사이드바 깜빡임 방지: theme-init.js에 sidebar-collapsed 사전 적용 계약이 있어야 한다."""
+    from pathlib import Path
+
+    theme_init = (Path(__file__).resolve().parents[2] / "static/js/theme-init.js").read_text()
+    assert "sidebar-collapsed" in theme_init
+    assert "no-nav-transition" in theme_init
+    assert "localStorage.getItem" in theme_init

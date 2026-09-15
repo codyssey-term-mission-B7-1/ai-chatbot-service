@@ -52,4 +52,19 @@
     box.addEventListener('input', render);
     render();
   });
+
+  document.querySelectorAll('.filter-chip').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var q = chip.getAttribute('data-query');
+      if (!q) return;
+      var form = chip.closest('form');
+      var box = form ? form.querySelector('.filter-query') : document.querySelector('.filter-query');
+      if (box) {
+        box.value = q;
+        box.dispatchEvent(new Event('input', { bubbles: true }));
+        box.focus();
+        if (form) form.submit();
+      }
+    });
+  });
 })();
