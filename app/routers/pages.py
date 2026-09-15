@@ -8,16 +8,17 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.audit import ALL_EVENTS, E
+from app.audit import E
 from app.config import settings
 from app.database import get_db
 from app.deps import resolve_session_user
 from app.logging_config import log_event
-from app.models import RequestLog, Thread, User
+from app.models import Thread, User
 from app.repositories.chat_logs import list_logs
 from app.repositories.users import find_by_email
 from app.routers.admin import all_events, all_requests, db_table_rows, db_tables, stats
 from app.services.admin import is_admin
+from app.services.filter_query import parse_filter
 from app.services.password_reset import is_reset_token_valid
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
@@ -114,9 +115,13 @@ def logs_page(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "logs.html", {**_context(db, user), "logs": rows})
 
 
+LOG_FILTER_KEYS = {"email", "thread", "status", "q"}
+
+
 @router.get("/admin/logs")
 def admin_logs_page(
     request: Request,
+    filter_query: str = Query(default="", max_length=200, alias="filter"),
     email: str = Query(default="", max_length=255, description="사용자 이메일 — 정확히 일치"),
     thread: int | None = Query(
         default=None, gt=0, description="스레드 ID — 같은 대화끼리 묶어 본다"
@@ -130,7 +135,12 @@ def admin_logs_page(
         return RedirectResponse("/login", status_code=302)
     if not is_admin(db, user):
         raise HTTPException(status_code=403, detail="관리자 권한이 필요한 기능이에요.")
-    clean_email = email.strip().lower()
+    fq = parse_filter(filter_query, LOG_FILTER_KEYS)
+    clean_email = (fq.get("email") or email).strip().lower()
+    thread = fq.int_or("thread", thread)
+    log_status = fq.get("status")
+    if log_status not in (None, "success", "ai_error"):
+        log_status = None
     target = find_by_email(db, clean_email) if clean_email else None
     user_not_found = bool(clean_email) and target is None
     thread_exists = (
@@ -143,6 +153,8 @@ def admin_logs_page(
             db,
             user_id=(target.id if target else None),
             thread_id=thread,
+            status=log_status,
+            search=fq.search,
             before_id=before_id,
             limit=50,
         )
@@ -192,6 +204,9 @@ def admin_logs_page(
             "user_infos": user_infos,
             "filter_reason": cleaned_reason,
             "filter_thread": thread,
+            "filter_query": filter_query,
+            "filter_errors": fq.errors,
+            "filter_keys": "email,thread,status,q",
             "thread_options": thread_options,
             "next_before_id": rows[-1].id if len(rows) == 50 else None,
             "admin_section": "logs",
@@ -223,9 +238,13 @@ def admin_dashboard_page(request: Request, db: Session = Depends(get_db)):
     )
 
 
+EVENT_FILTER_KEYS = {"event", "user", "q"}
+
+
 @router.get("/admin/events")
 def admin_events_page(
     request: Request,
+    filter_query: str = Query(default="", max_length=200, alias="filter"),
     event: str = Query(default="", max_length=64),
     before_id: int | None = Query(default=None, gt=0),
     db: Session = Depends(get_db),
@@ -233,32 +252,38 @@ def admin_events_page(
     user, redirect = _admin_gate(request, db)
     if redirect:
         return redirect
+    fq = parse_filter(filter_query, EVENT_FILTER_KEYS)
     page = all_events(
         user=user,
         db=db,
-        event=event.strip() or None,
+        event=fq.get("event", event.strip()) or None,
+        user_id=fq.int_or("user"),
+        search=fq.search,
         before_id=before_id,
         limit=50,
     )
-    # 드롭다운은 카탈로그 전체 — 현재 페이지에 없는 이벤트(ai_call_fail 등)도 선택 가능
-    event_names = sorted(ALL_EVENTS)
     return templates.TemplateResponse(
         request,
         "admin-events.html",
         {
             **_context(db, user),
             "events": page.items,
-            "event_names": event_names,
-            "filter_event": event.strip(),
+            "filter_query": filter_query,
+            "filter_errors": fq.errors,
+            "filter_keys": "event,user,q",
             "next_before_id": page.next_before_id,
             "admin_section": "events",
         },
     )
 
 
+NETWORK_FILTER_KEYS = {"path", "method", "status", "user"}
+
+
 @router.get("/admin/network")
 def admin_network_page(
     request: Request,
+    filter_query: str = Query(default="", max_length=200, alias="filter"),
     status: int | None = Query(default=None, gt=0),
     before_id: int | None = Query(default=None, gt=0),
     db: Session = Depends(get_db),
@@ -266,27 +291,39 @@ def admin_network_page(
     user, redirect = _admin_gate(request, db)
     if redirect:
         return redirect
-    page = all_requests(user=user, db=db, status_=status, before_id=before_id, limit=50)
-    statuses = [
-        row[0] for row in db.query(RequestLog.status).distinct().order_by(RequestLog.status).all()
-    ]
+    fq = parse_filter(filter_query, NETWORK_FILTER_KEYS)
+    page = all_requests(
+        user=user,
+        db=db,
+        status_=fq.int_or("status", status),
+        path=fq.get("path"),
+        method=fq.get("method"),
+        user_id=fq.int_or("user"),
+        before_id=before_id,
+        limit=50,
+    )
     return templates.TemplateResponse(
         request,
         "admin-network.html",
         {
             **_context(db, user),
             "requests": page.items,
-            "statuses": statuses,
-            "filter_status": status,
+            "filter_query": filter_query,
+            "filter_errors": fq.errors,
+            "filter_keys": "path,method,status,user",
             "next_before_id": page.next_before_id,
             "admin_section": "network",
         },
     )
 
 
+DB_FILTER_KEYS = {"table"}
+
+
 @router.get("/admin/db")
 def admin_db_page(
     request: Request,
+    filter_query: str = Query(default="", max_length=200, alias="filter"),
     table: str = Query(default="", max_length=64),
     before_id: int | None = Query(default=None, gt=0),
     db: Session = Depends(get_db),
@@ -294,8 +331,9 @@ def admin_db_page(
     user, redirect = _admin_gate(request, db)
     if redirect:
         return redirect
+    fq = parse_filter(filter_query, DB_FILTER_KEYS)
     tables = db_tables(user=user, db=db)
-    clean_name = table.strip()
+    clean_name = (fq.get("table") or table).strip()
     rows_page = None
     not_found = False
     if clean_name:
@@ -312,6 +350,9 @@ def admin_db_page(
             **_context(db, user),
             "tables": tables,
             "current_table": clean_name,
+            "filter_query": filter_query,
+            "filter_errors": fq.errors,
+            "filter_keys": "table",
             "rows_page": rows_page,
             "table_not_found": not_found,
             "next_before_id": rows_page.next_before_id if rows_page else None,
