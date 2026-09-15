@@ -6,6 +6,7 @@ N=3/5/10에서 프롬프트 크기와 문맥 커버리지가 어떻게 달라지
 
 실행: python scripts/experiment_context_turns.py
 """
+
 import logging
 import os
 import sys
@@ -26,9 +27,8 @@ from app.database import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.services.ai_client import get_ai_provider  # noqa: E402
 
-
-TOTAL_TURNS = 12          # 실험용으로 쌓는 대화 턴 수
-ANSWER_LENGTH = 300       # 실험 가정값(문자). 실제 토큰 수·답변 품질·요금은 측정하지 않는다.
+TOTAL_TURNS = 12  # 실험용으로 쌓는 대화 턴 수
+ANSWER_LENGTH = 300  # 실험 가정값(문자). 실제 토큰 수·답변 품질·요금은 측정하지 않는다.
 CANDIDATES = [3, 5, 10]
 
 
@@ -68,10 +68,8 @@ def measure(n: int) -> dict:
 
     try:
         with TestClient(app, base_url="https://testserver") as c:
-            c.post("/api/users", json={"email": f"exp{n}@example.com",
-                                             "password": "Test1234!"})
-            c.post("/api/session", json={"email": f"exp{n}@example.com",
-                                            "password": "Test1234!"})
+            c.post("/api/users", json={"email": f"exp{n}@example.com", "password": "Test1234!"})
+            c.post("/api/session", json={"email": f"exp{n}@example.com", "password": "Test1234!"})
             for i in range(1, TOTAL_TURNS + 1):
                 c.post("/api/chats", json={"question": f"{i}번째 질문입니다"})
     finally:
@@ -98,10 +96,14 @@ def main() -> None:
     original = settings.context_turns
     old_log_disable = logging.root.manager.disable
     logging.disable(logging.INFO)
-    print(f"LOCAL/FAKE 실험: {TOTAL_TURNS}번째 요청의 프롬프트 측정 "
-          f"(답변 길이 {ANSWER_LENGTH}자 가정)\n")
-    header = (f"{'N':>3}  {'메시지 수':>9}  {'과거 Q/A':>8}  "
-              f"{'프롬프트 문자':>13}  {'가장 오래된 턴':>14}")
+    print(
+        f"LOCAL/FAKE 실험: {TOTAL_TURNS}번째 요청의 프롬프트 측정 "
+        f"(답변 길이 {ANSWER_LENGTH}자 가정)\n"
+    )
+    header = (
+        f"{'N':>3}  {'메시지 수':>9}  {'과거 Q/A':>8}  "
+        f"{'프롬프트 문자':>13}  {'가장 오래된 턴':>14}"
+    )
     print(header)
     print("-" * len(header))
     rows = []
@@ -109,8 +111,10 @@ def main() -> None:
         for n in CANDIDATES:
             r = measure(n)
             rows.append(r)
-            print(f"{r['n']:>3}  {r['messages']:>9}  {r['past_pairs']:>8}  "
-                  f"{r['chars']:>13,}  {r['oldest_turn']:>14}번째")
+            print(
+                f"{r['n']:>3}  {r['messages']:>9}  {r['past_pairs']:>8}  "
+                f"{r['chars']:>13,}  {r['oldest_turn']:>14}번째"
+            )
     finally:
         settings.context_turns = original
         logging.disable(old_log_disable)
@@ -118,8 +122,10 @@ def main() -> None:
     base = rows[0]["chars"]
     print()
     for r in rows:
-        print(f"  N={r['n']:>2}: 프롬프트 {r['chars']:,}자 (N=3 대비 {r['chars'] / base:.1f}배), "
-              f"직전 {r['past_pairs']}턴까지 기억")
+        print(
+            f"  N={r['n']:>2}: 프롬프트 {r['chars']:,}자 (N=3 대비 {r['chars'] / base:.1f}배), "
+            f"직전 {r['past_pairs']}턴까지 기억"
+        )
 
 
 if __name__ == "__main__":

@@ -66,3 +66,17 @@ def test_signup_page_discloses_admin_review_login_does_not(client):
     assert "관리자가 대화 내용을 열람할 수 있어요" in signup
     assert "감사 로그로 남습니다" in signup
     assert "관리자가 대화 내용을 열람" not in login  # 로그인 화면은 고지 아님
+
+
+def test_chat_textarea_html_guards(client):
+    """HTML 계층 방어 — 빈 입력(required)·길이 상한(maxlength)이 폼 속성으로 존재해야 한다(#192)."""
+    import re
+
+    signup_and_login(client)
+    page = client.get("/").text
+    match = re.search(r'<textarea id="question"[^>]*>', page)
+    assert match, "질문 textarea가 렌더되어야 한다"
+    tag = match.group(0)
+    assert "required" in tag, "빈 입력 HTML 차단(required)이 있어야 한다"
+    max_len = re.search(r'maxlength="(\d+)"', tag)
+    assert max_len and int(max_len.group(1)) >= 1000, "길이 상한 maxlength가 있어야 한다"

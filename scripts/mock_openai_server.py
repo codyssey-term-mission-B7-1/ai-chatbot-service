@@ -15,6 +15,7 @@
   - "방금"   → 직전 질문을 인용하는 문맥 응답
   - 그 외    → 일반 응답 (컨텍스트 반영 개수 표시)
 """
+
 import asyncio
 import time
 import uuid
@@ -62,7 +63,11 @@ async def chat_completions(payload: dict):
         "created": int(time.time()),
         "model": model,
         "choices": [
-            {"index": 0, "message": {"role": "assistant", "content": content}, "finish_reason": "stop"}
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": content},
+                "finish_reason": "stop",
+            }
         ],
         "usage": {"prompt_tokens": 12, "completion_tokens": 34, "total_tokens": 46},
     }
