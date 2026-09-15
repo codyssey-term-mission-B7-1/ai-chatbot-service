@@ -8,6 +8,11 @@ from app.models import ChatLog
 from app.policies import DEFAULT_PAGE_SIZE, MAX_LOG_PAGE_SIZE
 
 
+def _escape_like(value: str) -> str:
+    """LIKE 와일드카드를 문자 그대로 취급하게 이스케이프한다(인젝션 및 풀스캔 DoS 방어)."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def list_logs(
     db: Session,
     *,
@@ -26,8 +31,13 @@ def list_logs(
     if thread_id is not None:
         query = query.filter(ChatLog.thread_id == thread_id)
     if search:
-        like = f"%{search}%"
-        query = query.filter(or_(ChatLog.question.ilike(like), ChatLog.answer.ilike(like)))
+        like = f"%{_escape_like(search)}%"
+        query = query.filter(
+            or_(
+                ChatLog.question.ilike(like, escape="\\"),
+                ChatLog.answer.ilike(like, escape="\\"),
+            )
+        )
     if before_id is not None:
         query = query.filter(ChatLog.id < before_id)
     return query.order_by(ChatLog.id.desc()).limit(max(1, min(limit, MAX_LOG_PAGE_SIZE))).all()

@@ -7,15 +7,32 @@
 | `GET /` | 302 → `/login` | 200 | 200 |
 | `GET /logs` | 302 → `/login` | 200, 본인 기록 | 200, 본인 기록 |
 | `GET /login`, `/signup` | 200 | 302 → `/` | 302 → `/` |
-| `POST /api/users` | 201 / 검증 422 / 중복 409 | 동일 | 동일 |
+| `GET /forgot-password`, `/reset-password` | 200 | 302 → `/` | 302 → `/` |
+| `POST /api/users` | 201 / 검증 422 / 중복 409 / IP제한 429 | 동일 | 동일 |
 | `POST /api/session` | 성공 201 + 쿠키 / 실패 401 / 반복 실패 잠금 429 | 동일 | 동일 |
 | `DELETE /api/session` | 204 | 204 + 현재 쿠키 비움 | 동일 |
 | `GET /api/users/me` | 401 | 200 | 200 |
+| `POST /api/password-resets` | 202 (계정 은닉) / IP제한 429 / SMTP미설정 503 | 동일 | 동일 |
+| `POST /api/password-resets/{token}` | 200 / 만료·무효 400 | 동일 | 동일 |
 | `POST /api/chats` | 401 | 201(저장 성공)·200(저장 실패, chat_id=-1) / 422 / 429 / 502 / 504 | 동일 |
+| `POST /api/threads` (및 `/api/thread`) | 401 | 201 / 상한 409 | 201 / 상한 409 |
+| `GET /api/threads` (및 `/api/thread/list`) | 401 | 200 (내 대화 목록) | 200 (내 대화 목록) |
+| `GET /api/threads/{id}` (및 `/api/thread/{id}`) | 401 | 200 / 타인·부존재 404 | 200 / 타인·부존재 404 |
+| `DELETE /api/threads/{id}` (및 `/api/thread/{id}`) | 401 | 204 / 타인·부존재 404 | 204 / 타인·부존재 404 |
+| `GET /api/threads/{id}/chats` (및 `/api/thread/{id}/chats`) | 401 | 200 / 타인·부존재 404 | 200 / 타인·부존재 404 |
 | `GET /api/users/me/chats` | 401 | 200, 본인 기록만 | 200, 본인 기록만 |
+| `GET /admin`, `/admin/logs`, `/admin/events`, `/admin/network`, `/admin/db` | 302 → `/login` | 403 | 200 (콘솔 화면) |
 | `GET /api/admin/chats` | 401 | 403 | 200, 전체/필터 조회 |
-| `GET /admin/logs` | 302 → `/login` | 403 | 200 |
+| `GET /api/admin/stats` | 401 | 403 | 200, 대시보드 통계 |
+| `GET /api/admin/events` | 401 | 403 | 200, 감사 이벤트 조회 |
+| `GET /api/admin/network` | 401 | 403 | 200, 네트워크 로그 조회 |
+| `GET /api/admin/db/tables` | 401 | 403 | 200, DB 테이블 목록 |
+| `GET /api/admin/db/tables/{name}/rows` | 401 | 403 | 200 / 미지 테이블 404 |
+| `GET /api/admin/security/password-hashes` | 401 | 403 | 200, 해시 마이그레이션 현황 |
+| `DELETE /api/admin/users/{id}` | 401 | 403 | 200 / 자기자신·타관리자 400 / 404 |
+| `GET /api/admin/suggest` | 401 | 403 | 200 / 미지원 필드 400 |
 | `GET /health` | 200 | 200 | 200 |
+| `GET /readyz` | 200 (장애 시 503) | 200 (장애 시 503) | 200 (장애 시 503) |
 
 위 상태표는 유효한 HTTP/JSON 요청 기준이다. 잘못된 JSON 등 프로토콜·입력 오류는 별도 422가 될 수 있다.
 

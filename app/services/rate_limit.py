@@ -66,6 +66,7 @@ class SlidingWindowLimiter:
             self._events.clear()
 
     def _prune(self, key: str, now: float) -> deque[float]:
+        self._maybe_cleanup(now)
         events = self._events.get(key, deque())
         horizon = now - self.window_seconds
         while events and events[0] <= horizon:
@@ -75,6 +76,15 @@ class SlidingWindowLimiter:
         else:
             self._events.pop(key, None)
         return events
+
+    def _maybe_cleanup(self, now: float) -> None:
+        """키가 너무 많이 쌓이면(500개 초과) 만료된 키를 일괄 정리해 메모리 누수를 방지한다."""
+        if len(self._events) < 500:
+            return
+        horizon = now - self.window_seconds
+        stale_keys = [k for k, q in self._events.items() if not q or q[-1] <= horizon]
+        for k in stale_keys:
+            self._events.pop(k, None)
 
     def _retry_after(self, events: deque[float], now: float) -> int:
         return max(1, math.ceil(events[0] + self.window_seconds - now))
@@ -94,10 +104,24 @@ password_reset_ip_limiter = SlidingWindowLimiter(
 
 
 def client_ip(request) -> str:
-    """요청을 식별할 IP 키를 반환한다."""
-    if request is None or request.client is None:
+    """요청을 식별할 IP 키를 반환한다.
+
+    프록시 환경(X-Forwarded-For, X-Real-IP)을 우선 해석하여 실제 클라이언트 IP를 식별한다.
+    신뢰되지 않은 다중 프록시 헤더 중 맨 앞(원래 클라이언트)을 안전하게 취한다.
+    """
+    if request is None:
         return "unknown"
-    return request.client.host or "unknown"
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        client = xff.split(",")[0].strip()
+        if client:
+            return client
+    x_real = request.headers.get("x-real-ip")
+    if x_real:
+        return x_real.strip()
+    if request.client is None or not request.client.host:
+        return "unknown"
+    return request.client.host
 
 
 def retry_after_hint(seconds: int) -> str:

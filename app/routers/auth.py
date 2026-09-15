@@ -203,7 +203,7 @@ async def password_reset_request(
     if user is None:
         verify_dummy_password("timing-equalizer")
         return generic_ok
-    token = create_reset_token(db, user, request.client.host if request.client else "")
+    token = create_reset_token(db, user, ip)
     if token is None:
         return generic_ok
     log_event(logger, E.AUTH_PASSWORD_RESET_REQUESTED, user_id=user.id)

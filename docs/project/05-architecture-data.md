@@ -39,7 +39,9 @@ flowchart LR
 
 ```mermaid
 erDiagram
+  users ||--o{ threads : owns
   users ||--o{ chat_logs : owns
+  threads ||--o{ chat_logs : contains
   users ||--o| admin_grants : explicitly_granted
   users ||--o{ session_revocations : revokes
   users ||--o{ password_resets : requests
@@ -48,8 +50,14 @@ erDiagram
     string password_hash
     string nickname
     datetime created_at }
+  threads { int id PK
+    int user_id FK
+    string title
+    datetime created_at
+    datetime updated_at }
   chat_logs { int id PK
     int user_id FK
+    int thread_id FK
     text question
     text answer
     string status
@@ -69,10 +77,24 @@ erDiagram
     int used_epoch
     int created_epoch
     string request_ip }
+  audit_events { int id PK
+    datetime created_at
+    string event
+    int user_id
+    string request_id
+    text fields_json }
+  request_logs { int id PK
+    datetime created_at
+    string method
+    string path
+    int status
+    int user_id
+    int latency_ms
+    string request_id }
 ```
 
 **설계 규칙**
-- 인덱스: `chat_logs.user_id`, `chat_logs.created_at`, `users.email(UNIQUE)`, `password_resets.token_hash(UNIQUE)`.
+- 인덱스: `chat_logs.user_id`, `chat_logs.thread_id`, `chat_logs.created_at`, `threads.user_id`, `users.email(UNIQUE)`, `password_resets.token_hash(UNIQUE)`, `audit_events.event`, `audit_events.created_at`, `request_logs.path`, `request_logs.created_at`.
 - FK는 `ondelete=CASCADE` + **`PRAGMA foreign_keys=ON`** (감사 #51 — ORM 경로만의 cascade는 SQL에서 성립하지 않음 → PR #63으로 강제).
 - 시간: 대화·계정은 **UTC datetime**(`Z` 직렬화 계약), 폐기·토큰은 **epoch 초 정수** — SQLite가 tzinfo를 왕복 보존하지 않아 발생하는 naive/aware 비교 오류를 원천 차단(#74 이후 관례).
 - 스키마 진화: `create_all`은 없는 테이블만 추가 — `admin_grants`·`session_revocations`·`password_resets`는 **별도 테이블로만** 추가해 기존 열 변경·마이그레이션을 피했다.
