@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.audit import E
 from app.config import settings
-from app.database import engine
+from app.database import engine, schema_sync
 from app.logging_config import log_event
 from app.policies import SECURITY_HEADERS
 
@@ -27,8 +27,6 @@ logger = logging.getLogger("app")
     ),
 )
 def health(request: Request):
-    from app.database import schema_sync
-
     if schema_sync["status"] == "ok":
         schema_field = "ok"
     elif schema_sync["status"] == "error":
@@ -61,8 +59,6 @@ def readyz(request: Request):
             headers=SECURITY_HEADERS,
             content={"status": "not_ready", "reason": "database_unavailable"},
         )
-    from app.database import schema_sync
-
     if schema_sync["status"] == "error":
         log_event(
             logger,
