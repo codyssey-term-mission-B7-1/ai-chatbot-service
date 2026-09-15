@@ -20,54 +20,14 @@ from app.repositories import chat_logs
 from app.repositories import threads as threads_repo
 from app.schemas import ChatOut, ChatRequest
 from app.services.ai_client import AIError, AIProvider, AITimeoutError, get_ai_provider
+from app.services.chat import save_chat_attempt
 from app.services.context import SYSTEM_PROMPT, build_messages
 from app.services.rate_limit import SlidingWindowLimiter, retry_after_hint
 
 logger = logging.getLogger("app.chat")
 router = APIRouter(prefix="/api", tags=["chat"])
 
-
-def _save_log(
-    db: Session,
-    user_id: int,
-    question: str,
-    answer: str,
-    latency_ms: int,
-    status_: ChatStatus,
-    request_id: str,
-    thread_id: int | None = None,
-) -> int | None:
-    """저장 실패 시 원문/SQL 파라미터 없이 진단 메타데이터만 기록한다."""
-    try:
-        row = chat_logs.save_log(
-            db,
-            user_id=user_id,
-            question=question,
-            answer=answer,
-            latency_ms=latency_ms,
-            status=status_,
-            request_id=request_id,
-            thread_id=thread_id,
-        )
-        log_event(
-            logger,
-            E.DB_SAVE_SUCCESS,
-            user_id=user_id,
-            chat_id=row.id,
-            status=status_,
-            request_id=request_id,
-        )
-        return row.id
-    except Exception as exc:
-        log_event(
-            logger,
-            E.DB_SAVE_FAIL,
-            user_id=user_id,
-            reason=type(exc).__name__,
-            request_id=request_id,
-            level=logging.ERROR,
-        )
-        return None
+_save_log = save_chat_attempt
 
 
 @router.post(

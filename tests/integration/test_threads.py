@@ -209,3 +209,25 @@ def test_thread_nested_chats(client, fake_ai):
 
 def test_thread_nested_chats_requires_login(client):
     assert client.get("/api/thread/1/chats").status_code == 401
+
+
+def test_threads_rest_standard_endpoints(client):
+    """표준 REST 엔드포인트(/api/threads) 검증."""
+    assert client.post("/api/threads").status_code == 401
+    assert client.get("/api/threads").status_code == 401
+    signup_and_login(client)
+    # 목록 조회 (초기 빈 배열)
+    assert client.get("/api/threads").json() == []
+    # 생성 (POST /api/threads)
+    res = client.post("/api/threads")
+    assert res.status_code == 201
+    tid = res.json()["id"]
+    # 목록 조회 (생성 후 1건)
+    assert len(client.get("/api/threads").json()) == 1
+    # 단건 조회 (GET /api/threads/{id})
+    assert client.get(f"/api/threads/{tid}").status_code == 200
+    # 대화 기록 조회 (GET /api/threads/{id}/chats)
+    assert client.get(f"/api/threads/{tid}/chats").status_code == 200
+    # 삭제 (DELETE /api/threads/{id})
+    assert client.delete(f"/api/threads/{tid}").status_code == 204
+    assert client.get(f"/api/threads/{tid}").status_code == 404

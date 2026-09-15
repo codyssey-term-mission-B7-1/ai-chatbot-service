@@ -64,6 +64,7 @@ app = FastAPI(
         {"name": "auth", "description": "회원가입·서명 쿠키 세션"},
         {"name": "chat", "description": "AI 응답 → DB 저장 시도 → HTTP 응답"},
         {"name": "logs", "description": "사용자별 대화 조회·성공 문맥 복원"},
+        {"name": "threads", "description": "대화(스레드) 관리 — 생성·목록·조회·삭제"},
         {"name": "admin", "description": "명시적 관리자 권한이 필요한 전체 조회"},
         {"name": "ops", "description": "기동 상태 확인. AI 연결 성공을 뜻하지 않음"},
     ],

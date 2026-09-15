@@ -34,12 +34,12 @@ uvicorn app.main:app --reload
 
 ### 코드 위치
 
-| 항목 | 파일 | 라인 |
+| 항목 | 파일 | 설명 |
 |---|---|---|
 | `docs_enabled` 설정 | `app/config.py` | `docs_enabled: bool = True` |
-| `DOCS_PATHS` 상수 | `app/main.py` | `frozenset({"/docs", "/docs/", "/redoc", "/redoc/", "/openapi.json"})` |
-| 문서 게이트 미들웨어 | `app/main.py` → `request_guard()` | `DOCS_ENABLED=false`면 DOCS_PATHS를 404로 차단 |
-| CSP 예외 | `app/main.py` → `security_headers()` | Swagger UI CDN 자산 로드를 위해 `/docs`·`/redoc`만 CSP 제외 |
+| `DOCS_PATHS` 상수 | `app/policies.py` | `frozenset({"/docs", "/docs/", "/redoc", "/redoc/", "/openapi.json"})` |
+| 문서 게이트 미들웨어 | `app/middleware/request_guard.py` | `DOCS_ENABLED=false`면 DOCS_PATHS를 404로 차단 |
+| CSP 예외 | `app/middleware/security_headers.py` | Swagger UI CDN 자산 로드를 위해 `/docs`·`/redoc`만 CSP 제외 |
 
 ### 운영에서 문서 접근이 필요한 경우
 
@@ -71,10 +71,9 @@ app = FastAPI(
 | `auth` | 회원가입·서명 쿠키 세션 | `auth.py` |
 | `chat` | AI 응답 → DB 저장 시도 → HTTP 응답 | `chat.py` |
 | `logs` | 사용자별 대화 조회·성공 문맥 복원 | `logs.py` |
+| `threads` | 대화(스레드) 관리 — 생성·목록·조회·삭제 | `threads.py` |
 | `admin` | 명시적 관리자 권한이 필요한 전체 조회 | `admin.py` |
-| `ops` | 기동 상태 확인. AI 연결 성공을 뜻하지 않음 | (health/readyz) |
-
-> ⚠️ **`threads` 태그 미등록**: `threads.py`가 `tags=["threads"]`를 사용하지만 `openapi_tags`에 `threads`가 없어 Swagger UI에서 설명이 표시되지 않는다. 기능에는 영향 없으나 문서 완성도를 위해 추가 권장.
+| `ops` | 기동 상태 확인. AI 연결 성공을 뜻하지 않음 | `health.py` |
 
 ### `DESCRIPTION` 전문
 
@@ -131,11 +130,16 @@ AI_TIMEOUT_SEC는 AI 호출 전체 예산(재시도/대기 포함)이며 DB 처�
 
 | 메서드 | 경로 | summary | 주요 responses |
 |---|---|---|---|
-| POST | `/api/thread` | 새 대화 시작 | 401 로그인, 409 상한 도달 |
-| GET | `/api/thread/list` | 내 대화 목록 | 401 로그인 |
-| GET | `/api/thread/{id}` | 대화 단건 조회 | 401 로그인, 404 부존재/타인 |
-| GET | `/api/thread/{id}/chats` | 대화별 기록 | 401 로그인, 404 부존재/타인 |
-| DELETE | `/api/thread/{id}` | 대화 삭제(204) | 401 로그인, 404 부존재/타인 |
+| POST | `/api/threads` | 새 대화 시작 (REST 표준) | 401 로그인, 409 상한 도달 |
+| GET | `/api/threads` | 내 대화 목록 (REST 표준) | 401 로그인 |
+| GET | `/api/threads/{id}` | 대화 단건 조회 (REST 표준) | 401 로그인, 404 부존재/타인 |
+| GET | `/api/threads/{id}/chats` | 대화별 기록 (REST 표준) | 401 로그인, 404 부존재/타인 |
+| DELETE | `/api/threads/{id}` | 대화 삭제 (REST 표준) | 401 로그인, 404 부존재/타인 |
+| POST | `/api/thread` | 새 대화 시작 (하위 호환) | 401 로그인, 409 상한 도달 |
+| GET | `/api/thread/list` | 내 대화 목록 (하위 호환) | 401 로그인 |
+| GET | `/api/thread/{id}` | 대화 단건 조회 (하위 호환) | 401 로그인, 404 부존재/타인 |
+| GET | `/api/thread/{id}/chats` | 대화별 기록 (하위 호환) | 401 로그인, 404 부존재/타인 |
+| DELETE | `/api/thread/{id}` | 대화 삭제(204) (하위 호환) | 401 로그인, 404 부존재/타인 |
 
 **상한**: `MAX_THREADS_PER_USER` (기본 100). **삭제**: 해당 스레드의 `chat_logs`도 CASCADE로 함께 삭제.
 
@@ -144,12 +148,18 @@ AI_TIMEOUT_SEC는 AI 호출 전체 예산(재시도/대기 포함)이며 DB 처�
 | 메서드 | 경로 | summary | 주요 responses |
 |---|---|---|---|
 | GET | `/api/admin/chats` | 관리자 대화 로그 조회 | 401 로그인, 403 권한 필요 |
+| GET | `/api/admin/stats` | 관리자 대시보드 통계 | 401 로그인, 403 권한 필요 |
+| GET | `/api/admin/events` | 이벤트 로그 조회 | 401 로그인, 403 권한 필요 |
+| GET | `/api/admin/network` | 네트워크 로그 조회 | 401 로그인, 403 권한 필요 |
+| GET | `/api/admin/db/tables` | DB 테이블 목록·행수 | 401 로그인, 403 권한 필요 |
+| GET | `/api/admin/db/tables/{name}/rows` | DB 테이블 행 미리보기 | 401 로그인, 403 권한 필요, 404 미지 테이블 |
 | GET | `/api/admin/security/password-hashes` | 비밀번호 해시 마이그레이션 현황 | 401 로그인, 403 권한 필요 |
 | DELETE | `/api/admin/users/{id}` | 사용자 삭제 | 400 자기자신/다른 관리자, 401, 403, 404 |
+| GET | `/api/admin/suggest` | 필터 값 자동완성 후보 | 400 미지원 필드, 401, 403 |
 
 **파라미터** (`/api/admin/chats`): `email`(정확 일치), `status`, `limit`, `before_id`, `reason`(열람 사유 — 감사 로그 기록).
 
-### `ops` 태그 — `app/main.py` (직접 등록)
+### `ops` 태그 — `app/routers/health.py`
 
 | 메서드 | 경로 | summary | 설명 |
 |---|---|---|---|
@@ -166,7 +176,11 @@ AI_TIMEOUT_SEC는 AI 호출 전체 예산(재시도/대기 포함)이며 DB 처�
 | GET | `/forgot-password` | 비밀번호 찾기 |
 | GET | `/reset-password` | 비밀번호 재설정 (토큰 필요) |
 | GET | `/logs` | 내 대화 기록 |
+| GET | `/admin` | 관리자 대시보드 콘솔 |
 | GET | `/admin/logs` | 관리자 로그 조회 |
+| GET | `/admin/events` | 관리자 감사 이벤트 로그 화면 |
+| GET | `/admin/network` | 관리자 네트워크 요청 로그 화면 |
+| GET | `/admin/db` | 관리자 DB 테이블 브라우저 화면 |
 
 ---
 
@@ -204,8 +218,9 @@ AI_TIMEOUT_SEC는 AI 호출 전체 예산(재시도/대기 포함)이며 DB 처�
 
 ## 8. 알려진 한계
 
-| 항목 | 현재 상태 | 권장 |
+| 항목 | 현재 상태 | 해결/권장 |
 |---|---|---|
-| `threads` 태그 미등록 | `openapi_tags`에 없어 Swagger UI 그룹 설명 미표시 | `{"name": "threads", "description": "대화(스레드) 관리 — 생성·목록·삭제"}` 추가 |
-| HTML 페이지 Swagger 미등록 | `pages.py` 라우터에 `summary`/`description` 없음 | HTML은 Swagger 대상이 아니므로 의도적 생략 (유지) |
+| `threads` 태그 미등록 | **해결됨** (`main.py` openapi_tags에 등록 완료) | Swagger UI에 스레드 관리 태그 정상 표기 |
+| HTML 페이지 Swagger 미등록 | `pages.py` 라우터에 `summary`/`description` 없음 | HTML은 Swagger 대상이 아니므로 의도적 생략 (`include_in_schema=False` 유지) |
 | 운영 Swagger 접근 | `DOCS_ENABLED` 변수 변경 후 재배포 필요 | 긴급 시 Railway Shell에서 환경변수 직접 설정도 가능 |
+
