@@ -3,51 +3,82 @@
 {% block body_class %}admin-page{% endblock %}
 {% block content %}
 <div class="logs-wrap admin-panel">
-  <h1>데이터베이스</h1>
-  {% include "admin-nav.html" %}
-  <p class="muted small">읽기 전용 미리보기입니다. 수정은 앱 API·마이그레이션으로만 가능합니다.</p>
+  <div class="admin-header">
+    <div class="admin-title-row">
+      <h1>🗄️ 데이터베이스 브라우저</h1>
+      <span class="muted small">읽기 전용 미리보기 · 수정은 앱 API/마이그레이션으로만 가능합니다</span>
+    </div>
+    {% include "admin-nav.html" %}
+  </div>
+
   <form class="admin-filter" action="/admin/db" method="get">
-    <label>필터 쿼리
-      <input id="admin-filter-query" name="filter" type="text" class="filter-query"
-             data-filter-keys="table" value="{{ filter_query or '' }}"
-             placeholder="예: table:users" autocomplete="off" spellcheck="false">
-    </label>
-    <button type="submit">보기</button>
-    <a href="/admin/db">초기화</a>
-    <p id="filter-hint" class="input-live-hint" aria-live="polite"></p>
-    {% if filter_errors %}<p class="msg error">알 수 없는 필터: {{ filter_errors | join(' ') }} — 지원: {{ filter_keys }}</p>{% endif %}
+    <div class="filter-row">
+      <div class="filter-field">
+        <label for="admin-filter-query" class="filter-label">테이블 필터</label>
+        <div class="filter-input-box">
+          <input id="admin-filter-query" name="filter" type="text" class="filter-query"
+                 data-filter-keys="table" value="{{ filter_query or '' }}"
+                 placeholder="예: table:users" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+      <div class="filter-btn-group">
+        <button type="submit">보기</button>
+        <a href="/admin/db" class="filter-reset-link">초기화</a>
+      </div>
+    </div>
+    <div class="filter-hint-row">
+      <p id="filter-hint" class="input-live-hint" aria-live="polite"></p>
+      {% if filter_errors %}<p class="msg error">알 수 없는 필터: {{ filter_errors | join(' ') }} — 지원: {{ filter_keys }}</p>{% endif %}
+      <div class="filter-chips" aria-label="추천 필터">
+        <span class="chip-label">테이블 바로가기:</span>
+        <button type="button" class="filter-chip" data-query="table:users">users (사용자)</button>
+        <button type="button" class="filter-chip" data-query="table:threads">threads (스레드)</button>
+        <button type="button" class="filter-chip" data-query="table:chat_logs">chat_logs (대화)</button>
+        <button type="button" class="filter-chip" data-query="table:audit_events">audit_events (감사)</button>
+        <button type="button" class="filter-chip" data-query="table:request_logs">request_logs (네트워크)</button>
+      </div>
+    </div>
   </form>
-  <div class="table-scroll">
+
+  <div class="table-scroll" style="margin-bottom: 24px;">
     <table class="logs-table">
-      <thead><tr><th>테이블</th><th>행 수</th><th></th></tr></thead>
+      <thead><tr><th>화이트리스트 테이블</th><th>행 수</th><th>동작</th></tr></thead>
       <tbody>
       {% for t in tables %}
         <tr class="{{ 'row-active' if current_table == t.name else '' }}">
-          <td>{{ t.name }}</td><td>{{ t.rows }}</td>
-          <td><a href="/admin/db?table={{ t.name }}">보기</a></td>
+          <td><code>{{ t.name }}</code></td>
+          <td><span class="status-badge ok">{{ t.rows }}행</span></td>
+          <td><a href="/admin/db?table={{ t.name }}" style="font-weight: 600; text-decoration: none;">미리보기 →</a></td>
         </tr>
       {% endfor %}
       </tbody>
     </table>
   </div>
-  {% if table_not_found %}<p class="msg error">존재하지 않는 테이블이에요.</p>{% endif %}
+
+  {% if table_not_found %}<p class="msg error">존재하지 않거나 접근이 제한된 테이블이에요.</p>{% endif %}
+
   {% if rows_page %}
-  <h2 class="h-small">{{ rows_page.table }} 최근 {{ rows_page.rows | length }}행</h2>
-  <div class="table-scroll">
-    <table class="logs-table db-rows">
-      <thead><tr>{% for col in rows_page.columns %}<th>{{ col }}</th>{% endfor %}</tr></thead>
-      <tbody>
-      {% for row in rows_page.rows %}
-        <tr>{% for col in rows_page.columns %}<td class="db-cell">{{ row[col] if row[col] is not none else '—' }}</td>{% endfor %}</tr>
-      {% else %}<tr><td colspan="{{ rows_page.columns | length }}">빈 테이블입니다.</td></tr>{% endfor %}
-      </tbody>
-    </table>
+  <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border);">
+    <h2 class="h-small" style="margin-bottom: 12px;">📄 <code>{{ rows_page.table }}</code> 최근 {{ rows_page.rows | length }}행 미리보기</h2>
+    <div class="table-scroll">
+      <table class="logs-table db-rows">
+        <thead><tr>{% for col in rows_page.columns %}<th>{{ col }}</th>{% endfor %}</tr></thead>
+        <tbody>
+        {% for row in rows_page.rows %}
+          <tr>{% for col in rows_page.columns %}<td class="db-cell">{{ row[col] if row[col] is not none else '—' }}</td>{% endfor %}</tr>
+        {% else %}<tr><td colspan="{{ rows_page.columns | length }}" style="text-align: center; padding: 24px;">빈 테이블입니다.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
-  {% if next_before_id %}<a class="next-page" href="/admin/db?table={{ rows_page.table }}&amp;before_id={{ next_before_id }}">이전 행 더 보기</a>{% endif %}
+  {% if next_before_id %}
+  <div style="text-align: center; margin-top: 16px;">
+    <a class="next-page" href="/admin/db?table={{ rows_page.table }}&amp;before_id={{ next_before_id }}">이전 행 더 보기 ↓</a>
+  </div>
+  {% endif %}
   {% endif %}
 </div>
 {% endblock %}
-
 
 {% block scripts %}
 <script src="/static/js/filter-hint.js?v={{ asset_v }}"></script>

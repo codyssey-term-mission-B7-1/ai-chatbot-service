@@ -3,43 +3,78 @@
 {% block body_class %}admin-page{% endblock %}
 {% block content %}
 <div class="logs-wrap admin-panel">
-  <h1>네트워크 로그</h1>
-  {% include "admin-nav.html" %}
+  <div class="admin-header">
+    <div class="admin-title-row">
+      <h1>🌐 HTTP 네트워크 로그</h1>
+      <span class="muted small">/api/ 요청만 기록 · 최신 {{ requests | length }}건 · 보존 한도 5,000건</span>
+    </div>
+    {% include "admin-nav.html" %}
+  </div>
+
   <form class="admin-filter" action="/admin/network" method="get">
-    <label>필터 쿼리
-      <input id="admin-filter-query" name="filter" type="text" class="filter-query"
-             data-filter-keys="path,method,status,user" value="{{ filter_query or '' }}"
-             placeholder="예: path:/api/chats method:POST status:500" autocomplete="off" spellcheck="false">
-    </label>
-    <button type="submit">조회</button>
-    <a href="/admin/network">필터 초기화</a>
-    <p id="filter-hint" class="input-live-hint" aria-live="polite"></p>
-    {% if filter_errors %}<p class="msg error">알 수 없는 필터: {{ filter_errors | join(' ') }} — 지원: {{ filter_keys }}</p>{% endif %}
+    <div class="filter-row">
+      <div class="filter-field">
+        <label for="admin-filter-query" class="filter-label">필터 쿼리</label>
+        <div class="filter-input-box">
+          <input id="admin-filter-query" name="filter" type="text" class="filter-query"
+                 data-filter-keys="path,method,status,user" value="{{ filter_query or '' }}"
+                 placeholder="예: path:/api/chats method:POST status:500" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+      <div class="filter-btn-group">
+        <button type="submit">조회</button>
+        <a href="/admin/network" class="filter-reset-link">초기화</a>
+      </div>
+    </div>
+    <div class="filter-hint-row">
+      <p id="filter-hint" class="input-live-hint" aria-live="polite"></p>
+      {% if filter_errors %}<p class="msg error">알 수 없는 필터: {{ filter_errors | join(' ') }} — 지원: {{ filter_keys }}</p>{% endif %}
+      <div class="filter-chips" aria-label="추천 필터">
+        <span class="chip-label">빠른 필터:</span>
+        <button type="button" class="filter-chip" data-query="status:500">💥 500 서버 오류</button>
+        <button type="button" class="filter-chip" data-query="status:429">⏳ 429 레이트리밋</button>
+        <button type="button" class="filter-chip" data-query="status:401">⛔ 401 비로그인</button>
+        <button type="button" class="filter-chip" data-query="path:/api/chats method:POST">💬 채팅 요청</button>
+      </div>
+    </div>
   </form>
-  <p class="muted small">/api/ 요청만 기록 · 최신 {{ requests | length }}건 · 보존 한도 5,000건</p>
+
   <div class="table-scroll">
     <table class="logs-table">
-      <thead><tr><th>ID</th><th>시각 (KST / UTC)</th><th>메서드</th><th>경로</th><th>상태</th><th>사용자</th><th>지연(ms)</th><th>요청 ID</th></tr></thead>
+      <thead><tr><th>ID</th><th>시각 (KST / UTC)</th><th>메서드</th><th>경로</th><th>상태</th><th>사용자</th><th>지연</th><th>요청 ID</th></tr></thead>
       <tbody>
       {% for r in requests %}
         <tr class="{{ 'row-error' if r.status >= 500 else '' }}">
           <td>{{ r.id }}</td>
           <td class="nowrap">{{ r.created_at | kst }}<br><span class="muted small">{{ r.created_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC</span></td>
-          <td>{{ r.method }}</td>
-          <td>{{ r.path }}</td>
-          <td class="status-cell">{{ r.status }}</td>
+          <td>
+            <span class="method-badge {% if r.method == 'GET' %}get{% elif r.method == 'POST' %}post{% elif r.method == 'DELETE' %}delete{% else %}other{% endif %}">
+              {{ r.method }}
+            </span>
+          </td>
+          <td><code>{{ r.path }}</code></td>
+          <td class="status-cell">
+            <span class="status-badge {% if r.status < 400 %}ok{% elif r.status < 500 %}warn{% else %}err{% endif %}">
+              {{ r.status }}
+            </span>
+          </td>
           <td>{{ r.user_id if r.user_id else '—' }}</td>
-          <td>{{ r.latency_ms }}</td>
+          <td class="nowrap">{{ r.latency_ms }}ms</td>
           <td class="request-id">{{ r.request_id }}</td>
         </tr>
-      {% else %}<tr><td colspan="8">기록이 없습니다.</td></tr>{% endfor %}
+      {% else %}<tr><td colspan="8" style="text-align: center; padding: 32px 16px; color: var(--muted);">기록이 없습니다.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
-  {% if next_before_id %}<a class="next-page" href="/admin/network?before_id={{ next_before_id }}{% if filter_status %}&amp;status={{ filter_status }}{% endif %}">이전 기록 더 보기</a>{% else %}<p class="muted small">이전 기록이 더 없습니다.</p>{% endif %}
+  {% if next_before_id %}
+  <div style="text-align: center; margin-top: 16px;">
+    <a class="next-page" href="/admin/network?before_id={{ next_before_id }}{% if filter_status %}&amp;status={{ filter_status }}{% endif %}">이전 기록 더 보기 ↓</a>
+  </div>
+  {% else %}
+  <p class="muted small" style="text-align: center; margin-top: 16px;">이전 기록이 더 없습니다.</p>
+  {% endif %}
 </div>
 {% endblock %}
-
 
 {% block scripts %}
 <script src="/static/js/filter-hint.js?v={{ asset_v }}"></script>

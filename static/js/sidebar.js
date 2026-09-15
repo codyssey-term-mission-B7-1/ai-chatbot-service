@@ -167,6 +167,7 @@
   function setSidebar(open) {
     if (isDesktop()) {
       document.body.classList.toggle('sidebar-collapsed', !open);
+      document.documentElement.classList.toggle('sidebar-collapsed', !open);
       try { localStorage.setItem('sidebar-collapsed', open ? '0' : '1'); } catch (e) { /* 무시 */ }
     } else {
       document.body.classList.toggle('sidebar-open', open);
@@ -193,6 +194,15 @@
     open = collapsed !== '1';
   }
   setSidebar(open);
+  if (typeof requestAnimationFrame !== 'undefined') {
+    requestAnimationFrame(function () {
+      setTimeout(function () {
+        document.documentElement.classList.remove('no-nav-transition');
+      }, 50);
+    });
+  } else {
+    document.documentElement.classList.remove('no-nav-transition');
+  }
   menuToggle.addEventListener('click', () => setSidebar(!sidebarOpenNow()));
   if (sidebarClose) sidebarClose.addEventListener('click', () => setSidebar(false));
   if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', () => setSidebar(false));

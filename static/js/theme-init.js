@@ -16,4 +16,13 @@
   }
   document.documentElement.setAttribute("data-theme", mode);
   document.documentElement.setAttribute("data-theme-mode", mode);
+
+  // 사이드바 상태 초기화 — 첫 페인트 전에 sidebar-collapsed와 no-nav-transition을 적용해
+  // 페이지 이동 시 사이드바가 열렸다가 닫히는 레이아웃 깜빡임(FOUC) 및 불필요한 트랜지션을 방지한다.
+  try {
+    if (localStorage.getItem("sidebar-collapsed") === "1") {
+      document.documentElement.classList.add("sidebar-collapsed");
+    }
+    document.documentElement.classList.add("no-nav-transition");
+  } catch (e) {}
 })();

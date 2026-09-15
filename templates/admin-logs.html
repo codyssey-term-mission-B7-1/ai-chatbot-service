@@ -3,25 +3,48 @@
 {% block body_class %}admin-page{% endblock %}
 {% block content %}
 <div class="logs-wrap admin-panel">
-  <h1>관리자 대화 조회</h1>
-  {% include "admin-nav.html" %}
-  <p class="muted small">명시적으로 부여된 앱 관리자만 접근할 수 있습니다. 원문에는 개인정보가 포함될 수 있습니다.</p>
+  <div class="admin-header">
+    <div class="admin-title-row">
+      <h1>💬 관리자 대화 조회</h1>
+      <span class="muted small">최신 50건 · 시각 KST(괄호 UTC) · 표시 {{ logs | length }}건</span>
+    </div>
+    {% include "admin-nav.html" %}
+  </div>
+
   <form id="admin-filter" class="admin-filter" action="/admin/logs" method="get">
-    <label>필터 쿼리
-      <input id="admin-filter-query" name="filter" type="text" class="filter-query"
-             data-filter-keys="email,thread,status,q" value="{{ filter_query or '' }}"
-             placeholder="예: email:user@example.com thread:3 status:success · 또는 검색어" autocomplete="off" spellcheck="false">
-    </label>
-    <label>열람 사유 <input id="admin-reason" name="reason" type="text" maxlength="200" value="{{ filter_reason or '' }}" placeholder="왜 열람하나요? (감사 로그에 기록)"></label>
-    <button type="submit">조회</button>
-    <p id="filter-hint" class="input-live-hint" aria-live="polite"></p>
-    {% if filter_errors %}<p class="msg error">알 수 없는 필터: {{ filter_errors | join(' ') }} — 지원: {{ filter_keys }}</p>{% endif %}
-    <a href="/admin/logs">필터 초기화</a>
+    <div class="filter-row">
+      <div class="filter-field">
+        <label for="admin-filter-query" class="filter-label">필터 쿼리</label>
+        <div class="filter-input-box">
+          <input id="admin-filter-query" name="filter" type="text" class="filter-query"
+                 data-filter-keys="email,thread,status,q" value="{{ filter_query or '' }}"
+                 placeholder="예: email:user@example.com thread:3 status:success · 또는 검색어" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+      <div class="filter-field reason-field">
+        <label for="admin-reason" class="filter-label">열람 사유</label>
+        <input id="admin-reason" name="reason" type="text" maxlength="200" value="{{ filter_reason or '' }}" placeholder="열람 사유 입력 (감사 로그에 기록)">
+      </div>
+      <div class="filter-btn-group">
+        <button type="submit">조회</button>
+        <a href="/admin/logs" class="filter-reset-link">초기화</a>
+      </div>
+    </div>
+    <div class="filter-hint-row">
+      <p id="filter-hint" class="input-live-hint" aria-live="polite"></p>
+      {% if filter_errors %}<p class="msg error">알 수 없는 필터: {{ filter_errors | join(' ') }} — 지원: {{ filter_keys }}</p>{% endif %}
+      <div class="filter-chips" aria-label="추천 필터">
+        <span class="chip-label">빠른 필터:</span>
+        <button type="button" class="filter-chip" data-query="status:ai_error">⚠️ AI 오류만</button>
+        <button type="button" class="filter-chip" data-query="status:success">✅ 성공만</button>
+      </div>
+    </div>
   </form>
+
   {% if user_not_found %}
   <p class="msg error">해당 이메일의 사용자를 찾을 수 없어요. 이메일을 확인해 주세요.</p>
   {% endif %}
-  <p class="muted small">최신 50건 · 시각 KST(괄호 UTC) · 표시 {{ logs | length }}건</p>
+
   <div class="table-scroll">
     <table class="logs-table">
       <thead><tr><th>ID</th><th>사용자</th><th>시각 (KST / UTC)</th><th>스레드</th><th>질문</th><th>응답</th><th>상태</th><th>요청 ID</th></tr></thead>
@@ -32,23 +55,27 @@
           <td>{{ log.id }}</td>
           <td>{% if info %}{{ info.nickname }}<br><span class="muted small">{{ info.email }}</span>{% else %}{{ log.user_id }}{% endif %}</td>
           <td class="nowrap">{{ log.created_at | kst }}<br><span class="muted small">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC</span></td>
-          <td class="nowrap">{% if log.thread_id %}<a href="/admin/logs?thread={{ log.thread_id }}">#{{ log.thread_id }}</a>{% else %}—{% endif %}</td>
+          <td class="nowrap">{% if log.thread_id %}<a href="/admin/logs?filter=thread:{{ log.thread_id }}">#{{ log.thread_id }}</a>{% else %}—{% endif %}</td>
           <td class="q">{{ log.question }}</td><td class="a">{{ log.answer or '(응답 없음)' }}</td>
-          <td class="status-cell">{{ log.status }}</td><td class="request-id">{{ log.request_id }}</td>
+          <td class="status-cell">
+            <span class="status-badge {{ 'ok' if log.status == 'success' else 'err' }}">{{ log.status }}</span>
+          </td>
+          <td class="request-id">{{ log.request_id }}</td>
         </tr>
-      {% else %}<tr><td colspan="8">조회된 기록이 없습니다.</td></tr>{% endfor %}
+      {% else %}<tr><td colspan="8" style="text-align: center; padding: 32px 16px; color: var(--muted);">조회된 기록이 없습니다.</td></tr>{% endfor %}
       </tbody>
     </table>
   </div>
   {% if next_before_id %}
-  <a class="next-page" href="/admin/logs?before_id={{ next_before_id }}{% if filter_email %}&amp;email={{ filter_email | urlencode }}{% endif %}{% if filter_thread %}&amp;thread={{ filter_thread }}{% endif %}{% if filter_reason %}&amp;reason={{ filter_reason | urlencode }}{% endif %}">이전 기록 더 보기</a>
+  <div style="text-align: center; margin-top: 16px;">
+    <a class="next-page" href="/admin/logs?before_id={{ next_before_id }}{% if filter_email %}&amp;email={{ filter_email | urlencode }}{% endif %}{% if filter_thread %}&amp;thread={{ filter_thread }}{% endif %}{% if filter_reason %}&amp;reason={{ filter_reason | urlencode }}{% endif %}">이전 기록 더 보기 ↓</a>
+  </div>
   {% else %}
-  <p class="muted small">이전 기록이 더 없습니다.</p>
+  <p class="muted small" style="text-align: center; margin-top: 16px;">이전 기록이 더 없습니다.</p>
   {% endif %}
   <script src="/static/js/filter-hint.js?v={{ asset_v }}" defer></script>
 </div>
 {% endblock %}
-
 
 {% block scripts %}
 <script src="/static/js/filter-suggest.js?v={{ asset_v }}"></script>
