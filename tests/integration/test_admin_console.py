@@ -99,20 +99,29 @@ def test_recorder_failure_never_breaks_requests(client, db, monkeypatch, fake_ai
 
 
 def test_admin_logs_filter_is_native_form(client, db, fake_ai):
-    """필터가 name 속성 기반 네이티브 GET으로 동작 — JS 없이 엔터 제출로 검색된다(#195)."""
+    """필터 쿼리 텍스트박스가 name 기반 네이티브 GET으로 제출된다 — 엔터로 검색(#201)."""
     import re
 
     signup_and_login(client, "native@example.com")
     tid = client.post("/api/thread").json()["id"]
-    client.post("/api/chats", json={"question": "네이티브 필터 질문", "thread_id": tid})
+    client.post("/api/chats", json={"question": "쿼리 필터 질문", "thread_id": tid})
     grant_admin(db, "native@example.com")
 
     page = client.get("/admin/logs").text
-    email_input = re.search(r'<input id="admin-user-email"[^>]*>', page).group(0)
-    thread_select = re.search(r'<select id="admin-thread"[^>]*>', page).group(0)
-    assert 'name="email"' in email_input, "이메일 필터가 네이티브 제출 가능해야 한다"
-    assert 'name="thread"' in thread_select, "스레드 필터가 네이티브 제출 가능해야 한다"
+    box = re.search(r'<input id="admin-filter-query"[^>]*>', page, re.S)
+    assert box, "필터 쿼리 텍스트박스가 있어야 한다"
+    assert 'name="filter"' in box.group(0), "네이티브 제출 가능해야 한다"
+    assert 'data-filter-keys="email,thread,status,q"' in box.group(0)
+    assert 'id="filter-hint"' in page and 'aria-live="polite"' in page
     assert "admin-logs.js" not in page, "JS 리다이렉트 없이 폼이 스스로 제출해야 한다"
+
+    # 쿼리 직접 검색 — 스레드·전체검색·미지 키
+    r = client.get("/admin/logs", params={"filter": f"thread:{tid}"})
+    assert "쿼리 필터 질문" in r.text and "status=200" not in r.text
+    r = client.get("/admin/logs", params={"filter": "q:쿼리 필터"})
+    assert "쿼리 필터 질문" in r.text
+    r = client.get("/admin/logs", params={"filter": "emial:x"})
+    assert r.status_code == 200 and "알 수 없는 필터" in r.text
 
 
 def test_admin_logs_pagination_with_full_page(client, db, fake_ai):
@@ -147,8 +156,8 @@ def test_ai_call_fail_is_persisted_and_visible(client, db, fake_ai):
     fake_ai.error = None
     grant_admin(db, "fail@example.com")
 
-    events_page = client.get("/admin/events").text
-    assert 'value="ai_call_fail"' in events_page, "드롭다운에 카탈로그 전체가 있어야 한다"
+    events_page = client.get("/admin/events", params={"filter": "event:ai_call_fail"})
+    assert events_page.status_code == 200 and "ai_call_fail" in events_page.text
 
     page = client.get("/admin/events", params={"event": "ai_call_fail"})
     assert page.status_code == 200 and "ai_call_fail" in page.text
@@ -158,15 +167,14 @@ def test_ai_call_fail_is_persisted_and_visible(client, db, fake_ai):
     assert api_items and all(e["event"] == "ai_call_fail" for e in api_items)
 
 
-def test_network_status_dropdown_covers_whole_table(client, db, fake_ai):
-    """상태 드롭다운이 현재 페이지가 아니라 테이블 전체 DISTINCT를 담는다(#195)."""
-    import re
-
+def test_network_filter_query(client, db, fake_ai):
+    """네트워크 로그 쿼리 필터 — path·method·status 결합 동작(#201)."""
     signup_and_login(client, "net@example.com")
-    client.post("/api/chats", json={"question": "상태 드롭다운 질문"})
+    client.post("/api/chats", json={"question": "네트워크 쿼리 질문"})
     grant_admin(db, "net@example.com")
 
-    # 50건을 채우지 않아도(현재 페이지에 없는 상태라도) 전체 테이블의 상태가 옵션에 있다
-    page = client.get("/admin/network").text
-    select = re.search(r'<select name="status".*?</select>', page, re.S).group(0)
-    assert 'value="201"' in select
+    page = client.get("/admin/network", params={"filter": "path:/api/chats method:POST"})
+    assert page.status_code == 200 and "/api/chats" in page.text
+    # status 결합 — 성공한 채팅 요청만
+    page = client.get("/admin/network", params={"filter": "path:/api/chats status:201"})
+    assert page.status_code == 200

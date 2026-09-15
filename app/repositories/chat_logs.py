@@ -1,5 +1,6 @@
 """대화 기록 조회·저장. UI 복원과 AI 문맥은 동일한 성공 대화 조회 함수를 사용한다."""
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.enums import ChatStatus
@@ -15,6 +16,7 @@ def list_logs(
     status: str | None = None,
     before_id: int | None = None,
     thread_id: int | None = None,
+    search: str | None = None,
 ) -> list[ChatLog]:
     query = db.query(ChatLog)
     if user_id is not None:
@@ -23,6 +25,9 @@ def list_logs(
         query = query.filter(ChatLog.status == status)
     if thread_id is not None:
         query = query.filter(ChatLog.thread_id == thread_id)
+    if search:
+        like = f"%{search}%"
+        query = query.filter(or_(ChatLog.question.ilike(like), ChatLog.answer.ilike(like)))
     if before_id is not None:
         query = query.filter(ChatLog.id < before_id)
     return query.order_by(ChatLog.id.desc()).limit(max(1, min(limit, MAX_LOG_PAGE_SIZE))).all()
