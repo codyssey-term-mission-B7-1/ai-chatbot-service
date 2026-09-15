@@ -4,6 +4,7 @@
 계정 침해 대응·퇴장 등으로 특정 계정의 기존 로그인 세션을 모두 무효화한다.
 폐기 이후 해당 계정은 재로그인하면 정상 이용할 수 있다.
 """
+
 import argparse
 import sys
 from pathlib import Path
@@ -19,6 +20,7 @@ def main(argv=None) -> int:
     from app.services.sessions import revoke_sessions_by_email
 
     import app.models  # noqa: F401
+
     init_db()
     with SessionLocal() as db:
         try:

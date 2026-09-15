@@ -10,6 +10,7 @@
     tester@demo.com (테스터)    — 일반 대화 2건 + AI 타임아웃 실패 1건(status=ai_error)
     admin@demo.com  (데모계정)  — 이름과 달리 앱 관리자 권한 없음
 """
+
 import argparse
 import sys
 from pathlib import Path
@@ -30,21 +31,34 @@ MOCK_USERS = [
 
 MOCK_CHATS = {
     "demo@demo.com": [
-        ("FastAPI로 배포하는 방법 알려줘",
-         "uvicorn app.main:app --host 0.0.0.0 으로 실행하고, 플랫폼(Cloudtype/Render 등)의 "
-         "환경변수에 AI_API_KEY 등을 설정하면 됩니다. 상세는 README 9번 섹션을 참고하세요.", 1240),
-        ("내가 방금 뭘 물어봤지?",
-         "직전에 'FastAPI로 배포하는 방법 알려줘'를 물어보셨고, uvicorn 실행 명령과 환경변수 설정을 안내드렸어요.",
-         980),
-        ("컨텍스트는 몇 턴까지 기억해?",
-         "직전 5개의 질문/응답(CONTEXT_TURNS=5)을 프롬프트에 포함해 문맥을 유지합니다. .env에서 조절할 수 있어요.",
-         1100),
+        (
+            "FastAPI로 배포하는 방법 알려줘",
+            "uvicorn app.main:app --host 0.0.0.0 으로 실행하고, 플랫폼(Cloudtype/Render 등)의 "
+            "환경변수에 AI_API_KEY 등을 설정하면 됩니다. 상세는 README 9번 섹션을 참고하세요.",
+            1240,
+        ),
+        (
+            "내가 방금 뭘 물어봤지?",
+            "직전에 'FastAPI로 배포하는 방법 알려줘'를 물어보셨고, uvicorn 실행 명령과 환경변수 설정을 안내드렸어요.",
+            980,
+        ),
+        (
+            "컨텍스트는 몇 턴까지 기억해?",
+            "직전 5개의 질문/응답(CONTEXT_TURNS=5)을 프롬프트에 포함해 문맥을 유지합니다. .env에서 조절할 수 있어요.",
+            1100,
+        ),
     ],
     "tester@demo.com": [
-        ("SQLite 로그 확인하는 법?",
-         "sqlite3 app.db < scripts/check_logs.sql 로 최근 대화 로그를 조회할 수 있습니다.", 1050),
-        ("타임아웃은 어떻게 되지?",
-         "AI_TIMEOUT_SEC(기본 45초)를 초과하면 504와 함께 AI_TIMEOUT 안내가 반환됩니다.", 990),
+        (
+            "SQLite 로그 확인하는 법?",
+            "sqlite3 app.db < scripts/check_logs.sql 로 최근 대화 로그를 조회할 수 있습니다.",
+            1050,
+        ),
+        (
+            "타임아웃은 어떻게 되지?",
+            "AI_TIMEOUT_SEC(기본 45초)를 초과하면 504와 함께 AI_TIMEOUT 안내가 반환됩니다.",
+            990,
+        ),
         ("타임아웃 강제 발생 테스트", "", 2007),  # status=ai_error
     ],
     "admin@demo.com": [],
@@ -56,18 +70,27 @@ def db_path_hint() -> str:
     return engine.url.database or "app.db"
 
 
-
 def seed(fresh: bool) -> None:
     init_db()
     db = SessionLocal()
     try:
         if fresh:
-            demo_ids = [row.id for row in db.query(User).filter(
-                User.email.in_([u["email"] for u in MOCK_USERS])).all()]
-            deleted = db.query(ChatLog).filter(ChatLog.user_id.in_(demo_ids)).delete(
-                synchronize_session=False)
-            users_deleted = db.query(User).filter(
-                User.email.in_([u["email"] for u in MOCK_USERS])).delete(synchronize_session=False)
+            demo_ids = [
+                row.id
+                for row in db.query(User)
+                .filter(User.email.in_([u["email"] for u in MOCK_USERS]))
+                .all()
+            ]
+            deleted = (
+                db.query(ChatLog)
+                .filter(ChatLog.user_id.in_(demo_ids))
+                .delete(synchronize_session=False)
+            )
+            users_deleted = (
+                db.query(User)
+                .filter(User.email.in_([u["email"] for u in MOCK_USERS]))
+                .delete(synchronize_session=False)
+            )
             db.commit()
             print(f"🧹 데모 계정 관련 데이터만 삭제: 채팅 {deleted}건 / 사용자 {users_deleted}명")
 
@@ -76,8 +99,13 @@ def seed(fresh: bool) -> None:
             if existing:
                 print(f"· {info['email']} 이미 존재 → 스킵")
                 continue
-            db.add(User(email=info["email"], password_hash=hash_password(MOCK_PASSWORD),
-                        nickname=info["nickname"]))
+            db.add(
+                User(
+                    email=info["email"],
+                    password_hash=hash_password(MOCK_PASSWORD),
+                    nickname=info["nickname"],
+                )
+            )
         db.commit()
 
         for email, chats in MOCK_CHATS.items():
@@ -90,8 +118,16 @@ def seed(fresh: bool) -> None:
                 continue
             for i, (q, a, latency) in enumerate(chats):
                 status = "ai_error" if a == "" else "success"
-                db.add(ChatLog(user_id=user.id, question=q, answer=a,
-                               latency_ms=latency, status=status, request_id=f"mock{i:02d}"))
+                db.add(
+                    ChatLog(
+                        user_id=user.id,
+                        question=q,
+                        answer=a,
+                        latency_ms=latency,
+                        status=status,
+                        request_id=f"mock{i:02d}",
+                    )
+                )
             db.commit()
             print(f"✅ {email}: 대화 {len(chats)}건 생성")
 
@@ -105,6 +141,10 @@ def seed(fresh: bool) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--fresh", action="store_true", help="데모 계정과 해당 대화만 삭제 후 재생성. 일반 사용자 기록은 유지")
+    parser.add_argument(
+        "--fresh",
+        action="store_true",
+        help="데모 계정과 해당 대화만 삭제 후 재생성. 일반 사용자 기록은 유지",
+    )
     args = parser.parse_args()
     seed(args.fresh)
