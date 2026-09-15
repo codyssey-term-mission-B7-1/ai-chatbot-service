@@ -83,12 +83,27 @@ async def browser_checks(base: str, output: Path, grant) -> dict:
         await page.locator('#question').fill(' ')
         await page.locator('#send-btn').click()
         assert len(requests) == before
+        max_len = await page.locator('#question').get_attribute('maxlength')
+        assert max_len and int(max_len) >= 1000
         await page.locator('#question').fill('🙂' * 1001)
-        assert await page.locator('#count').inner_text() == '1001'
+        overflow = await page.locator('#question').input_value()
+        assert 0 < len(overflow) < 1001  # 브라우저 maxlength(UTF-16 단위)가 초과 입력을 잘라낸다
+        assert await page.locator('#count').inner_text() == str(len(overflow))
+        checks.append('HTML maxlength가 초과 입력을 잘라낸다')
+        # JS 층 가드: maxlength를 우회하는 DOM 직접 조작도 코드포인트 상한으로 차단
+        await page.evaluate(
+            "() => { const q = document.querySelector('#question');"
+            " q.value = '가'.repeat(1001);"
+            " q.dispatchEvent(new Event('input', { bubbles: true })); }"
+        )
         await page.locator('#send-btn').click()
         assert len(requests) == before
-        checks.append('공백/1001 코드 포인트 전송 차단')
-        await page.locator('#question').fill('🙂' * 501)
+        checks.append('maxlength 우회 입력도 코드포인트 상한으로 차단')
+        await page.evaluate(
+            "() => { const q = document.querySelector('#question');"
+            " q.value = '🙂'.repeat(501);"
+            " q.dispatchEvent(new Event('input', { bubbles: true })); }"
+        )
         assert await page.locator('#count').inner_text() == '501'
         checks.append('이모지 501개를 501자로 계산')
 
