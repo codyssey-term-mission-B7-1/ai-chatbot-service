@@ -25,9 +25,11 @@
 | POST | /api/password-resets | 공개 / 202 (계정 존재 은닉) |
 | POST | /api/password-resets/{token} | 공개 / 200 · 400 |
 | POST | /api/chats | 로그인 / 200 · 404 (thread_id 타인·부존재) |
-| POST | /api/threads | 로그인 / 201 · 409 (상한) |
-| GET | /api/threads | 로그인 / 내 대화 목록(최근 활동순, 최대 50) |
-| DELETE | /api/threads/{id} | 로그인 / 200 · 404 — 기록 CASCADE 삭제 |
+| POST | /api/thread | 로그인 / 201 · 409 (상한) |
+| GET | /api/thread/list | 로그인 / 내 대화 목록(최근 활동순, 최대 50) |
+| GET | /api/thread/{id} | 로그인 / 대화 단건 · 404 |
+| GET | /api/thread/{id}/chats | 로그인 / 그 대화의 기록(최신순, limit·status·before_id) · 404 |
+| DELETE | /api/thread/{id} | 로그인 / 204 · 404 — 기록 CASCADE 삭제 |
 | GET | /api/users/me/chats | 로그인 / 본인 기록 (thread_id 필터 가능) |
 | GET | /api/admin/chats | 명시적 앱 관리자 / 전체 조회 |
 | GET | /health | 공개 / 200 |
@@ -121,9 +123,9 @@ Cookie: session=<실제 요청에서만 사용, 증빙에서는 마스킹>
 한 사용자는 여러 대화(스레드)를 가진다. **AI 문맥과 UI 복원은 스레드 단위**다(ADR-011).
 
 ```http
-POST /api/threads          → 201 {"id":3,"title":null,"created_at":"…Z","updated_at":"…Z"}
-GET  /api/threads          → 200 [{"id":2,"title":"DB 백업 방법","…"}, …]   (최근 활동순, 최대 50)
-DELETE /api/threads/2      → 200 {"deleted":true}    (그 대화의 기록도 CASCADE 삭제)
+POST /api/thread           → 201 {"id":3,"title":null,"created_at":"…Z","updated_at":"…Z"}
+GET  /api/thread/list      → 200 [{"id":2,"title":"DB 백업 방법","…"}, …]   (최근 활동순, 최대 50)
+DELETE /api/thread/2       → 204 (빈 응답 — 그 대화의 기록도 CASCADE 삭제)
 ```
 
 - `thread_id`를 **전달한 채팅**은 그 대화에 저장되고 문맥도 그 대화의 직전 N개 성공 Q/A만 사용한다. **미전달**이면 사용자의 **기본 대화**(가장 오래된 스레드)로 저장·해제된다.

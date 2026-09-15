@@ -5,17 +5,17 @@ from tests.conftest import signup_and_login
 
 
 def test_thread_requires_login(client):
-    assert client.post("/api/threads").status_code == 401
-    assert client.get("/api/threads").status_code == 401
-    assert client.delete("/api/threads/1").status_code == 401
+    assert client.post("/api/thread").status_code == 401
+    assert client.get("/api/thread/list").status_code == 401
+    assert client.delete("/api/thread/1").status_code == 401
 
 
 def test_create_and_list_thread(client):
     signup_and_login(client)
     # 신규 사용자의 목록은 비어 있다(기본 대화는 첫 채팅에서 생성)
-    assert client.get("/api/threads").json() == []
+    assert client.get("/api/thread/list").json() == []
 
-    r = client.post("/api/threads")
+    r = client.post("/api/thread")
     assert r.status_code == 201
     body = r.json()
     assert body["id"] > 0
@@ -23,7 +23,7 @@ def test_create_and_list_thread(client):
     assert body["created_at"].endswith("Z")
     assert "updated_at" in body
 
-    threads = client.get("/api/threads").json()
+    threads = client.get("/api/thread/list").json()
     assert len(threads) == 1 and threads[0]["id"] == body["id"]
 
 
@@ -32,7 +32,7 @@ def test_default_thread_created_on_first_chat(client, fake_ai):
     r = client.post("/api/chats", json={"question": "첫 질문"})
     assert r.status_code == 201
 
-    threads = client.get("/api/threads").json()
+    threads = client.get("/api/thread/list").json()
     assert len(threads) == 1
     assert threads[0]["title"] == "기본 대화"
 
@@ -42,32 +42,32 @@ def test_default_thread_created_on_first_chat(client, fake_ai):
 
 def test_thread_list_isolated_per_user(client):
     signup_and_login(client, email="one@test.com")
-    client.post("/api/threads")
-    mine = client.get("/api/threads").json()
+    client.post("/api/thread")
+    mine = client.get("/api/thread/list").json()
     assert len(mine) == 1
 
     signup_and_login(client, email="two@test.com")
-    assert client.get("/api/threads").json() == []
+    assert client.get("/api/thread/list").json() == []
 
 
 def test_delete_thread_own(client, fake_ai):
     signup_and_login(client)
     client.post("/api/chats", json={"question": "기본 대화 질문"})
-    tid = client.post("/api/threads").json()["id"]
+    tid = client.post("/api/thread").json()["id"]
     client.post("/api/chats", json={"question": "두 번째 대화 질문", "thread_id": tid})
 
-    r = client.delete(f"/api/threads/{tid}")
-    assert r.status_code == 200 and r.json() == {"deleted": True}
-    assert client.get("/api/threads").json()[0]["id"] != tid
+    r = client.delete(f"/api/thread/{tid}")
+    assert r.status_code == 204
+    assert client.get("/api/thread/list").json()[0]["id"] != tid
 
 
 def test_delete_thread_cascades_logs(client, fake_ai):
     signup_and_login(client)
     client.post("/api/chats", json={"question": "남아야 할 질문"})
-    tid = client.post("/api/threads").json()["id"]
+    tid = client.post("/api/thread").json()["id"]
     client.post("/api/chats", json={"question": "지워질 질문", "thread_id": tid})
 
-    client.delete(f"/api/threads/{tid}")
+    client.delete(f"/api/thread/{tid}")
 
     # 지운 스레드 조회는 404, 남은 로그만 본다
     assert client.get(f"/api/users/me/chats?thread_id={tid}").status_code == 404
@@ -77,26 +77,26 @@ def test_delete_thread_cascades_logs(client, fake_ai):
 
 def test_delete_thread_not_own_or_missing(client):
     signup_and_login(client, email="one@test.com")
-    foreign = client.post("/api/threads").json()["id"]
+    foreign = client.post("/api/thread").json()["id"]
 
     signup_and_login(client, email="two@test.com")
-    assert client.delete(f"/api/threads/{foreign}").status_code == 404
-    assert client.delete("/api/threads/999999").status_code == 404
+    assert client.delete(f"/api/thread/{foreign}").status_code == 404
+    assert client.delete("/api/thread/999999").status_code == 404
 
 
 def test_thread_cap_enforced(client, monkeypatch):
     signup_and_login(client)
     monkeypatch.setattr(settings, "max_threads_per_user", 2)
-    assert client.post("/api/threads").status_code == 201
-    assert client.post("/api/threads").status_code == 201
-    r = client.post("/api/threads")
+    assert client.post("/api/thread").status_code == 201
+    assert client.post("/api/thread").status_code == 201
+    r = client.post("/api/thread")
     assert r.status_code == 409
     assert "가득 찼어요" in r.json()["detail"]
 
 
 def test_chat_with_foreign_or_missing_thread_404(client):
     signup_and_login(client, email="one@test.com")
-    foreign = client.post("/api/threads").json()["id"]
+    foreign = client.post("/api/thread").json()["id"]
 
     signup_and_login(client, email="two@test.com")
     assert (
@@ -117,7 +117,7 @@ def test_context_scoped_per_thread(client, fake_ai):
     client.post("/api/chats", json={"question": "기본 대화의 질문 둘"})
 
     # 새 대화 만들고 거기서 질문
-    tid = client.post("/api/threads").json()["id"]
+    tid = client.post("/api/thread").json()["id"]
     client.post("/api/chats", json={"question": "새 대화의 질문 삼", "thread_id": tid})
 
     sent = " ".join(m["content"] for m in fake_ai.last_messages)
@@ -129,7 +129,7 @@ def test_context_scoped_per_thread(client, fake_ai):
 def test_context_within_thread_still_last_5(client, fake_ai):
     """스레드 안에서는 기존처럼 직전 5개 성공 Q/A만 — 6번째 질문은 문맥에서 빠진다."""
     signup_and_login(client)
-    tid = client.post("/api/threads").json()["id"]
+    tid = client.post("/api/thread").json()["id"]
     for i in range(1, 7):
         client.post("/api/chats", json={"question": f"스레드 질문 {i}번", "thread_id": tid})
 
@@ -144,7 +144,7 @@ def test_context_within_thread_still_last_5(client, fake_ai):
 def test_my_chats_thread_filter(client, fake_ai):
     signup_and_login(client)
     client.post("/api/chats", json={"question": "기본 대화 질문"})
-    tid = client.post("/api/threads").json()["id"]
+    tid = client.post("/api/thread").json()["id"]
     client.post("/api/chats", json={"question": "스레드 질문", "thread_id": tid})
 
     only_thread = client.get(f"/api/users/me/chats?thread_id={tid}").json()
@@ -160,11 +160,11 @@ def test_my_chats_thread_filter(client, fake_ai):
 
 def test_title_autogenerated_from_first_question(client, fake_ai):
     signup_and_login(client)
-    tid = client.post("/api/threads").json()["id"]
+    tid = client.post("/api/thread").json()["id"]
     question = "이것은 아주 긴 질문이야 ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     client.post("/api/chats", json={"question": question, "thread_id": tid})
 
-    threads = client.get("/api/threads").json()
+    threads = client.get("/api/thread/list").json()
     new = next(t for t in threads if t["id"] == tid)
     expected = " ".join(question.split())[:20]
     assert new["title"] == expected
@@ -175,5 +175,37 @@ def test_default_thread_title_not_overwritten(client, fake_ai):
     """기본 대화('기본 대화' 제목)는 첫 질문으로 제목이 바뀌지 않는다."""
     signup_and_login(client)
     client.post("/api/chats", json={"question": "기본 대화 질문"})
-    threads = client.get("/api/threads").json()
+    threads = client.get("/api/thread/list").json()
     assert threads[0]["title"] == "기본 대화"
+
+
+def test_get_single_thread(client):
+    signup_and_login(client)
+    tid = client.post("/api/thread").json()["id"]
+    r = client.get(f"/api/thread/{tid}")
+    assert r.status_code == 200
+    assert r.json()["id"] == tid
+
+
+def test_get_single_thread_not_own_or_missing_404(client):
+    signup_and_login(client, email="one@test.com")
+    assert client.get("/api/thread/999999").status_code == 404
+    foreign = client.post("/api/thread").json()["id"]
+
+    signup_and_login(client, email="two@test.com")
+    assert client.get(f"/api/thread/{foreign}").status_code == 404
+
+
+def test_thread_nested_chats(client, fake_ai):
+    signup_and_login(client)
+    tid = client.post("/api/thread").json()["id"]
+    r = client.post("/api/chats", json={"question": "중첩 조회 질문", "thread_id": tid})
+    assert r.status_code == 201
+
+    logs = client.get(f"/api/thread/{tid}/chats").json()
+    assert [log["question"] for log in logs] == ["중첩 조회 질문"]
+    assert client.get("/api/thread/999999/chats").status_code == 404
+
+
+def test_thread_nested_chats_requires_login(client):
+    assert client.get("/api/thread/1/chats").status_code == 401
