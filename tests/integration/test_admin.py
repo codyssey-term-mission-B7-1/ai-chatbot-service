@@ -197,7 +197,7 @@ def test_admin_page_view_records_reason_in_audit_log(client, db, caplog):
     assert response.status_code == 200
     assert "event=admin_logs_viewed" in caplog.text
     assert "reason=" in caplog.text
-    # 폼이 네이티브 GET(name 속성)으로 제출되므로 입력의 name이 실제 렌더에 있어야 한다 — 유실 시 필터가 무시된다.
+    # 폼이 네이티브 GET(name 속성)으로 제출된다 — name 누락 시 필터가 조용히 무시된다.
     assert 'id="admin-reason"' in response.text and 'name="reason"' in response.text
 
     caplog.clear()
