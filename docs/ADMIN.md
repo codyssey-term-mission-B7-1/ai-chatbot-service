@@ -51,6 +51,11 @@ python scripts/manage_admin.py revoke --email operator@example.com
 
 - 같은 키는 API에서도 `?filter=` 로 사용 가능(CLI `logs_client` 호환).
 - 미지 키는 화면 하단 오류 힌트로 표시되고 무시된다. 값은 모두 바인딩 파라미터로만 사용된다(임의 SQL 없음).
+- **값 자동완성**: `email:` `thread:` `event:` `path:` `table:` 입력 중 `GET /api/admin/suggest?field=&q=`가
+  후보를 최대 8건 제시하고 ↑↓·Enter로 확정한다(#204). `email:`은 접두사가 아니라 부분일치로 검색된다.
+- **인젝션 방어(#204)**: 모든 필터 값은 ORM 바인딩 파라미터로만 사용된다. LIKE 패턴의 `%`·`_`는
+  이스케이프해 문자 그대로 매칭하고, 테이블 접근은 모델 화이트리스트로만 허용하며, 후보 응답에
+  질문·답변 원문 같은 콘텐츠는 절대 포함되지 않는다.
 
 - 웹 셸 터미널은 의도적으로 제공하지 않는다 — 관리자 세션 탈취 시 서버 전체 장악(RCE)으로 이어지는 안티패턴.
 - 이벤트·네트워크 로그 기록은 best-effort다. 기록 실패가 사용자 요청 처리에 영향을 주지 않는다(테스트 `test_recorder_failure_never_breaks_requests`).

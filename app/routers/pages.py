@@ -15,7 +15,6 @@ from app.deps import resolve_session_user
 from app.logging_config import log_event
 from app.models import Thread, User
 from app.repositories.chat_logs import list_logs
-from app.repositories.users import find_by_email
 from app.routers.admin import all_events, all_requests, db_table_rows, db_tables, stats
 from app.services.admin import is_admin
 from app.services.filter_query import parse_filter
@@ -141,7 +140,17 @@ def admin_logs_page(
     log_status = fq.get("status")
     if log_status not in (None, "success", "ai_error"):
         log_status = None
-    target = find_by_email(db, clean_email) if clean_email else None
+    # email:는 부분일치 — 타이핑 중간에도 후보가 곧바로 검색되게 한다(#204).
+    # 와일드카드는 문자 그대로 취급(이스케이프)해 인젝션 표면을 줄인다.
+    target = None
+    if clean_email:
+        escaped = clean_email.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        target = (
+            db.query(User)
+            .filter(User.email.ilike(f"%{escaped}%", escape="\\"))
+            .order_by(User.id)
+            .first()
+        )
     user_not_found = bool(clean_email) and target is None
     thread_exists = (
         thread is None or db.query(Thread.id).filter(Thread.id == thread).first() is not None
