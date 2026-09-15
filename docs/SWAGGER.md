@@ -104,18 +104,18 @@ AI_TIMEOUT_SEC는 AI 호출 전체 예산(재시도/대기 포함)이며 DB 처�
 
 | 메서드 | 경로 | summary | 주요 responses |
 |---|---|---|---|
-| POST | `/api/auth/signup` | 회원가입 | 409 이미 가입, 422 검증 실패 |
-| POST | `/api/auth/login` | 로그인 | 401 불일치, 429 잠금 (Retry-After) |
-| POST | `/api/auth/forgot-password` | 비밀번호 재설정 요청 | 202 접수, 503 SMTP 미설정, 502 발송 실패 |
-| POST | `/api/auth/reset-password` | 비밀번호 재설정 완료 | 200 완료, 400 토큰 무효 |
-| POST | `/api/auth/logout` | 로그아웃 | (비로그인도 200) |
-| GET | `/api/auth/me` | 내 정보 | 401 로그인 필요 |
+| POST | `/api/users` | 회원가입 | 201 생성, 409 이미 가입, 422 검증 실패 |
+| POST | `/api/session` | 로그인 | 201 발급, 401 불일치, 429 잠금 (Retry-After) |
+| POST | `/api/password-resets` | 비밀번호 재설정 요청 | 202 접수, 503 SMTP 미설정, 502 발송 실패 |
+| POST | `/api/password-resets/{token}` | 비밀번호 재설정 완료 | 200 완료, 400 토큰 무효 |
+| DELETE | `/api/session` | 로그아웃 | 204 (비로그인도 204) |
+| GET | `/api/users/me` | 내 정보 | 401 로그인 필요 |
 
 ### `chat` 태그 — `app/routers/chat.py`
 
 | 메서드 | 경로 | summary | 주요 responses |
 |---|---|---|---|
-| POST | `/api/chat` | 질문 → AI 응답 | 401 로그인, 404 thread_id 무효, 422 검증, 429 rate limit, 502 AI 오류, 504 타임아웃 |
+| POST | `/api/chats` | 질문 → AI 응답 | 201 생성(저장 성공)·200(저장 실패, chat_id=-1), 401 로그인, 404 thread_id 무효, 422 검증, 429 rate limit, 502 AI 오류, 504 타임아웃 |
 
 **처리 순서**: 입력 검증 → thread_id 소유권 검증 → 성공 Q/A 최대 N쌍 → AI 호출 → DB 저장 시도 → 응답.
 
@@ -123,7 +123,7 @@ AI_TIMEOUT_SEC는 AI 호출 전체 예산(재시도/대기 포함)이며 DB 처�
 
 | 메서드 | 경로 | summary | 주요 responses |
 |---|---|---|---|
-| GET | `/api/me/chats` | 내 대화 로그 조회 | 401 로그인, 404 thread_id 무효 |
+| GET | `/api/users/me/chats` | 내 대화 로그 조회 | 401 로그인, 404 thread_id 무효 |
 
 **파라미터**: `status`(success/ai_error), `limit`(1~200, 기본 50), `before_id`(커서), `thread_id`(필터).
 

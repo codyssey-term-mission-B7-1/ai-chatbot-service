@@ -9,7 +9,7 @@
 > **2026-09-13 갱신 (ADR-011)**: 문맥 범위가 "사용자 전체"에서 **대화(스레드) 단위**로 분리됨 — `thread_id` 생략 시 기본 대화(가장 오래된 스레드, 기존 기록 백필). 사용자가 새 대화(＋ 새 채팅)를 만들면 이전 주제의 Q/A가 문맥에 섞이지 않고, 스레드 삭제는 그 기록의 개인정보 삭제가 된다. 아래 표의 "한계 1·4"는 **스레드 안에서의** 한계다.
 
 ```
-POST /api/chat {question, thread_id?}
+POST /api/chats {question, thread_id?}
   thread  = resolve_default_thread(user) if not thread_id   # 없으면 '기본 대화' 생성+백필
   history = chat_logs.successful_context(user, thread, 5)   # 성공만, 최신 5개 → 오래된 순
   system  = SYSTEM_PROMPT + "\n현재 대화 상대: {닉네임}님"   # 매 요청 항상

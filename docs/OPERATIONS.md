@@ -90,9 +90,9 @@
 
 ### 검증
 ```bash
-curl -s -c c.txt -X POST <라이브>/api/auth/login -H 'Content-Type: application/json' \
+curl -s -c c.txt -X POST <라이브>/api/session -H 'Content-Type: application/json' \
   -d '{"email":"본인@example.com","password":"..."}'
-curl -s -b c.txt <라이브>/api/auth/me   # "is_admin": true 확인
+curl -s -b c.txt <라이브>/api/users/me   # "is_admin": true 확인
 ```
 
 ---
@@ -113,7 +113,7 @@ curl -s -b c.txt -X DELETE <라이브>/api/admin/users/<user_id>
 
 ## 로그 조회 API 클라이언트 (DB 접근 없이)
 
-로그 조회는 **API만으로** 가능하다 — `scripts/logs_client.py`가 로그인(세션 쿠키) 후 `GET /api/me/chats`·`GET /api/admin/chats`를 호출한다. DB 파일 접근·SQL 권한이 없는 환경(Railway 웹 셸 외부, 운영 URL만 있는 상황)에서 기록 검증에 쓰라.
+로그 조회는 **API만으로** 가능하다 — `scripts/logs_client.py`가 로그인(세션 쿠키) 후 `GET /api/users/me/chats`·`GET /api/admin/chats`를 호출한다. DB 파일 접근·SQL 권한이 없는 환경(Railway 웹 셸 외부, 운영 URL만 있는 상황)에서 기록 검증에 쓰라.
 
 ```bash
 # 내 대화 로그 최신 50건 (시간은 KST 표기)

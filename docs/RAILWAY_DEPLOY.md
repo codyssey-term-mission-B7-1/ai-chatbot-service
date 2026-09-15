@@ -71,7 +71,7 @@ Variables: `RAILWAY_SERVICE_NAME` 기본 ai-chatbot-service, `RAILWAY_ENVIRONMEN
 ## 영속화·운영 증빙
 
 - 가입/로그인 후 고유한 시험 질문을 저장한다.
-- 재배포 후 같은 계정의 `/api/me/chats`에서 해당 질문이 남아 있는지 확인한다.
+- 재배포 후 같은 계정의 `/api/users/me/chats`에서 해당 질문이 남아 있는지 확인한다.
 - `SESSION_SECRET`을 바꾸면 다시 로그인해야 한다. DB의 사용자 ID와 세션 지문이 다르면 오래된 세션은 거부된다.
 - 백업은 `python scripts/backup_db.py /data/app.db`를 사용한다. 기본 출력은 `/data/backups/`다.
 - 운영 스케줄러·서버 밖 백업 보관·복원 드릴은 운영자가 실제로 수행하고 기록해야 한다.

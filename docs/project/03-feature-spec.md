@@ -13,10 +13,10 @@
 | FR-01 | 회원가입 | 이메일 정규화(공백제거·소문자)·중복 409·비밀번호 정책(§2.1)·닉네임 ≤20자(생략 시 이메일 접두어) | 04 | test_auth_flow, test_schema_edge_cases |
 | FR-02 | 로그인 | 성공 시 서명 세션 쿠키 발급, 실패 누적 잠금 429+Retry-After(5회/15분), 미가입 이메일도 더미 bcrypt로 타이밍 평탄화 | 04 | test_login_rate_limit |
 | FR-03 | 로그아웃 | 비로그인도 200, 현재 쿠키 비움 | 04 | test_auth_flow |
-| FR-04 | 내 정보 | GET /api/auth/me — 로그인 필요, email·nickname·is_admin | 04·05 | test_auth_flow |
+| FR-04 | 내 정보 | GET /api/users/me — 로그인 필요, email·nickname·is_admin | 04·05 | test_auth_flow |
 | FR-05 | 비밀번호 재설정 | 이메일 요청 202(계정 존재 은닉)→토큰(해시 저장·단일 사용·30분)→완료 시 세션 전면 폐기, 요청 상한 3회/15분 | 04(확장) | test_password_reset |
 | FR-06 | 접근 제어 | API 비로그인 401, HTML 보호화면 /login 302, 관리자 아님 403 | 05 | test_pages, test_verified_gaps |
-| FR-07 | 채팅 질의응답 | POST /api/chat — 검증→문맥→AI 호출→저장→응답(§3) | 07 | test_chat_flow |
+| FR-07 | 채팅 질의응답 | POST /api/chats — 검증→문맥→AI 호출→저장→응답(§3) | 07 | test_chat_flow |
 | FR-08 | 문맥 유지 | 같은 사용자 직전 성공 Q/A N쌍(CONTEXT_TURNS 기본 5, 0~200) | 07 | test_context |
 | FR-09 | 채팅 rate limit | 사용자별 분당 상한(기본 10, 0=비활성), 초과 429+Retry-After | 07(확장) | test_chat_rate_limit |
 | FR-10 | AI 연동 | 네이토(OpenAI 호환), 전체 시간 예산 45초, 재시도 정책(§3.2) | 06 | test_ai_client, test_ai_http_budget |
