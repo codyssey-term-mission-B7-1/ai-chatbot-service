@@ -291,3 +291,18 @@ body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) .input-live-hint.warn { color: #ffcc66; }
 }
+
+
+/* ── 필터 값 자동완성(#204) ─────────────────────── */
+.suggest-list {
+  position: absolute; z-index: 30; min-width: 240px; max-width: 360px;
+  margin-top: 2px; padding: 4px;
+  background: var(--card, #fff); border: 1px solid var(--border, #ddd); border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+.admin-filter { position: relative; }
+.suggest-item {
+  display: block; width: 100%; text-align: left; padding: 7px 10px;
+  border: 0; background: none; border-radius: 7px; font-size: 13px; color: inherit; cursor: pointer;
+}
+.suggest-item.active, .suggest-item:hover { background: rgba(79, 109, 245, 0.12); }
