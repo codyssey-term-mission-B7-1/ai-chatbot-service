@@ -8,13 +8,14 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 import app.models  # noqa: F401  # 모델 레지스트리 등록 — create_all/autogenerate에 필요
+from app import __version__
 from app.audit import E
 from app.config import settings
 from app.database import init_db
 from app.exception_handlers import register as register_exception_handlers
 from app.logging_config import log_event, setup_logging
 from app.middleware import register as register_middleware
-from app.routers import admin, auth, chat, health, logs, pages, threads
+from app.routers import register_routers
 
 setup_logging()
 logger = logging.getLogger("app")
@@ -57,7 +58,7 @@ async def lifespan(application: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     description=DESCRIPTION,
-    version="0.2.0",
+    version=__version__,
     lifespan=lifespan,
     openapi_tags=[
         {"name": "auth", "description": "회원가입·서명 쿠키 세션"},
@@ -70,14 +71,7 @@ app = FastAPI(
 
 register_middleware(app)
 register_exception_handlers(app)
-
-app.include_router(auth.router)
-app.include_router(chat.router)
-app.include_router(threads.router)
-app.include_router(logs.router)
-app.include_router(admin.router)
-app.include_router(pages.router)
-app.include_router(health.router)
+register_routers(app)
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
