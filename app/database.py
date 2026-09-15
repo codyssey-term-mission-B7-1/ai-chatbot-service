@@ -1,16 +1,4 @@
-"""DB 엔진/세션 — SQLite 기본, PostgreSQL/MySQL 전환 가능.
-
-스키마 관리는 Alembic이 담당한다(alembic/versions/). 앱 시작 시 create_all은
-테스트/빈 DB에만 사용하고, 기존 DB는 `alembic upgrade head`로 누락 마이그레이션만
-적용한다. SQLite 특정 PRAGMA는 SQLite일 때만 붙인다.
-
-연결 풀 정책:
-- SQLite 파일 DB: 기본 SingletonThreadPool(단일 연결 재사).
-- SQLite 인메모리(``sqlite://`` / ``sqlite:///:memory:``): StaticPool + check_same_thread=False.
-  없으면 연결마다 새 인메모리 DB가 생겨 create_all로 만든 테이블이 요청 처리 시점에
-  보이지 않는다 (테스트 환경의 흔한 함정).
-- Postgres/MySQL: QueuePool + pool_pre_ping + pool_recycle.
-"""
+"""DB 엔진/세션 — SQLite 기본, PostgreSQL/MySQL 전환 가능."""
 
 from pathlib import Path
 
@@ -41,8 +29,6 @@ _is_sqlite_memory = _is_sqlite and settings.database_url in ("sqlite://", "sqlit
 
 _engine_kwargs: dict = {}
 if _is_sqlite_memory:
-    # 인메모리 DB는 모든 연결이 같은 DB를 가리켜야 한다(테스트 lifespan에서 create_all 한
-    # 테이블이 요청 처리 연결에서도 보여야).
     from sqlalchemy.pool import StaticPool
 
     _engine_kwargs.update(
@@ -52,8 +38,6 @@ if _is_sqlite_memory:
 elif _is_sqlite:
     _engine_kwargs.update(connect_args={"check_same_thread": False})
 else:
-    # TCP 연결 타임아웃을 짧게(3초) 잡아 DB 장애 시 /readyz가 수십 초씩 블로킹되지 않게 한다.
-    # 드라이버별 키가 달라 넓은 안전망으로만 적용한다.
     _engine_kwargs.update(
         connect_args={"connect_timeout": 3},
         pool_size=5,
@@ -67,12 +51,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 
 
 def _sqlite_pragmas_on_connect(dbapi_conn, _conn_record):
-    """SQLite는 연결마다 설정이 초기화된다. 매 연결에서 다시 켠다.
-
-    - foreign_keys=ON: FK 검증과 ON DELETE CASCADE가 실제로 작동하게 (#51).
-    - journal_mode=WAL: 읽기-쓰기 동시성 개선. 파일 DB에만 적용.
-    - busy_timeout: 잠금 경합 시 최대 5초 대기.
-    """
+    """SQLite는 연결마다 설정이 초기화된다. 매 연결에서 다시 켠다."""
     cur = dbapi_conn.cursor()
     cur.execute("PRAGMA foreign_keys=ON")
     cur.execute("PRAGMA busy_timeout=5000")
@@ -84,18 +63,11 @@ def _sqlite_pragmas_on_connect(dbapi_conn, _conn_record):
 if _is_sqlite:
     event.listens_for(engine, "connect")(_sqlite_pragmas_on_connect)
 
-
-# 스키마 동기화 상태 — /health의 ``schema`` 필드와 /readyz 판정에 노출한다.
-# init_db 실패가 lifespan에서 로그로만 삼켜지자, 운영 DB 스키마 미반영이
-# 2026-09-13 threads 스키마 배포까지 수 주 동안 보이지 않았던 전례가 있다.
 schema_sync = {"status": "pending", "error": None, "revision": None}
 
 
 def _classify_db_error(exc: Exception) -> str:
-    """예외 상세를 노출하지 않으면서도 원인 식별이 되는 짧은 코드.
-
-    (로그·응답 정책: 원문/파라미터 노출 금지 — 예외 타입+분류만)
-    """
+    """예외 상세를 노출하지 않으면서도 원인 식별이 되는 짧은 코드."""
     msg = str(exc).lower()
     if "legacy schema incomplete" in msg:
         return "legacy_incomplete"
@@ -128,15 +100,7 @@ def _has_alembic_version_table(eng) -> bool:
 
 
 def _has_version_row(eng) -> bool:
-    """``alembic_version``에 실제 리비전 행이 있는지 — 빈 테이블(0행)은 레거시 상태다.
-
-    alembic ``upgrade``는 버전 테이블을 먼저 만들고 이어서 마이그레이션을 실행한다.
-    실패한 실행은 빈 테이블 껍질만 남기고, 다음 기동에서
-    ``_has_alembic_version_table``이 '테이블 있음'으로 adopt를 스킵하면 root
-    마이그레이션이 다시 돌아 ``table users already exists``가 반복된다.
-    2026-09-13 운영 사고: 이 빈 테이블 잔여 때문에 adopt가 한 번도 실행되지
-    않고 스키마 동기화가 무한 루프였다.
-    """
+    """``alembic_version``에 실제 리비전 행이 있는지 — 빈 테이블(0행)은 레거시 상태다."""
     with eng.connect() as conn:
         try:
             return conn.execute(text("SELECT 1 FROM alembic_version LIMIT 1")).first() is not None
@@ -159,26 +123,13 @@ def _schema_is_current(eng) -> bool:
 
 
 def _adopt_legacy_schema(alembic_cfg, eng) -> None:
-    """``alembic_version``이 없는 레거시 DB에 리비전 마크를 부여한다.
-
-    alembic 도입(ceed2b7) 전 create_all로 만들어진 DB는 버전 테이블이 없다.
-    이 상태로 ``upgrade head``를 돌리면 '아무것도 안 적용된' DB로 오인해 init
-    마이그레이션을 처음부터 재실행하고, ``table users already exists``로 항상
-    실패한다. lifespan이 그 오류를 삼키므로(프로세스는 기동) 스키마가 조용히
-    갱신되지 않았다 — 2026-09-13 운영에서 threads 마이그레이션이 반영되지
-    않아 신규 API 500이 난 사고의 원인.
-
-    스키마가 이미 최신이면 head 스탬프만. 아니면 이 DB의 상태는 base(init)
-    스키마(create_all과 init 마이그레이션이 같은 모델에서 생성)이므로 base
-    리비션을 스탬프하고, 호출 측이 남은 마이그레이션을 upgrade로 적용한다.
-    """
+    """``alembic_version``이 없는 레거시 DB에 리비전 마크를 부여한다."""
     from alembic import command
     from alembic.script import ScriptDirectory
 
     if _schema_is_current(eng):
         command.stamp(alembic_cfg, "head")
         return
-    # base(루트) 리비전 = down_revision이 없는 것 — 분기 히스토리에서는 둘 이상.
     roots = [
         rev
         for rev in ScriptDirectory.from_config(alembic_cfg).walk_revisions()
@@ -192,16 +143,7 @@ def _adopt_legacy_schema(alembic_cfg, eng) -> None:
 
 
 def init_db(alembic_cfg=None, eng=None) -> None:
-    """앱 시작 시 스키마를 동기화.
-
-    - 인메모리/테스트/완전히 빈 파일 DB: Base.metadata.create_all로 테이블을 만들고
-      alembic stamp head로 최신 리비전을 마킹.
-    - 기존 DB: ``alembic upgrade head``로 누락 마이그레이션만 적용.
-    - 레거시 DB(버전 테이블이 없거나 빈 테이블): 리비전 인수(adopt) 후 누락
-      마이그레이션 적용. 빈 테이블 = 실패한 upgrade가 남긴 껍질(2026-09-13 사고).
-
-    ``alembic_cfg``/``eng``는 테스트 주입용이며 기본값은 모듈 전역(앱)이다.
-    """
+    """앱 시작 시 스키마를 동기화."""
     import os
 
     import app.models  # noqa: F401 — Base.metadata에 모든 모델이 등록되도록
@@ -214,27 +156,21 @@ def init_db(alembic_cfg=None, eng=None) -> None:
         alembic_cfg = Config(str(ini_path))
 
     try:
-        # "sqlite://"은 SQLAlchemy가 "sqlite:///"으로 정규화 — 인메모리 판별에 두 표기 모두.
         in_memory = str(target.url) in ("sqlite://", "sqlite:///", "sqlite:///:memory:")
         is_test = os.environ.get("TESTING") == "1"
         if in_memory or is_test or not _has_any_table(target):
             Base.metadata.create_all(bind=target)
             command.stamp(alembic_cfg, "head")
         else:
-            # 버전 테이블이 없거나 빈 테이블(0행) = 레거시 상태. 실패한 upgrade는
-            # 빈 테이블 껍질만 남기므로(_has_version_row 참조) 그 경우에도 adopt.
             if not _has_alembic_version_table(target) or not _has_version_row(target):
                 _adopt_legacy_schema(alembic_cfg, target)
             command.upgrade(alembic_cfg, "head")
-            # 레거시 DB가 init(root) 마이그레이션보다 오래전 구조면 root 스탬프로
-            # root가 만든 테이블이 생성되지 않는다 — '나중에 500' 대신 기동 시점 실패.
             if not _schema_is_current(target):
                 raise RuntimeError(
                     "Legacy schema incomplete: 스키마가 최신이 아님 — "
                     "root 이전 구조의 DB는 데이터 백업 후 초기화하세요."
                 )
     except Exception as exc:
-        # 실패는 호출 측(lifespan)이 기존처럼 로그로 삼키되, 상태는 노출한다.
         schema_sync.update(status="error", error=_classify_db_error(exc), revision=None)
         raise
 

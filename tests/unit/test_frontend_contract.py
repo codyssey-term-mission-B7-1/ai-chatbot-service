@@ -235,7 +235,7 @@ def test_sidebar_hamburger_contract():
     ):
         assert token in sidebar_js
     assert "SidebarUI.register" in chat_js and "SidebarUI.ready" in chat_js
-    assert "?thread=" in chat_js  # 다른 페이지에서 대화 고르면 ?thread=로 전달
+    assert "get('thread')" in chat_js  # 다른 페이지에서 대화 고르면 ?thread=로 전달(코드 기준 검사)
     # 삭제 후 동기화 — 목록 갱신(삭제된 대화 소멸)이 훅보다 먼저, 채팅창은 새 기본 대화 이력 로드
     del_start = sidebar_js.index("async function deleteThread")
     del_end = sidebar_js.index("const errorText =")  # errorText는 form-utils 공용 위임(#150)

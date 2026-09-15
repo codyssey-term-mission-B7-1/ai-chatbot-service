@@ -1,11 +1,4 @@
-"""FastAPI 진입점 — 조립(composition root)만 담당한다(#150).
-
-여기서는 다음만 한다. 실제 동작은 각 모듈 문서를 본다.
-- lifespan: 시작 시 스키마 동기화(app/database.init_db)
-- 미들웨어 등록 순서·세션: app/middleware.register
-- 전역 예외 응답 계약: app/exception_handlers
-- API 라우터: app/routers.* / 운영 엔드포인트: app/routers/health.py
-"""
+"""FastAPI 진입점 — 조립(composition root)만 담당한다(#150)."""
 
 import logging
 from contextlib import asynccontextmanager
@@ -47,16 +40,10 @@ AI_TIMEOUT_SEC는 AI 호출 전체 예산(재시도/대기 포함)이며 DB 처�
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    """스키마 동기화(Alembic 마이그레이션 또는 create_all+stamp).
-
-    테이블이 이미 있으면 누락 마이그레이션만 적용하고, 빈 DB/인메모리는 create_all 후
-    head 스탬프로 최신 상태를 마킹한다. Alembic이 FK·열 변경을 안전하게 처리한다.
-    DB 연결 실패로 프로세스 시작 자체가 실패하지 않도록 init_db 오류는 잡아 로그만
-    남긴다 — /readyz가 503으로 가용성 없음을 알려준다.
-    """
+    """스키마 동기화(Alembic 마이그레이션 또는 create_all+stamp)."""
     try:
         init_db()
-    except Exception as exc:  # DB 장애 시 프로세스는 뜨고 /readyz가 503을 반환하게
+    except Exception as exc:
         log_event(
             logger,
             E.READYZ_DB_FAILURE,
@@ -81,7 +68,6 @@ app = FastAPI(
     ],
 )
 
-# 미들웨어(세션 포함)·전역 예외 핸들러 — 등록 순서 계약은 각 register 문서 참고
 register_middleware(app)
 register_exception_handlers(app)
 

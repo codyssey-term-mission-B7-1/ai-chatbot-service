@@ -21,8 +21,6 @@ from app.services.password_reset import is_reset_token_valid
 
 TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-# 정적 자산 캐시 버스팅 — 자산 URL에 배포 지문(커밋 SHA 앞 7자)을 붙여 배포 후 브라우저가
-# 항상 새 CSS/JS를 받아오도록 한다(구버전 자산 잔류 방지). BUILD_SHA 없는 로컬은 'dev'.
 templates.env.globals["asset_v"] = settings.build_sha[:7] or "dev"
 router = APIRouter(include_in_schema=False)
 logger = logging.getLogger("app.admin")
@@ -85,7 +83,7 @@ def forgot_password_page(request: Request, db: Session = Depends(get_db)):
     """비밀번호 찾기 화면 — 로그인 없이 접근 가능. 메일 설정 상태만 안내한다."""
     if _session_user(request, db):
         return RedirectResponse("/", status_code=302)
-    smtp_ready = bool(settings.smtp_host) or settings.debug  # 개발 모드는 콘솔 출력 경로 제공
+    smtp_ready = bool(settings.smtp_host) or settings.debug
     return templates.TemplateResponse(
         request, "forgot-password.html", {"mode": "forgot", "smtp_ready": smtp_ready}
     )
@@ -128,7 +126,6 @@ def admin_logs_page(
         return RedirectResponse("/login", status_code=302)
     if not is_admin(db, user):
         raise HTTPException(status_code=403, detail="관리자 권한이 필요한 기능이에요.")
-    # 사용자 검색 — 이메일 기준(ID 검색보다 직관적). 정규화(여백/대소문자)는 로그인과 동일.
     clean_email = email.strip().lower()
     target = find_by_email(db, clean_email) if clean_email else None
     user_not_found = bool(clean_email) and target is None
@@ -146,7 +143,6 @@ def admin_logs_page(
     if cleaned_reason:
         audit["reason"] = cleaned_reason
     log_event(logger, E.ADMIN_LOGS_VIEWED, **audit)
-    # '사용자' 열 — 이메일·닉네임 표시(ID 숫자만으로는 특정 사용자가 누군지 알기 어려움)
     user_infos = {}
     if rows:
         ids = {row.user_id for row in rows}

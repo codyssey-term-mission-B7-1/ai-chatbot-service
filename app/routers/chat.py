@@ -96,7 +96,6 @@ async def chat(
     chat_limiter: SlidingWindowLimiter = Depends(get_chat_limiter),
 ):
     request_id = request.state.request_id
-    # 비용 남용 방어(#73): 사용자별 분당 상한 — 제한되면 AI를 호출하지 않고 429로 안내한다.
     retry_after = chat_limiter.try_acquire(f"user:{user.id}")
     if retry_after > 0:
         log_event(
@@ -114,22 +113,15 @@ async def chat(
             ),
             headers={"Retry-After": str(retry_after)},
         )
-    # 스레드 해제: thread_id 미전달 = 사용자의 기본 대화(없으면 생성).
-    # 남의/존재하지 않는 스레드는 404 — 사용자 간 격리는 조회 filter가 이중 보장한다.
     if body.thread_id is not None:
         thread = threads_repo.get_thread(db, body.thread_id, user_id=user.id)
         if thread is None:
             raise HTTPException(status_code=404, detail="대화를 찾을 수 없어요.")
     else:
         thread = threads_repo.resolve_default_thread(db, user.id)
-    # 문맥은 스레드 단위 — 같은 스레드의 직전 N개 성공 Q/A만 AI에게 전달한다.
     history = chat_logs.successful_context(db, user.id, settings.context_turns, thread_id=thread.id)
     context_pairs = [(row.question, row.answer) for row in history]
-    # 문맥 조회 트랜잭션을 여기서 닫아 AI 호출(최대 AI_TIMEOUT_SEC) 동안 커넥션을 풀에
-    # 반납한다(#73). 조회 결과는 이미 메모리로 뽑았고 저장은 별도 커밋으로 수행한다.
     db.commit()
-    # 사용자 이름은 문맥 턴 수와 무관하게 매 요청 시스템 메시지로 전달한다 —
-    # 직전 Q/A 5쌍만으로는 AI가 대화 상대를 알 수 없고, CONTEXT_TURNS=0이면 이름도 사라진다.
     system_prompt = SYSTEM_PROMPT
     if user.nickname:
         system_prompt += f"\n현재 대화 상대: {user.nickname}님"
@@ -194,7 +186,6 @@ async def chat(
     )
     threads_repo.touch_after_message(db, thread.id, body.question)
     payload = ChatOut(answer=answer, latency_ms=latency_ms, chat_id=chat_id or -1, status="success")
-    # 저장까지 완료되면 생성(201), 저장 실패(chat_id=-1)면 200 — 자원 생성 여부로 구분
     return JSONResponse(
         status_code=status.HTTP_201_CREATED if chat_id else status.HTTP_200_OK,
         content=payload.model_dump(),

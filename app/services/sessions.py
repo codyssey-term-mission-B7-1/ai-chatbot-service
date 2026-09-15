@@ -1,9 +1,4 @@
-"""서버 측 세션 폐기(#74) — 시크릿 교체 없이 특정 계정의 기존 세션을 무효화한다.
-
-세션 쿠키는 서명만 되는 방식이라 기본적으로 서버가 개별 세션을 폐기할 수 없다.
-로그인 시 쿠키에 발급 시각(iat)을 넣고, 이 값이 폐기 기준 시점 이하인 세션은
-DB 대조 단계에서 거부한다. 신뢰된 서버 CLI(scripts/revoke_sessions.py)에서만 호출한다.
-"""
+"""서버 측 세션 폐기(#74) — 시크릿 교체 없이 특정 계정의 기존 세션을 무효화한다."""
 
 import time
 
@@ -14,11 +9,7 @@ from app.repositories.users import find_by_email
 
 
 def revoke_user_sessions(db: Session, user: User, *, backoff_seconds: int = 0) -> int:
-    """해당 계정의 '현재 시점 이전' 발급 세션을 모두 무효화한다. 반환값은 기준 epoch 초.
-
-    backoff_seconds: 기준을 과거로 당긴다. 비밀번호 재설정처럼 "폐기 직후 재로그인"이
-    필요한 플로우에서 같은 초 경합(iat == 기준 → 거부)을 피할 때 사용한다(#78 교훈).
-    """
+    """해당 계정의 '현재 시점 이전' 발급 세션을 모두 무효화한다. 반환값은 기준 epoch 초."""
     epoch = int(time.time()) - backoff_seconds
     row = db.get(SessionRevocation, user.id)
     if row is None:

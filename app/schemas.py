@@ -37,7 +37,6 @@ class SignupIn(BaseModel):
         if not isinstance(value, str):
             return value
         value = value.strip().lower()
-        # 로컬파트 길이 제한(RFC 5321) — EmailStr만으로는 잡지 못하는 엣지 케이스.
         if "@" in value:
             local = value.split("@", 1)[0]
             if not local or len(local) > MAX_EMAIL_LOCAL_CHARS:
@@ -111,10 +110,7 @@ class UserOut(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    """공백 질문 거부, 상한은 MAX_QUESTION_LENGTH(기본 1000 코드 포인트).
-
-    thread_id는 현재 대화(스레드)를 지정한다. 생략하면 사용자의 기본 대화가 된다.
-    """
+    """공백 질문 거부, 상한은 MAX_QUESTION_LENGTH(기본 1000 코드 포인트)."""
 
     question: str = Field(min_length=1, max_length=settings.max_question_length)
     thread_id: int | None = Field(default=None, ge=1)
@@ -172,8 +168,6 @@ class ChatLogOut(BaseModel):
     @field_validator("created_at")
     @classmethod
     def utc_timestamp(cls, value: datetime) -> datetime:
-        # 앱이 UTC로 저장한 SQLite datetime은 조회 시 tzinfo가 사라진다.
-        # 외부 DB/수동 이관 값도 UTC라는 계약은 별도로 지켜야 한다.
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
         return value.astimezone(timezone.utc)

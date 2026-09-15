@@ -1,20 +1,14 @@
-"""코드 상수(불변 정책) — 환경과 무관한 규칙의 단일 위치.
+"""코드 상수(불변 정책) — 환경과 무관한 규칙의 단일 위치."""
 
-분류: .env(환경값)→app/config.py Settings / 불변 정책→여기 / 그 외 참고 docs/CONFIG_BOUNDARY.md.
-"""
-
-MAX_PASSWORD_BYTES = 72  # bcrypt 입력 한계; 비밀번호를 조용히 자르지 않는다.
+MAX_PASSWORD_BYTES = 72
 MAX_PASSWORD_CHARS = 64
 MIN_PASSWORD_CHARS = 8
 MAX_NICKNAME_CHARS = 20
-# RFC 5321: 로컬파트 최대 64옥텟. 너무 긴 로컬파트는 공급자도 대부분 거절한다.
 MAX_EMAIL_LOCAL_CHARS = 64
 MAX_CONTEXT_TURNS = 200
 MAX_LOG_PAGE_SIZE = 200
-# 대화 스레드 — 제목은 첫 질문에서 자동 생성(코드 포인트 기준)
 MAX_THREAD_TITLE_CHARS = 20
 DEFAULT_THREAD_TITLE = "기본 대화"
-# XSS 2차 방어선(#75). 인라인 script/핸들러를 쓰지 않는 전제 — 외부 파일 스크립트만 허용.
 CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "
     "script-src 'self'; "
@@ -31,20 +25,12 @@ SECURITY_HEADERS = {
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "same-origin",
     "Content-Security-Policy": CONTENT_SECURITY_POLICY,
-    # HTTPS 종단(Railway 엣지) 이후 브라우저가 HTTP 다운그레이드를 금지하도록 강제(B-6).
-    # http(로컬)에선 브라우저가 무시하므로 무해하다.
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
-    # 이 서비스가 쓰지 않는 브라우저 기능(카메라·마이크·위치)을 명시적으로 차단.
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
 }
 DEMO_EMAILS = frozenset({"demo@demo.com", "tester@demo.com", "admin@demo.com"})
-# 요청 추적 ID 길이 — 미들웨어 발급과 chat_logs.request_id 열 길이가 함께 쓴다
 REQUEST_ID_CHARS = 20
-# "분당" 상한 리밋터의 공통 윈도우(초) — chat·signup·비밀번호재설정 IP 상한
 RATE_WINDOW_SECONDS = 60.0
 
-# ── 라우팅/미들웨어 공용 상수(#150) — main.py에서 app/middleware 쪽으로 옮겨졌던 값 ──
-# /docs·/redoc·/openapi.json — DOCS_ENABLED 게이트와 CSP 예외 경로가 함께 쓴다(#75)
 DOCS_PATHS = frozenset({"/docs", "/docs/", "/redoc", "/redoc/", "/openapi.json"})
-# 교차 출처 차단 대상(상태 변경) 메서드 — request_guard가 Origin 검증에 사용(#75)
 STATE_CHANGING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})

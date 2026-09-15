@@ -3,7 +3,7 @@
  * 기존 'system'/미설정/무효 값은 로드 시 OS 설정으로 한 번 해석해 고정한다. */
 (function () {
   var KEY = "theme";
-  var MODES = { light: "dark", dark: "light" };  // 다음 모드
+  var MODES = { light: "dark", dark: "light" };
   var LABELS = { light: "라이트", dark: "다크" };
   var ICONS = { light: "☀", dark: "☾" };
   var root = document.documentElement;
@@ -20,7 +20,6 @@
       s = "";
     }
     if (s !== "light" && s !== "dark") {
-      // 'system'(구 버전 저장값)/미설정/무효 → OS 설정으로 한 번 해석해 내 설정으로 고정
       s = osPrefersDark() ? "dark" : "light";
       try {
         localStorage.setItem(KEY, s);
@@ -40,7 +39,6 @@
     var btn = document.getElementById("theme-toggle");
     if (!btn) return;
     var mode = current();
-    // 모드 이름까지 표기해 클릭할 때마다 어떤 모드인지 명확히 피드백한다.
     btn.textContent = ICONS[mode] + " " + LABELS[mode];
     btn.setAttribute("aria-label", "테마: " + LABELS[mode] + " — 클릭하여 " + LABELS[MODES[mode]] + "으로 변경");
     btn.title = "테마: " + LABELS[mode] + " → 다음: " + LABELS[MODES[mode]];

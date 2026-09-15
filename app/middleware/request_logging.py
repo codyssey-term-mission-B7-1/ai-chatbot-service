@@ -41,7 +41,7 @@ async def log_requests(request: Request, call_next):
     except Exception as exc:
         return await unhandled_exception_handler(request, exc)
     except asyncio.CancelledError:
-        status_code = 499  # 로그용: 요청 취소. 실제 499 응답 전송을 보장하는 것은 아니다.
+        status_code = 499
         raise
     finally:
         if is_api:

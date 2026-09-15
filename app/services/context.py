@@ -1,17 +1,9 @@
-"""컨텍스트 구성 전략 — 같은 사용자의 직전 N개 Q/A를 프롬프트에 포함.
-
-기본 방어: 사용자 입력을 직전 문맥으로 삽입하기 때문에 프롬프트 인젝션 위험이 존재한다.
-여기서는 (1) 시스템 프롬프트에 안전 규칙을 명시하고, (2) 사용자 입력에서 간단한
-탈옥 패턴이 보이면 경고를 프리앰블로 덧붙여 완화한다. 본격적인 모더레이션 API/분류기는
-백로그(AIL-3/4)로 남긴다.
-"""
+"""컨텍스트 구성 전략 — 같은 사용자의 직전 N개 Q/A를 프롬프트에 포함."""
 
 from __future__ import annotations
 
 import re
 
-# 간단한 탈옥 시도 패턴 (영어·한국어 혼합). 완벽한 필터링은 불가능하므로
-# "사용자가 명백하게 시스템 프롬프트를 무시하도록 요청"하는 경우를 경고한다.
 _INJECTION_PATTERNS: tuple[re.Pattern, ...] = (
     re.compile(r"ignore\s+(all\s+)?previous|forget\s+(all\s+)?(previous|prior)", re.IGNORECASE),
     re.compile(r"disregard\s+(all\s+)?(previous|prior|above)", re.IGNORECASE),
@@ -28,16 +20,12 @@ INJECTION_WARNING = (
 
 
 def _likely_injection(text: str) -> bool:
-    head = text[:400]  # 매우 긴 질문의 앞부분만 검사 (성능)
+    head = text[:400]
     return any(p.search(head) for p in _INJECTION_PATTERNS)
 
 
 def build_context(history: list[tuple[str, str]], n: int) -> list[dict]:
-    """직전 n개의 (질문, 응답) 쌍을 오래된 순서대로 chat messages로 변환.
-
-    >>> build_context([("q1","a1"),("q2","a2"),("q3","a3")], n=2)
-    [{"role":"user","content":"q2"}, {"role":"assistant","content":"a2"}, ...]
-    """
+    """직전 n개의 (질문, 응답) 쌍을 오래된 순서대로 chat messages로 변환."""
     recent = history[-n:] if n > 0 else []
     messages: list[dict] = []
     for q, a in recent:
@@ -49,13 +37,7 @@ def build_context(history: list[tuple[str, str]], n: int) -> list[dict]:
 def build_messages(
     system_prompt: str, history: list[tuple[str, str]], question: str, n: int
 ) -> list[dict]:
-    """AI에 전달할 messages를 구성한다.
-
-    - 시스템 메시지가 가장 앞에 오고
-    - 문맥 Q/A가 오래된 순으로 놓이고
-    - 마지막 사용자 질문에는 인젝션 패턴이 보이면 경고 문구를 덧붙인다
-      (덧붙인 내용은 사용자에게 노출되지 않으며, 원문 질문은 DB/문맥에 그대로 저장).
-    """
+    """AI에 전달할 messages를 구성한다."""
     messages = [{"role": "system", "content": system_prompt}]
     messages += build_context(history, n)
     user_content = question

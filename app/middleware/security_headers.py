@@ -10,7 +10,6 @@ async def security_headers(request: Request, call_next):
     """일반/처리된 오류 응답에 헤더 추가. 미처리 500은 예외 핸들러에서도 동일 적용."""
     response = await call_next(request)
     for key, value in SECURITY_HEADERS.items():
-        # /docs·/redoc의 Swagger UI는 CDN 자산을 쓴다 — 개발·검증 전용 경로는 CSP에서 제외(#75).
         if (
             key == "Content-Security-Policy"
             and settings.docs_enabled

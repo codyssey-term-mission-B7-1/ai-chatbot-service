@@ -1,8 +1,4 @@
-"""프로세스 내 슬라이딩 윈도우 제한기 — 단일 워커 전제, 재시작 시 초기화.
-
-다중 워커·재시작 간 지속·중앙 집계가 필요하면 Redis 같은 외부 저장소로 교체해야 한다.
-현재 운영 명령(uvicorn 단일 프로세스)에서는 이 구현으로 충분하다.
-"""
+"""프로세스 내 슬라이딩 윈도우 제한기 — 단일 워커 전제, 재시작 시 초기화."""
 
 import math
 import threading
@@ -85,28 +81,19 @@ class SlidingWindowLimiter:
         return max(1, math.ceil(events[0] + self.window_seconds - now))
 
 
-# 로그인 실패 임금(lockout) — 이메일별 실패 누적(#72). 프로세스 메모리 기준.
 login_limiter = SlidingWindowLimiter(settings.login_max_fails, settings.login_lockout_sec)
 
-# 채팅 사용자별 분당 요청 상한(#73) — AI 비용 남용 방어. 0이면 비활성화.
 chat_limiter = SlidingWindowLimiter(settings.chat_rate_per_min, RATE_WINDOW_SECONDS)
 
-# 회원가입 IP별 분당 요청 상한 — 봇 계정 생성 남용 최소 방어(AUDIT_HARDENING B-1 P0).
 signup_ip_limiter = SlidingWindowLimiter(settings.signup_rate_per_ip_per_min, RATE_WINDOW_SECONDS)
 
-# 비밀번호 재설정 IP별 분당 요청 상한 — 메일 폭탄/계정 존재 열거 속도 제한.
 password_reset_ip_limiter = SlidingWindowLimiter(
     settings.password_reset_rate_per_ip_per_min, RATE_WINDOW_SECONDS
 )
 
 
 def client_ip(request) -> str:
-    """요청을 식별할 IP 키를 반환한다.
-
-    Railway/프록시 환경에서는 X-Forwarded-For가 있을 수 있으나 이를 그대로 쓰면
-    헤더 변조로 우회 가능하므로, 기본은 request.client.host를 쓰고 추후
-    신뢰할 수 있는 프록시 확인 로직을 추가할 때까지 주석으로 남긴다.
-    """
+    """요청을 식별할 IP 키를 반환한다."""
     if request is None or request.client is None:
         return "unknown"
     return request.client.host or "unknown"
