@@ -8,12 +8,12 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.audit import E
+from app.audit import ALL_EVENTS, E
 from app.config import settings
 from app.database import get_db
 from app.deps import resolve_session_user
 from app.logging_config import log_event
-from app.models import Thread, User
+from app.models import RequestLog, Thread, User
 from app.repositories.chat_logs import list_logs
 from app.repositories.users import find_by_email
 from app.routers.admin import all_events, all_requests, db_table_rows, db_tables, stats
@@ -240,7 +240,8 @@ def admin_events_page(
         before_id=before_id,
         limit=50,
     )
-    event_names = sorted({item.event for item in page.items})
+    # 드롭다운은 카탈로그 전체 — 현재 페이지에 없는 이벤트(ai_call_fail 등)도 선택 가능
+    event_names = sorted(ALL_EVENTS)
     return templates.TemplateResponse(
         request,
         "admin-events.html",
@@ -266,7 +267,9 @@ def admin_network_page(
     if redirect:
         return redirect
     page = all_requests(user=user, db=db, status_=status, before_id=before_id, limit=50)
-    statuses = sorted({item.status for item in page.items})
+    statuses = [
+        row[0] for row in db.query(RequestLog.status).distinct().order_by(RequestLog.status).all()
+    ]
     return templates.TemplateResponse(
         request,
         "admin-network.html",

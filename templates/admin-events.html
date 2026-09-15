@@ -16,7 +16,8 @@
     </label>
     <a href="/admin/events">필터 초기화</a>
   </form>
-  <p class="muted small">최신 {{ events | length }}건 · 마스킹된 메타데이터만 저장됩니다(원문 질문·응답 제외).</p>
+  <p class="muted small">최신 {{ events | length }}건 · 마스킹된 메타데이터만 저장됩니다(원문 질문·응답 제외).<br>
+  실패 이벤트(ai_call_fail 등)는 실제 실패가 발생했을 때만 기록됩니다 — 목록에 없으면 그동안 실패가 없었다는 뜻입니다.</p>
   <div class="table-scroll">
     <table class="logs-table">
       <thead><tr><th>ID</th><th>시각 (KST / UTC)</th><th>이벤트</th><th>사용자</th><th>요청 ID</th><th>필드</th></tr></thead>
@@ -34,6 +35,6 @@
       </tbody>
     </table>
   </div>
-  {% if next_before_id %}<a class="next-page" href="/admin/events?before_id={{ next_before_id }}{% if filter_event %}&amp;event={{ filter_event | urlencode }}{% endif %}">이전 기록 더 보기</a>{% endif %}
+  {% if next_before_id %}<a class="next-page" href="/admin/events?before_id={{ next_before_id }}{% if filter_event %}&amp;event={{ filter_event | urlencode }}{% endif %}">이전 기록 더 보기</a>{% else %}<p class="muted small">이전 기록이 더 없습니다.</p>{% endif %}
 </div>
 {% endblock %}

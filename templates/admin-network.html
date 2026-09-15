@@ -36,6 +36,6 @@
       </tbody>
     </table>
   </div>
-  {% if next_before_id %}<a class="next-page" href="/admin/network?before_id={{ next_before_id }}{% if filter_status %}&amp;status={{ filter_status }}{% endif %}">이전 기록 더 보기</a>{% endif %}
+  {% if next_before_id %}<a class="next-page" href="/admin/network?before_id={{ next_before_id }}{% if filter_status %}&amp;status={{ filter_status }}{% endif %}">이전 기록 더 보기</a>{% else %}<p class="muted small">이전 기록이 더 없습니다.</p>{% endif %}
 </div>
 {% endblock %}
