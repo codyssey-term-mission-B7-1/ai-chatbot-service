@@ -10,7 +10,7 @@ from app.repositories import threads as threads_repo
 from app.repositories.chat_logs import list_logs
 from app.schemas import ChatLogOut, LogStatus
 
-router = APIRouter(prefix="/api/me", tags=["logs"])
+router = APIRouter(prefix="/api/users/me", tags=["logs"])
 
 
 @router.get(

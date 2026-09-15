@@ -56,7 +56,7 @@ class FakeServer:
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path
-        if path == "/api/auth/login":
+        if path == "/api/session":
             self.login_count += 1
             body = json.loads(request.content)
             if body.get("password") != "Test1234!":
@@ -68,7 +68,7 @@ class FakeServer:
             )
         if "session=signed" not in (request.headers.get("cookie") or ""):
             return httpx.Response(401, json={"detail": "로그인이 필요해요."})
-        if path == "/api/me/chats":
+        if path == "/api/users/me/chats":
             limit = int(request.url.params.get("limit", "50"))
             status = request.url.params.get("status")
             before = request.url.params.get("before_id")
@@ -103,7 +103,7 @@ def test_my_chats_lists_rows_and_filters_status(capsys):
     rows = make_rows(6)  # id 1..6, status: ai_error, success, success, ai_error, success, success
     transport = httpx.MockTransport(FakeServer(rows).handle)
     client = load_client().make_client("http://test", transport=transport)
-    client.post("/api/auth/login", json={"email": "a@b.c", "password": "Test1234!"})
+    client.post("/api/session", json={"email": "a@b.c", "password": "Test1234!"})
 
     got = load_client().fetch_my_chats(client, limit=50)
     assert [r["id"] for r in got] == [6, 5, 4, 3, 2, 1]  # 최신순

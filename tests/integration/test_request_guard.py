@@ -13,7 +13,7 @@ def test_security_headers_include_csp(client):
 
 
 def test_cross_origin_state_changing_request_is_blocked(client):
-    blocked = client.post("/api/auth/logout", headers={"Origin": "https://evil.example"})
+    blocked = client.delete("/api/session", headers={"Origin": "https://evil.example"})
     assert blocked.status_code == 403
     assert "출처" in blocked.json()["detail"]
     # 차단 응답에도 보안 헤더가 유지된다.
@@ -23,15 +23,15 @@ def test_cross_origin_state_changing_request_is_blocked(client):
 
 def test_same_origin_and_originless_requests_pass(client):
     signup_and_login(client, email="origin-ok@example.com")
-    same = client.post("/api/auth/logout", headers={"Origin": "http://testserver"})
-    assert same.status_code == 200
+    same = client.delete("/api/session", headers={"Origin": "http://testserver"})
+    assert same.status_code == 204
     # Origin을 보내지 않는 클라이언트(curl·스모크)도 통과한다.
-    assert client.post("/api/auth/logout").status_code == 200
+    assert client.delete("/api/session").status_code == 204
 
 
 def test_cross_origin_get_is_not_blocked(client):
     """GET 조회는 CSRF 민감 경로가 아니다 — Origin이 달라도 차단하지 않는다."""
-    response = client.get("/api/me/chats", headers={"Origin": "https://evil.example"})
+    response = client.get("/api/users/me/chats", headers={"Origin": "https://evil.example"})
     assert response.status_code == 401  # 인증 오류는 정상 동작, 403(출처)이 아니어야 한다.
 
 
@@ -58,7 +58,7 @@ def test_blocked_api_request_is_still_logged(client, caplog):
 
     with caplog.at_level(logging.INFO):
         assert (
-            client.post("/api/auth/logout", headers={"Origin": "https://evil.example"}).status_code
+            client.delete("/api/session", headers={"Origin": "https://evil.example"}).status_code
             == 403
         )
     assert any(

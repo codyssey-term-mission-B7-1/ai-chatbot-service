@@ -23,10 +23,6 @@ from app.services.sessions import is_session_revoked
 logger = logging.getLogger("app.auth")
 
 
-# ---- rate limiter DI 제공자(#150) ------------------------------------------
-# 라우터가 구현체를 직접 import하지 않고 Depends로 받게 해 경계를 명확히 한다.
-# 반환값은 services.rate_limit의 싱글톤 그대로라, 테스트의 초기화 fixture와
-# 속성 monkeypatch도 이전과 동일하게 동작한다.
 def get_chat_limiter() -> "SlidingWindowLimiter":
     return chat_limiter
 
@@ -44,12 +40,7 @@ def get_password_reset_ip_limiter() -> "SlidingWindowLimiter":
 
 
 def resolve_session_user(request: Request, db: Session) -> User | None:
-    """API와 HTML 경로에서 공통으로 사용하는 세션 검증.
-
-    쿠키가 현재 DB의 사용자와 일치하는지 확인한다.
-
-    DB 재생성 등으로 id가 다른 행을 가리키게 된 stale 세션은 파기 후 None (#33).
-    """
+    """API와 HTML 경로에서 공통으로 사용하는 세션 검증."""
     user_id = request.session.get("user_id")
     if user_id is None:
         return None
@@ -61,8 +52,6 @@ def resolve_session_user(request: Request, db: Session) -> User | None:
         log_event(logger, E.AUTH_STALE_SESSION, user_id=user_id, level=logging.WARNING)
         request.session.clear()
         return None
-    # 서버 측 폐기(#74): 계정별 폐기 기준 이전에 발급(iat)된 세션은 거부한다.
-    # 구버전 쿠키(iat 없음)는 0으로 취급해 폐기 기준이 있으면 함께 무효화된다.
     iat = request.session.get("iat")
     if not isinstance(iat, int) or isinstance(iat, bool):
         iat = 0

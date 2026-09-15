@@ -43,7 +43,7 @@ async def browser_checks(base: str, output: Path, grant) -> dict:
         page.on('pageerror', lambda error: page_errors.append(str(error)))
         requests = []
         page.on('request', lambda request: requests.append(request.url)
-                if request.method == 'POST' and request.url.endswith('/api/chat') else None)
+                if request.method == 'POST' and request.url.endswith('/api/chats') else None)
 
         async def capture(name, meaning):
             print('CAPTURE', name, page.url, await page.evaluate('({width:innerWidth,height:innerHeight,scrollWidth:document.documentElement.scrollWidth,scrollHeight:document.documentElement.scrollHeight})'))
@@ -103,7 +103,7 @@ async def browser_checks(base: str, output: Path, grant) -> dict:
         async def delay(route):
             await asyncio.sleep(1.5)  # UI 로딩 캡처용 지연. 실 AI 지연 증거가 아니다.
             await route.continue_()
-        await page.route('**/api/chat', delay)
+        await page.route('**/api/chats', delay)
         await page.locator('#question').fill('로컬에서 FastAPI를 실행하려면 무엇이 필요한가요?')
         await page.locator('#question').press('Enter')
         await page.locator('.loading').wait_for(state='visible')
@@ -113,7 +113,7 @@ async def browser_checks(base: str, output: Path, grant) -> dict:
         await page.locator('.loading').wait_for(state='detached')
         assert len(requests) == before + 1
         checks.append('Enter 1회 전송 / 전송 중 중복 요청 방지')
-        await page.unroute('**/api/chat', delay)
+        await page.unroute('**/api/chats', delay)
         await page.locator('#question').fill('내가 방금 뭘 물어봤지?')
         await page.locator('#send-btn').click()
         await page.locator('.loading').wait_for(state='detached')
@@ -129,24 +129,24 @@ async def browser_checks(base: str, output: Path, grant) -> dict:
             await route.fulfill(status=504, content_type='application/json', body=json.dumps({
                 'detail': '현재 응답이 지연되고 있어요. (error: AI_TIMEOUT)',
             }, ensure_ascii=False))
-        await page.route('**/api/chat', timeout_response)
+        await page.route('**/api/chats', timeout_response)
         await page.locator('#question').fill('UI 타임아웃 안내 확인')
         await page.locator('#send-btn').click()
         await page.locator('.error-bubble').wait_for()
         await capture('05-timeout-ui.png', '프론트에 모의 HTTP 504를 주어 오류 표시 검증')
         checks.append('모의 504 오류 안내·전송 버튼 복구')
-        await page.unroute('**/api/chat', timeout_response)
+        await page.unroute('**/api/chats', timeout_response)
         assert await page.locator('#send-btn').is_enabled()
 
         other = await automation.request.new_context(base_url=base)
-        assert (await other.post('/api/auth/signup', data={
+        assert (await other.post('/api/users', data={
             'email': 'local-other@example.com', 'password': 'LocalEvidence123!',
             'nickname': '다른 로컬 계정',
         })).status == 201
-        assert (await other.post('/api/auth/login', data={
+        assert (await other.post('/api/session', data={
             'email': 'local-other@example.com', 'password': 'LocalEvidence123!',
-        })).status == 200
-        assert (await other.post('/api/chat', data={'question': '두 번째 로컬 계정의 질문'})).status == 200
+        })).status == 201
+        assert (await other.post('/api/chats', data={'question': '두 번째 로컬 계정의 질문'})).status == 201
         await other.dispose()
         checks.append('실제 로컬 HTTP로 두 사용자 기록 분리 확인')
         await page.goto(base + '/logs')

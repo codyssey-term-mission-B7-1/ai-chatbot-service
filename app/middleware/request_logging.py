@@ -10,13 +10,14 @@ from fastapi import Request
 from app.audit import E
 from app.exception_handlers import unhandled_exception_handler
 from app.logging_config import REQUEST_ID, log_event
+from app.policies import REQUEST_ID_CHARS
 
 logger = logging.getLogger("app")
 
 
 async def log_requests(request: Request, call_next):
     """HTTP 수신 1회 + 종료 1회. 검증 전 세션 ID와 검증된 계정 ID는 구분한다."""
-    request_id = uuid.uuid4().hex[:20]
+    request_id = uuid.uuid4().hex[:REQUEST_ID_CHARS]
     request.state.request_id = request_id
     token = REQUEST_ID.set(request_id)
     started = time.perf_counter()
@@ -40,7 +41,7 @@ async def log_requests(request: Request, call_next):
     except Exception as exc:
         return await unhandled_exception_handler(request, exc)
     except asyncio.CancelledError:
-        status_code = 499  # 로그용: 요청 취소. 실제 499 응답 전송을 보장하는 것은 아니다.
+        status_code = 499
         raise
     finally:
         if is_api:

@@ -1,5 +1,3 @@
-// 채팅 화면 로직 — 입력 검증(빈 값/길이), 로딩/에러 상태 표시, 대화(스레드) 전환
-// 대화 목록·사이드바 열림/닫기는 전역 sidebar.js가 담당 — 여기서는 window.SidebarUI 훅으로 연동
 const form = document.getElementById('chat-form');
 const input = document.getElementById('question');
 const window_ = document.getElementById('chat-window');
@@ -9,18 +7,12 @@ const welcomeBubble = document.getElementById('welcome-bubble');
 
 const MAX_LEN = parseInt(window_.dataset.maxQuestionLength || '1000', 10);
 
-// 이전 대화 복원 범위 — 서버 CONTEXT_TURNS와 동일 (AI가 기억하는 맥락과 일치)
 const HISTORY_TURNS = parseInt(window_.dataset.contextTurns || '5', 10);
 
-// 현재 대화(스레드) — null이면 서버 기본 대화(첫 채팅 시 자동 생성)
 let currentThreadId = null;
 
-// ---- 전송 유실 방지 (#148) ------------------------------------------------
-// fetch는 새로고침으로 끊기지만 서버의 AI 호출·저장은 계속 진행된다. 전송 직후의
-// 스레드·질문을 sessionStorage에 남겨, 페이지에 돌아왔을 때 아직 저장 전이면
-// 질문+로딩을 다시 그리고 저장 확인을 짧게 폴링한다. 확정 응답을 받으면 교체한다.
 const INFLIGHT_KEY = 'chat-inflight';
-const INFLIGHT_TTL_MS = 5 * 60 * 1000;  // 서버 AI 예산(45초)+재시도 여유
+const INFLIGHT_TTL_MS = 5 * 60 * 1000;
 
 function saveInflight(threadId, question) {
   try {
@@ -45,19 +37,14 @@ input.addEventListener('input', () => {
 });
 
 input.addEventListener('keydown', (e) => {
-  // Enter 전송 / Shift+Enter 줄바꿈 — IME 조합 중 Enter 오발송 방지 (#29)
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
     e.preventDefault();
-    if (!sendBtn.disabled) form.requestSubmit();  // 전송 중 중복 발송 방지
+    if (!sendBtn.disabled) form.requestSubmit();
   }
 });
 
-// 폼 제출 바인딩 — 인라인 onsubmit 대신 addEventListener(CSP script-src 'self' 호환, #75).
-// send는 함수 선언이라 호이스팅되어 아래 정의를 그대로 참조한다.
 form.addEventListener('submit', send);
 
-// 하단 자동 스크롤 — 사용자가 위로 스크롤해 이전 내용을 읽고 있으면 새 말풍선에 강제로 당기지 않는다.
-// 사용자가 전송/대화 전환(자신의 의사로 최신 보기)을 하면 다시 고정된다.
 let stickToBottom = true;
 window_.addEventListener('scroll', () => {
   stickToBottom = window_.scrollTop + window_.clientHeight >= window_.scrollHeight - 60;
@@ -69,12 +56,11 @@ function pinToBottom() {
 function addBubble(text, cls, timeText) {
   const div = document.createElement('div');
   div.className = 'bubble ' + cls;
-  // 텍스트만 삽입한다(innerHTML 금지 — 서버/사용자 문자열 보간 XSS 방어). null/undefined는 빈 문자열로
   div.textContent = text ?? '';
   if (timeText) {
     const time = document.createElement('span');
     time.className = 'bubble-time';
-    time.textContent = timeText;  // 문자열만 — 서버 값도 textContent로 삽입
+    time.textContent = timeText;
     div.appendChild(time);
   }
   window_.appendChild(div);
@@ -82,7 +68,6 @@ function addBubble(text, cls, timeText) {
   return div;
 }
 
-// 말풍선 시각 — 현재는 HH:MM, 이력은 MM-DD HH:MM(다른 날 대화 구분)
 function nowTime() {
   return new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
@@ -95,8 +80,6 @@ function historyTime(isoUtc) {
   return sameDay ? hm : `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${hm}`;
 }
 
-// 서버 오류 메시지를 안전하고 읽기 쉽게 정규화
-// (FastAPI 422의 detail은 배열이고 사용자 입력이 포함될 수 있어 textContent 전용 사용)
 function errorText(data, status) {
   const d = data?.detail;
   if (typeof d === 'string' && d) return `오류: ${d}`;
@@ -107,9 +90,6 @@ function errorText(data, status) {
   return '오류가 발생했어요. 다시 시도해 주세요.';
 }
 
-// 검증·네트워크 오류도 채팅창 안에 말풍선으로 표시한다.
-// 폼 아래 별도 박스를 쓰면 나타날 때 입력 영역이 위로 밀려나 레이아웃이 흔들린다(약 52~70px 실측).
-// 창 안 말풍선은 서버 오류(error-bubble)과 동일한 패턴이라 시각적으로도 일관된다.
 function showError(text) {
   const bubble = addBubble(text, 'ai error-bubble');
   bubble.setAttribute('role', 'alert');
@@ -120,11 +100,10 @@ async function send(e) {
   if (sendBtn.disabled) return;
   const question = input.value.trim();
 
-  // 클라이언트 측 입력 검증 — 빈 입력 차단 + 길이 제한
   if (!question) return showError('질문을 입력해 주세요. (빈 입력은 전송되지 않아요)');
   if (FormUtils.codepointLength(question) > MAX_LEN) return showError(`질문이 너무 길어요. ${MAX_LEN}자 이하로 줄여주세요.`);
 
-  stickToBottom = true;  // 본인이 보낸 질문 — 답은 반드시 하단에 보여줘야 한다
+  stickToBottom = true;
   addBubble(question, 'user', nowTime());
   input.value = '';
   counter.textContent = '0';
@@ -132,36 +111,28 @@ async function send(e) {
 
   const loading = addBubble('AI가 생각 중…', 'ai loading');
   sendBtn.disabled = true;
-  saveInflight(currentThreadId, question);  // 새로고침 복원용 기록(#148)
+  saveInflight(currentThreadId, question);
 
   try {
     const body = currentThreadId ? { question, thread_id: currentThreadId } : { question };
-    const res = await fetch('/api/chat', {
+    const res = await fetch('/api/chats', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
-    // 401은 로그인 페이지로(비로그인 진입 차단 요구사항). 기록은 남겨 재로그인 후 복원한다.
     if (res.status === 401) {
       location.href = '/login';
       return;
     }
 
-    // 서버에서 반환한 JSON/에러 메시지 파싱(네트워크 오류로 인해 json 파싱이 실패할 수 있음)
     let data = null;
     try { data = await res.json(); } catch (e) { /* ignore */ }
 
     loading.remove();
-    // 성공(답변 저장)이든 실패(ai_error 저장)든 서버가 기록까지 마쳤으므로 복원 기록은 지운다.
-    // 네트워크 오류(아래 catch)는 서버 상태를 알 수 없어 기록을 남긴다 — 다음 방문 시 복원.
     clearInflight();
 
-    // 성공·실패 모두 서버가 스레드를 생성/갱신했을 수 있어(AI 오류도 로그는 저장)
-    // 목록을 항상 동기화한다. 안 하면 '마지막 대화 삭제 후 첫 전송' 등에서
-    // 서버에는 대화가 생겼는데 목록이 비어 있는 불일치가 남는다(DB 꼬임 체감의 원인).
     await SidebarUI.refresh();
-    // 첫 메시지(기본 대화 자동 생성) 이후에는 id를 확보해 이후 전송이 명시적으로 해당 대화로
     if (currentThreadId === null) {
       const ts = SidebarUI.threads();
       if (ts.length) {
@@ -175,7 +146,6 @@ async function send(e) {
       return;
     }
 
-    // 정상 응답
     if (typeof data?.answer !== 'string') {
       addBubble('응답 형식을 확인할 수 없어요. 잠시 후 다시 시도해 주세요.', 'ai error-bubble');
       return;
@@ -197,28 +167,25 @@ function addDivider(text) {
   window_.appendChild(div);
 }
 
-// 이전 대화 복원 — 채팅방에 돌아왔을 때 AI 맥락(현재 대화의 직전 N개 성공 Q/A)을 말풍선으로 표시
 async function loadHistory() {
   if (HISTORY_TURNS <= 0) return;
-  // 복원 중 빈 창으로 있다 보이지 않게 임시 인디케이터(#148)
   const loadingHistory = addBubble('이전 대화 불러오는 중…', 'ai loading');
   try {
   let logs;
   try {
     const url = currentThreadId
-      ? `/api/me/chats?status=success&limit=${HISTORY_TURNS}&thread_id=${currentThreadId}`
-      : `/api/me/chats?status=success&limit=${HISTORY_TURNS}`;
+      ? `/api/users/me/chats?status=success&limit=${HISTORY_TURNS}&thread_id=${currentThreadId}`
+      : `/api/users/me/chats?status=success&limit=${HISTORY_TURNS}`;
     const res = await fetch(url);
-    if (res.status === 401) {  // 세션 만료 → 입력 전에 로그인 페이지로 (입력 유실 방지)
+    if (res.status === 401) {
       location.href = '/login';
       return;
     }
-    if (!res.ok) return;       // 조회 실패해도 새 채팅은 가능 → 조용히 스킵
+    if (!res.ok) return;
     logs = await res.json();
   } catch {
-    return;                    // 네트워크 오류 → 인사말만 표시하고 시작
+    return;
   }
-  // API가 사용자·성공 조건을 먼저 적용한 후 N개 제한 → AI와 동일한 범위
   const recent = logs.filter((log) => log.status === 'success').slice(0, HISTORY_TURNS).reverse();
   if (recent.length === 0) return;
   addDivider(`이전 대화 ${recent.length}개`);
@@ -232,44 +199,35 @@ async function loadHistory() {
   }
 }
 
-// ---- 대화(스레드) 전환 — 목록 UI는 sidebar.js, 여기는 창(content) 책임 -------
-
-// 인사말 제외하고 말풍선·구분선 모두 지움
 function clearWindow() {
   for (const node of [...window_.children]) {
     if (node !== welcomeBubble) node.remove();
   }
 }
 
-// ---- 진행 중 요청 복원 (#148) ----------------------------------------------
-// init에서만 실행한다. 다른 대화에서 보낸 요청은 현재 화면과 무관하므로 건너뛴다.
 async function restoreInflight() {
   const inflight = readInflight();
   if (!inflight) return;
-  const pendingThread = inflight.threadId ?? currentThreadId;  // null이면 기본 대화로 보낸 것
+  const pendingThread = inflight.threadId ?? currentThreadId;
   if (pendingThread !== currentThreadId) return;
 
   const threadQ = currentThreadId != null ? `&thread_id=${currentThreadId}` : '';
   const findSaved = async () => {
-    // status 미지정 = 전체 — 성공/실패 확정 여부를 함께 봐야 한다(#148)
-    const res = await fetch(`/api/me/chats?limit=5${threadQ}`);
+    const res = await fetch(`/api/users/me/chats?limit=5${threadQ}`);
     if (res.status === 401) { location.href = '/login'; return null; }
-    if (!res.ok) return undefined;  // 일시적 조회 실패 — 폴링에서 재시도
+    if (!res.ok) return undefined;
     return res.json();
   };
 
-  // 이미 저장된 응답이면 loadHistory가 방금 보여줬을 것 — 기록만 지우고 종료
   try {
     const logs = await findSaved();
-    if (logs === null) return;  // 로그인 페이지로 이동 중
+    if (logs === null) return;
     if (Array.isArray(logs) && logs.some((l) => l.question === inflight.question)) {
       clearInflight();
       return;
     }
   } catch { /* 네트워크 오류 — 아래 폴링에서 재시도 */ }
 
-  // 아직 저장 전 — 질문과 로딩을 다시 그리고 저장 확인을 폴링한다.
-  // 전송 버튼은 원래 진행 중 상태와 같게 잠근다(서버는 이미 처리 중, 중복 전송 방지).
   stickToBottom = true;
   addBubble(inflight.question, 'user', historyTime(new Date(inflight.at).toISOString()));
   const loading = addBubble('AI가 생각 중…', 'ai loading');
@@ -282,7 +240,7 @@ async function restoreInflight() {
       await new Promise((r) => setTimeout(r, POLL_MS));
       let logs;
       try { logs = await findSaved(); } catch { continue; }
-      if (logs === null) return;  // 401 → 로그인 페이지 이동 중
+      if (logs === null) return;
       const hit = Array.isArray(logs)
         ? logs.find((l) => l.question === inflight.question)
         : null;
@@ -301,7 +259,6 @@ async function restoreInflight() {
         return;
       }
     }
-    // TTL 내 확정을 못 봤다 — 서버가 아직 처리 중일 수 있어 안내만 남긴다.
     loading.remove();
     showError('응답 확인이 늦어지고 있어요. 잠시 후 새로고침해 주세요.');
   } finally {
@@ -310,24 +267,22 @@ async function restoreInflight() {
   }
 }
 
-// 대화 전환 — 창 비우고 해당 대화의 이전 대화만 복원
 function switchThread(id) {
   if (id === currentThreadId) {
-    SidebarUI.closeIfMobile();  // 이미 열려 있는 대화 탭 — 모바일 드로어만 닫고 종료
+    SidebarUI.closeIfMobile();
     return;
   }
   currentThreadId = id;
   clearWindow();
-  stickToBottom = true;  // 대화 전환 = 최신 메시지부터 보기(의도적)
-  SidebarUI.setActive(id);  // active 표시 갱신
+  stickToBottom = true;
+  SidebarUI.setActive(id);
   loadHistory();
   SidebarUI.closeIfMobile();
 }
 
-// ---- 사이드바 훅 등록 ------------------------------------------------------
 SidebarUI.register({
   pick: switchThread,
-  create: (t) => {  // 새 채팅 — 빈 기록의 대화 만들고 바로 전환
+  create: (t) => {
     currentThreadId = t.id;
     clearWindow();
     SidebarUI.setActive(t.id);
@@ -337,10 +292,6 @@ SidebarUI.register({
   },
   afterDelete: (deletedId) => {
     if (deletedId === currentThreadId) {
-      // 현재 대화가 삭제됨 — 남은 대화 중 가장 오래된(id 최소)이 새 기본 대화.
-      // 목록 갱신 후 호출되므로(삭제된 대화는 이미 소멸) 남은 목록에서 재계산하고,
-      // 새 기본 대화의 이력을 불러와 창과 서버 컨텍스트를 동기화한다.
-      // (이걸 안 하면 빈 창에 보낸 질문이 서버쪽은 남은 대화 맥락으로 처리돼 꼬인다)
       clearWindow();
       const ts = SidebarUI.threads().filter((t) => t.id !== deletedId);
       currentThreadId = ts.length ? Math.min(...ts.map((t) => t.id)) : null;
@@ -352,11 +303,7 @@ SidebarUI.register({
   error: showError,
 });
 
-// ---- 초기화 -----------------------------------------------------------
 async function init() {
-  // 첫 목록 로드(전역 sidebar.js) 후 현재 대화 결정:
-  //  1) URL ?thread=<id> (다른 페이지의 사이드바에서 대화 고른 경우)
-  //  2) 그게 아니면 가장 오래된 대화(기본 대화 — /api/chat 미전달 때 서버와 정렬)
   const threads = await SidebarUI.ready();
   const urlId = Number(new URLSearchParams(location.search).get('thread') || 0);
   if (threads.some((t) => t.id === urlId)) {
@@ -366,10 +313,9 @@ async function init() {
   }
   SidebarUI.setActive(currentThreadId);
   await loadHistory();
-  await restoreInflight();  // 새로고침으로 끊긴 진행 중 요청이 있으면 복원(#148)
+  await restoreInflight();
 }
 
-// 데모 모드 배너 — 현재 세션에서만 닫을 수 있다(새 세션에서는 재표시)
 const banner = document.getElementById('demo-banner');
 const bannerClose = document.getElementById('banner-close');
 if (banner && bannerClose) {

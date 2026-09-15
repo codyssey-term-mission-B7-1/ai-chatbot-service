@@ -46,11 +46,11 @@ def test_http_total_budget_returns_504_even_when_chunks_keep_arriving(client, bu
         app.dependency_overrides[get_ai_provider] = lambda: provider
         signup_and_login(client)
         start = time.monotonic()
-        response = client.post("/api/chat", json={"question": "로컬 HTTP 시간 예산 검증"})
+        response = client.post("/api/chats", json={"question": "로컬 HTTP 시간 예산 검증"})
         assert response.status_code == 504 and "AI_TIMEOUT" in response.json()["detail"]
         assert time.monotonic() - start < 1.5
         assert client.get("/health").status_code == 200
-        row = client.get("/api/me/chats?limit=1").json()[0]
+        row = client.get("/api/users/me/chats?limit=1").json()[0]
         assert row["status"] == "ai_error"
     finally:
         server.shutdown()

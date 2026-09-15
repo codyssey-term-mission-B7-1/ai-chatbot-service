@@ -1,4 +1,3 @@
-// API와 같은 Unicode 코드 포인트 기준. UTF-8 바이트 제약은 비밀번호에 별도 적용.
 (function (root) {
   function codepointLength(value) { return Array.from(String(value)).length; }
   function utf8Length(value) { return new TextEncoder().encode(String(value)).length; }
@@ -15,7 +14,6 @@
     const message = typeof item.msg === 'string' ? item.msg.replace(/^Value error, /, '') : '';
     return message || fallback;
   }
-  // 서버 오류 메시지를 안전하고 읽기 쉽게 정규화 — chat.js·sidebar.js 공용(#150)
   function errorText(data, status, fallback = '오류가 발생했어요. 다시 시도해 주세요.') {
     const detail = data?.detail;
     if (typeof detail === 'string' && detail) return `오류: ${detail}`;

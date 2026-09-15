@@ -35,9 +35,9 @@ echo "════ 문맥 유지 시연 (#7) — CONTEXT_TURNS 기준 직전 Q/A
 echo "대상: $BASE"
 echo
 
-curl -sS -X POST "$BASE/api/auth/signup" -H 'Content-Type: application/json' \
+curl -sS -X POST "$BASE/api/users" -H 'Content-Type: application/json' \
      -d "{\"email\":\"$EMAIL\",\"password\":\"Test1234!\"}" > /dev/null
-curl -sS -c "$COOKIE" -X POST "$BASE/api/auth/login" -H 'Content-Type: application/json' \
+curl -sS -c "$COOKIE" -X POST "$BASE/api/session" -H 'Content-Type: application/json' \
      -d "{\"email\":\"$EMAIL\",\"password\":\"Test1234!\"}" > /dev/null
 echo "✅ 가입·로그인 완료 ($EMAIL)"
 echo
@@ -48,7 +48,7 @@ echo "── 2턴 ──"; echo "Q: $Q2"; A2="$(ask "$Q2")" || exit 1; echo "A: 
 echo "── 3턴 ──"; echo "Q: $Q3"; A3="$(ask "$Q3")" || exit 1; echo "A: $A3"; echo
 
 echo "── 저장된 대화 로그 (사용자 기준 추적) ──"
-curl -sS -b "$COOKIE" "$BASE/api/me/chats" \
+curl -sS -b "$COOKIE" "$BASE/api/users/me/chats" \
   | python3 -c '
 import json, sys
 for r in reversed(json.load(sys.stdin)):

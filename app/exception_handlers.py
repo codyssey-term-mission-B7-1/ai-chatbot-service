@@ -1,11 +1,4 @@
-"""전역 예외 핸들러 — 422 정규화와 500 마스킹(#150).
-
-main.py에서 분리한 것 외에 계약 변경은 없다.
-- validation_error_handler: 422 응답을 프론트가 쓰는 형태로 정규화하고,
-  사용자가 입력한 비밀번호·질문 원문을 다시 싣지 않는다.
-- unhandled_exception_handler: 일관된 500 + 보안 헤더. 예외 원문(SQL/입력/키)은
-  로깅하지 않고 예외 타입만 남긴다.
-"""
+"""전역 예외 핸들러 — 422 정규화와 500 마스킹(#150)."""
 
 import logging
 import uuid
@@ -16,7 +9,7 @@ from fastapi.responses import JSONResponse
 
 from app.audit import E
 from app.logging_config import log_event
-from app.policies import SECURITY_HEADERS
+from app.policies import REQUEST_ID_CHARS, SECURITY_HEADERS
 
 logger = logging.getLogger("app")
 
@@ -48,7 +41,7 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
 
 async def unhandled_exception_handler(request: Request, exc: Exception):
     """일관된 500 + 보안 헤더. SQL/입력/키가 포함될 수 있는 예외 원문은 로깅하지 않는다."""
-    request_id = getattr(request.state, "request_id", uuid.uuid4().hex[:20])
+    request_id = getattr(request.state, "request_id", uuid.uuid4().hex[:REQUEST_ID_CHARS])
     log_event(
         logger,
         E.UNHANDLED_ERROR,

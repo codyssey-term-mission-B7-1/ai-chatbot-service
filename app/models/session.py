@@ -10,10 +10,7 @@ from app.models.base import utcnow
 
 
 class SessionRevocation(Base):
-    """서버 측 세션 폐기 기준(#74) — iat가 이 값 이하로 발급된 세션은 서명이 유효해도 거부.
-
-    신규 테이블이라 create_all이 기존 DB에 안전하게 추가한다(기존 열 변경 없음).
-    """
+    """서버 측 세션 폐기 기준(#74) — iat가 이 값 이하로 발급된 세션은 서명이 유효해도 거부."""
 
     __tablename__ = "session_revocations"
 
