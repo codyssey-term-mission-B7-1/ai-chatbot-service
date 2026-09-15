@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.config import settings
+from app.enums import ChatStatus
 from app.policies import (
     MAX_EMAIL_LOCAL_CHARS,
     MAX_NICKNAME_CHARS,
@@ -139,7 +140,7 @@ class ChatOut(BaseModel):
     answer: str
     latency_ms: int
     chat_id: int
-    status: str = "success"
+    status: ChatStatus = ChatStatus.SUCCESS
     model_config = {
         "json_schema_extra": {
             "examples": [
@@ -182,7 +183,7 @@ class AdminLogPage(BaseModel):
     next_before_id: int | None = None
 
 
-LogStatus = Literal["success", "ai_error"]
+LogStatus = Literal[ChatStatus.SUCCESS, ChatStatus.AI_ERROR]
 
 
 class PasswordHashStatusOut(BaseModel):

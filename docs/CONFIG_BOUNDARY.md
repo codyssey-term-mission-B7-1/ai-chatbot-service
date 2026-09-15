@@ -46,5 +46,18 @@ Settings 내부 전용( `.env` 예시에 없음): `app_name`, `build_sha`(CD 주
 | DEMO_EMAILS | 3종 | 데모 계정 |
 | REQUEST_ID_CHARS | 20 | 요청 ID 길이(발급·DB 열 공통) |
 | RATE_WINDOW_SECONDS | 60.0 | 분당 리밋터 윈도우 |
+| DEFAULT_PAGE_SIZE | 50 | 목록 조회 기본 페이지 크기(logs·threads·admin 공통) |
+| MAX_AUDIT_REASON_CHARS | 200 | 관리자 열람 사유 최대 길이 |
 
 환경값으로 만들지 **않는** 이유: 운영자가 함부로 완화하면 안 되는 보안 불변식이기 때문.
+
+## ③′ 열거형 — 전수 (`app/enums.py`, 이벤트 이름은 `app/audit.E`)
+
+| 열거형 | 멤버 | 공유 주체 |
+|---|---|---|
+| SessionKey | user_id / email_fp / iat | auth(기록) ↔ deps·미들웨어(판독) |
+| ChatStatus | success / ai_error | DB 컬럼 기본값 ↔ API 응답 ↔ 성공 문맥 필터 |
+| DeliveryResult | sent / dev_console | password_reset 서비스 ↔ auth 라우터 분기 |
+| SchemaSyncStatus | pending / ok / error | database(기록) ↔ health(판독) |
+
+StrEnum(str 상속)이라 기존 문자열 비교·DB 저장·JSON 직렬화와 호환된다.

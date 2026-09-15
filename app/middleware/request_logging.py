@@ -8,6 +8,7 @@ import uuid
 from fastapi import Request
 
 from app.audit import E
+from app.enums import SessionKey
 from app.exception_handlers import unhandled_exception_handler
 from app.logging_config import REQUEST_ID, log_event
 from app.policies import REQUEST_ID_CHARS
@@ -36,7 +37,7 @@ async def log_requests(request: Request, call_next):
             E.REQUEST_RECEIVED,
             method=request.method,
             path=request.url.path,
-            session_user_id=session.get("user_id") if isinstance(session, dict) else None,
+            session_user_id=session.get(SessionKey.USER_ID) if isinstance(session, dict) else None,
             request_id=request_id,
         )
     try:

@@ -11,6 +11,7 @@ from app.database import get_db
 from app.deps import get_current_user
 from app.logging_config import log_event
 from app.models import User
+from app.policies import DEFAULT_PAGE_SIZE
 from app.repositories import threads as threads_repo
 from app.repositories.chat_logs import list_logs
 from app.schemas import ChatLogOut, LogStatus, ThreadOut
@@ -117,7 +118,7 @@ def delete_my_thread(
 )
 def thread_chats(
     thread_id: int,
-    limit: int = 50,
+    limit: int = DEFAULT_PAGE_SIZE,
     status_: LogStatus | None = Query(default=None, alias="status"),
     before_id: int | None = Query(default=None, gt=0),
     user: User = Depends(get_current_user),

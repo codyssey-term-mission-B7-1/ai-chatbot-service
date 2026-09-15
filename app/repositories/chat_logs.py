@@ -2,15 +2,16 @@
 
 from sqlalchemy.orm import Session
 
+from app.enums import ChatStatus
 from app.models import ChatLog
-from app.policies import MAX_LOG_PAGE_SIZE
+from app.policies import DEFAULT_PAGE_SIZE, MAX_LOG_PAGE_SIZE
 
 
 def list_logs(
     db: Session,
     *,
     user_id: int | None,
-    limit: int = 50,
+    limit: int = DEFAULT_PAGE_SIZE,
     status: str | None = None,
     before_id: int | None = None,
     thread_id: int | None = None,
@@ -33,7 +34,9 @@ def successful_context(
     """스레드 내 직전 성공 Q/A — thread_id=None이면 사용자 전체(레거시 동작 유지)."""
     if turns <= 0:
         return []
-    rows = list_logs(db, user_id=user_id, status="success", limit=turns, thread_id=thread_id)
+    rows = list_logs(
+        db, user_id=user_id, status=ChatStatus.SUCCESS, limit=turns, thread_id=thread_id
+    )
     return rows[::-1]
 
 

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.audit import E
 from app.database import get_db
+from app.enums import SessionKey
 from app.logging_config import log_event
 from app.models import User
 from app.services.admin import is_admin
@@ -41,18 +42,18 @@ def get_password_reset_ip_limiter() -> "SlidingWindowLimiter":
 
 def resolve_session_user(request: Request, db: Session) -> User | None:
     """API와 HTML 경로에서 공통으로 사용하는 세션 검증."""
-    user_id = request.session.get("user_id")
+    user_id = request.session.get(SessionKey.USER_ID)
     if user_id is None:
         return None
     try:
         user = db.get(User, int(user_id))
     except (TypeError, ValueError):
         user = None
-    if user is None or email_fingerprint(user.email) != request.session.get("email_fp"):
+    if user is None or email_fingerprint(user.email) != request.session.get(SessionKey.EMAIL_FP):
         log_event(logger, E.AUTH_STALE_SESSION, user_id=user_id, level=logging.WARNING)
         request.session.clear()
         return None
-    iat = request.session.get("iat")
+    iat = request.session.get(SessionKey.IAT)
     if not isinstance(iat, int) or isinstance(iat, bool):
         iat = 0
     if is_session_revoked(db, user.id, iat):
