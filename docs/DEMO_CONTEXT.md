@@ -5,7 +5,7 @@
 
 ## 1. 무엇을 검증하는가
 
-`POST /api/chat`은 매 요청마다 같은 사용자의 **직전 N개(`CONTEXT_TURNS`, 기본 5) Q/A**를
+`POST /api/chats`은 매 요청마다 같은 사용자의 **직전 N개(`CONTEXT_TURNS`, 기본 5) Q/A**를
 프롬프트에 실어 AI에 보낸다 (`app/services/context.py:build_context`).
 
 이 스크립트는 3턴째 답변에 2턴째 질문이 원문 그대로 포함되는지 검사한다.

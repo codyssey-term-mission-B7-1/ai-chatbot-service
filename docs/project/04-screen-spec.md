@@ -36,7 +36,7 @@
 - 다크모드: `prefers-color-scheme` 자동 대응, CSS 변수로 색 체계 관리 (#87).
 - 파비콘(favicon.svg)·접근성(명도 대비 ≥ AA, 탭 타깃 44px 이상) (#87).
 - 인라인 `onsubmit` 제거 → `addEventListener` (CSP `script-src 'self'` 호환, #75/#79).
-- 로그아웃: 버튼 → POST /api/auth/logout → /login 이동.
+- 로그아웃: 버튼 → DELETE /api/session → /login 이동.
 
 ## 3. S1 로그인/회원가입 (mode 토글 단일 템플릿)
 
@@ -84,7 +84,7 @@
 | 글자 수 카운터 | 코드 포인트 기준, 서버 `MAX_QUESTION_LENGTH`와 동일 상한 표시 |
 | 입력 자동 높이 조절 | rows=1 → 내용에 따라 확장 |
 | 오류 표시 | 상태별 안내(§03 2.3 계약): 504 "AI 응답이 지연되고 있어요…", 429 "분당 요청 한도…", 502 "AI 응답에 문제…". **항상 textContent로만** (innerHTML 보간 금지 — #60 교훈) |
-| 기록 복원 | 로드 시 GET /api/me/chats?status=success&limit=N → 서버가 문맥에 쓴 것과 같은 범위, KST 표기 (#87) |
+| 기록 복원 | 로드 시 GET /api/users/me/chats?status=success&limit=N → 서버가 문맥에 쓴 것과 같은 범위, KST 표기 (#87) |
 | 타임스탬프 | 로컬 시각(KST) 표시, 기록 화면은 KST/UTC 병기 계약 (#87, #103) |
 | 데모 배너 | ai_mode=demo일 때 "데모 응답" 고지 + 닫기 버튼 (#87) — 실AI/데모 혼동 방지 |
 

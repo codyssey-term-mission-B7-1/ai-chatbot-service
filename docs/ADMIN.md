@@ -30,7 +30,7 @@ python scripts/manage_admin.py revoke --email operator@example.com
 - API: `GET /api/admin/chats?limit=50&user_id=12&status=success&before_id=100`
 - 생략 가능한 필터: `user_id`, `status`, `before_id`. `limit`은 1~200으로 제한한다.
 - 응답: `{ "items": [...], "next_before_id": 51 }`. 마지막 페이지가 정확히 limit개이면 다음 페이지가 비어 있을 수도 있다.
-- 일반 `/api/me/chats`는 관리자로 로그인해도 본인 기록만 반환한다.
+- 일반 `/api/users/me/chats`는 관리자로 로그인해도 본인 기록만 반환한다.
 
 대화 원문에는 개인정보가 있을 수 있다. 화면 접근 자체를 `admin_logs_viewed`로 기록하지만 이 이벤트에는 질문·응답 원문을 넣지 않는다. 증빙을 공유할 때는 실제 개인정보·쿠키·키를 제거한다.
 

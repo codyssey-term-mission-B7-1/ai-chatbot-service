@@ -94,7 +94,7 @@ POST /api/password-resets/{token}           {"token": "메일 링크의 토큰",
 ## 채팅
 
 ```http
-POST /api/chat
+POST /api/chats
 Content-Type: application/json
 Cookie: session=<실제 요청에서만 사용, 증빙에서는 마스킹>
 

@@ -5,11 +5,11 @@
 
 ## 흐름
 
-1. `POST /api/chat` 수신 → `request_id = uuid4().hex[:20]` 발급 (수신 미들웨어 `app/main.py`)
+1. `POST /api/chats` 수신 → `request_id = uuid4().hex[:REQUEST_ID_CHARS]` 발급 (요청 로깅 미들웨어 `app/middleware/request_logging.py`)
 2. 파이프라인 로그 — 전부 동일 `request_id` 포함:
    `request_received` → `ai_call_start` → (`ai_call_success` | `ai_call_fail`) →
    (`db_save_success` | `db_save_fail`) → `request_finished`
-3. `chat_logs` 테이블에 동일 `request_id` 저장 (`models.py:41`, `String(20)`)
+3. `chat_logs` 테이블에 동일 `request_id` 저장 (`models/chat_log.py`, `String(20)`)
 
 인증 이벤트(`user_signup`·`user_login` 등)도 동일 요청의 `request_id`를 포함하며,
 사용자 연결은 `user_id`·`email_domain`(이메일 평문 대신)으로 한다.
