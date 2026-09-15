@@ -6,6 +6,17 @@
   <h1>데이터베이스</h1>
   {% include "admin-nav.html" %}
   <p class="muted small">읽기 전용 미리보기입니다. 수정은 앱 API·마이그레이션으로만 가능합니다.</p>
+  <form class="admin-filter" action="/admin/db" method="get">
+    <label>필터 쿼리
+      <input id="admin-filter-query" name="filter" type="text" class="filter-query"
+             data-filter-keys="table" value="{{ filter_query or '' }}"
+             placeholder="예: table:users" autocomplete="off" spellcheck="false">
+    </label>
+    <button type="submit">보기</button>
+    <a href="/admin/db">초기화</a>
+    <p id="filter-hint" class="input-live-hint" aria-live="polite"></p>
+    {% if filter_errors %}<p class="msg error">알 수 없는 필터: {{ filter_errors | join(' ') }} — 지원: {{ filter_keys }}</p>{% endif %}
+  </form>
   <div class="table-scroll">
     <table class="logs-table">
       <thead><tr><th>테이블</th><th>행 수</th><th></th></tr></thead>
@@ -35,4 +46,9 @@
   {% if next_before_id %}<a class="next-page" href="/admin/db?table={{ rows_page.table }}&amp;before_id={{ next_before_id }}">이전 행 더 보기</a>{% endif %}
   {% endif %}
 </div>
+{% endblock %}
+
+
+{% block scripts %}
+<script src="/static/js/filter-hint.js?v={{ asset_v }}"></script>
 {% endblock %}

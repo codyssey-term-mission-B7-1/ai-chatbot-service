@@ -6,15 +6,15 @@
   <h1>이벤트 로그</h1>
   {% include "admin-nav.html" %}
   <form class="admin-filter" action="/admin/events" method="get">
-    <label>이벤트
-      <select name="event" onchange="this.form.submit()">
-        <option value="">전체 이벤트</option>
-        {% for name in event_names %}
-        <option value="{{ name }}" {{ 'selected' if filter_event == name else '' }}>{{ name }}</option>
-        {% endfor %}
-      </select>
+    <label>필터 쿼리
+      <input id="admin-filter-query" name="filter" type="text" class="filter-query"
+             data-filter-keys="event,user,q" value="{{ filter_query or '' }}"
+             placeholder="예: event:ai_call_fail user:2 · 또는 검색어" autocomplete="off" spellcheck="false">
     </label>
+    <button type="submit">조회</button>
     <a href="/admin/events">필터 초기화</a>
+    <p id="filter-hint" class="input-live-hint" aria-live="polite"></p>
+    {% if filter_errors %}<p class="msg error">알 수 없는 필터: {{ filter_errors | join(' ') }} — 지원: {{ filter_keys }}</p>{% endif %}
   </form>
   <p class="muted small">최신 {{ events | length }}건 · 마스킹된 메타데이터만 저장됩니다(원문 질문·응답 제외).<br>
   실패 이벤트(ai_call_fail 등)는 실제 실패가 발생했을 때만 기록됩니다 — 목록에 없으면 그동안 실패가 없었다는 뜻입니다.</p>
@@ -38,3 +38,8 @@
   {% if next_before_id %}<a class="next-page" href="/admin/events?before_id={{ next_before_id }}{% if filter_event %}&amp;event={{ filter_event | urlencode }}{% endif %}">이전 기록 더 보기</a>{% else %}<p class="muted small">이전 기록이 더 없습니다.</p>{% endif %}
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script src="/static/js/filter-hint.js?v={{ asset_v }}"></script>
+{% endblock %}
+

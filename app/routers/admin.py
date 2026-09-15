@@ -29,6 +29,7 @@ from app.schemas import (
     PasswordHashStatusOut,
 )
 from app.services.admin import is_admin
+from app.services.filter_query import parse_filter
 from app.services.security import is_peppered_hash
 from app.services.sessions import revoke_user_sessions
 
@@ -47,6 +48,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
     responses={401: {"description": "로그인 필요"}, 403: {"description": "앱 관리자 권한 필요"}},
 )
 def all_chats(
+    filter_query: str = Query(default="", max_length=200, alias="filter"),
     limit: int = DEFAULT_PAGE_SIZE,
     user_id: int | None = Query(default=None, gt=0),
     thread_id: int | None = Query(default=None, gt=0),
@@ -60,13 +62,18 @@ def all_chats(
     user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
+    fq = parse_filter(filter_query, {"user_id", "thread_id", "status", "q"})
     effective_limit = max(1, min(limit, MAX_LOG_PAGE_SIZE))
+    chat_status = fq.get("status", status_)
+    if chat_status not in (None, "success", "ai_error"):
+        chat_status = None
     rows = list_logs(
         db,
-        user_id=user_id,
-        thread_id=thread_id,
+        user_id=fq.int_or("user_id", user_id),
+        thread_id=fq.int_or("thread_id", thread_id),
+        search=fq.search,
         limit=effective_limit,
-        status=status_,
+        status=chat_status,
         before_id=before_id,
     )
     audit = {
@@ -204,16 +211,26 @@ def _page(items, limit: int):
     ),
 )
 def all_events(
+    filter_query: str = Query(default="", max_length=200, alias="filter"),
     event: str | None = Query(default=None, max_length=64),
+    user_id: int | None = Query(default=None, gt=0),
     before_id: int | None = Query(default=None, gt=0),
     limit: int = DEFAULT_PAGE_SIZE,
     user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
+    search: str | None = None,
 ):
+    fq = parse_filter(filter_query, {"event", "user", "q"})
     effective = max(1, min(limit, MAX_LOG_PAGE_SIZE))
     query = db.query(AuditEvent)
-    if event:
-        query = query.filter(AuditEvent.event == event)
+    if fq.get("event", event):
+        query = query.filter(AuditEvent.event == fq.get("event", event))
+    effective_user = fq.int_or("user", user_id)
+    if effective_user:
+        query = query.filter(AuditEvent.user_id == effective_user)
+    effective_search = fq.search or search
+    if effective_search:
+        query = query.filter(AuditEvent.fields_json.ilike(f"%{effective_search}%"))
     if before_id:
         query = query.filter(AuditEvent.id < before_id)
     rows = query.order_by(AuditEvent.id.desc()).limit(effective).all()
@@ -250,16 +267,31 @@ def all_events(
     ),
 )
 def all_requests(
+    filter_query: str = Query(default="", max_length=200, alias="filter"),
     status_: int | None = Query(default=None, alias="status"),
     before_id: int | None = Query(default=None, gt=0),
     limit: int = DEFAULT_PAGE_SIZE,
     user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
+    path: str | None = None,
+    method: str | None = None,
+    user_id: int | None = None,
 ):
+    fq = parse_filter(filter_query, {"path", "method", "status", "user"})
     effective = max(1, min(limit, MAX_LOG_PAGE_SIZE))
     query = db.query(RequestLog)
-    if status_:
-        query = query.filter(RequestLog.status == status_)
+    effective_status = fq.int_or("status", status_)
+    if effective_status:
+        query = query.filter(RequestLog.status == effective_status)
+    effective_path = fq.get("path", path)
+    if effective_path:
+        query = query.filter(RequestLog.path.ilike(f"%{effective_path}%"))
+    effective_method = (fq.get("method", method) or "").upper() or None
+    if effective_method:
+        query = query.filter(RequestLog.method == effective_method)
+    effective_user = fq.int_or("user", user_id)
+    if effective_user:
+        query = query.filter(RequestLog.user_id == effective_user)
     if before_id:
         query = query.filter(RequestLog.id < before_id)
     rows = query.order_by(RequestLog.id.desc()).limit(effective).all()
