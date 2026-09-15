@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}네트워크 로그 — 관리자{% endblock %}
+{% block body_class %}admin-page{% endblock %}
+{% block content %}
+<div class="logs-wrap admin-panel">
+  <h1>네트워크 로그</h1>
+  {% include "admin-nav.html" %}
+  <form class="admin-filter" action="/admin/network" method="get">
+    <label>상태코드
+      <select name="status" onchange="this.form.submit()">
+        <option value="">전체</option>
+        {% for s in statuses %}
+        <option value="{{ s }}" {{ 'selected' if filter_status == s else '' }}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <a href="/admin/network">필터 초기화</a>
+  </form>
+  <p class="muted small">/api/ 요청만 기록 · 최신 {{ requests | length }}건 · 보존 한도 5,000건</p>
+  <div class="table-scroll">
+    <table class="logs-table">
+      <thead><tr><th>ID</th><th>시각 (KST / UTC)</th><th>메서드</th><th>경로</th><th>상태</th><th>사용자</th><th>지연(ms)</th><th>요청 ID</th></tr></thead>
+      <tbody>
+      {% for r in requests %}
+        <tr class="{{ 'row-error' if r.status >= 500 else '' }}">
+          <td>{{ r.id }}</td>
+          <td class="nowrap">{{ r.created_at | kst }}<br><span class="muted small">{{ r.created_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC</span></td>
+          <td>{{ r.method }}</td>
+          <td>{{ r.path }}</td>
+          <td class="status-cell">{{ r.status }}</td>
+          <td>{{ r.user_id if r.user_id else '—' }}</td>
+          <td>{{ r.latency_ms }}</td>
+          <td class="request-id">{{ r.request_id }}</td>
+        </tr>
+      {% else %}<tr><td colspan="8">기록이 없습니다.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if next_before_id %}<a class="next-page" href="/admin/network?before_id={{ next_before_id }}{% if filter_status %}&amp;status={{ filter_status }}{% endif %}">이전 기록 더 보기</a>{% endif %}
+</div>
+{% endblock %}

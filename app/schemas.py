@@ -85,6 +85,12 @@ class PasswordResetRequestIn(BaseModel):
     email: EmailStr
     model_config = {"extra": "forbid"}
 
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value):
+        """가입·로그인과 동일한 정규화(공백 제거·소문화)를 적용한다."""
+        return value.strip().lower() if isinstance(value, str) else value
+
 
 class PasswordResetCompleteIn(BaseModel):
     """재설정 완료 — 새 비밀번호(회원가입과 동일한 정책). 토큰은 경로 매개변수다."""
@@ -180,6 +186,50 @@ class AdminChatLogOut(ChatLogOut):
 
 class AdminLogPage(BaseModel):
     items: list[AdminChatLogOut]
+    next_before_id: int | None = None
+
+
+class AdminEventOut(BaseModel):
+    """관리자 이벤트 로그 1행 — 이미 마스킹된 메타데이터만 담는다."""
+
+    id: int
+    created_at: datetime
+    event: str
+    user_id: int | None = None
+    request_id: str = ""
+    fields: dict = {}
+
+
+class AdminEventPage(BaseModel):
+    items: list[AdminEventOut]
+    next_before_id: int | None = None
+
+
+class AdminRequestLogOut(BaseModel):
+    id: int
+    created_at: datetime
+    method: str
+    path: str
+    status: int
+    user_id: int | None = None
+    latency_ms: int
+    request_id: str = ""
+
+
+class AdminRequestLogPage(BaseModel):
+    items: list[AdminRequestLogOut]
+    next_before_id: int | None = None
+
+
+class AdminDbTableOut(BaseModel):
+    name: str
+    rows: int
+
+
+class AdminDbRows(BaseModel):
+    table: str
+    columns: list[str]
+    rows: list[dict]
     next_before_id: int | None = None
 
 

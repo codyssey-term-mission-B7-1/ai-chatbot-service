@@ -53,8 +53,12 @@ TestingSession = sessionmaker(bind=engine, autoflush=False, expire_on_commit=Fal
 
 
 @pytest.fixture()
-def db():
+def db(monkeypatch):
     Base.metadata.create_all(bind=engine)
+    # DB 기록기(recorder)도 앱과 같은 테스트 DB를 쓰도록 교체
+    from app import database
+
+    monkeypatch.setattr(database, "SessionLocal", TestingSession)
     session = TestingSession()
     try:
         yield session

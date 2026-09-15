@@ -12,7 +12,7 @@ def test_non_admin_cannot_access_admin_api_or_page(client):
     assert client.get("/api/users/me").json()["is_admin"] is False
     assert client.get("/api/admin/chats").status_code == 403
     assert client.get("/admin/logs").status_code == 403
-    assert "관리자 조회" not in client.get("/").text
+    assert "관리자 콘솔" not in client.get("/").text
 
 
 def test_admin_reads_all_users_but_ordinary_endpoint_stays_isolated(client, db):
@@ -29,7 +29,7 @@ def test_admin_reads_all_users_but_ordinary_endpoint_stays_isolated(client, db):
     filtered = client.get("/api/admin/chats", params={"user_id": user.id}).json()["items"]
     assert len(filtered) == 1 and filtered[0]["user_id"] == user.id
     assert client.get("/admin/logs").status_code == 200
-    assert "관리자 조회" in client.get("/").text
+    assert "관리자 콘솔" in client.get("/").text
 
 
 def test_admin_revoke_takes_effect_without_waiting_for_cookie_expiry(client, db):
@@ -204,3 +204,26 @@ def test_admin_page_view_records_reason_in_audit_log(client, db, caplog):
     with caplog.at_level(logging.INFO, logger="app.pages"):
         client.get("/admin/logs")  # 사유 없이 열람해도 기존 동작(하위 호환)
     assert "event=admin_logs_viewed" in caplog.text
+
+
+def test_admin_chat_logs_filter_by_thread(client, db, fake_ai):
+    """같은 스레드끼리 묶어 보기 — API·페이지 모두 thread 필터를 지원한다."""
+    signup_and_login(client, "f@example.com")
+    tid_a = client.post("/api/thread").json()["id"]
+    tid_b = client.post("/api/thread").json()["id"]
+    client.post("/api/chats", json={"question": "A 스레드 질문", "thread_id": tid_a})
+    client.post("/api/chats", json={"question": "B 스레드 질문", "thread_id": tid_b})
+
+    grant_admin(db, "f@example.com")
+
+    api_items = client.get("/api/admin/chats", params={"thread_id": tid_a}).json()["items"]
+    assert [r["question"] for r in api_items] == ["A 스레드 질문"]
+
+    page = client.get("/admin/logs", params={"thread": tid_a})
+    assert page.status_code == 200
+    assert "A 스레드 질문" in page.text
+    assert "B 스레드 질문" not in page.text
+    assert f'value="{tid_a}" selected' in page.text
+
+    # 존재하지 않는 스레드는 빈 결과(404 아님 — 필터일 뿐)
+    assert client.get("/admin/logs", params={"thread": 999999}).status_code == 200

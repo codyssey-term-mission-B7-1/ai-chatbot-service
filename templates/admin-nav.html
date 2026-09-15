@@ -1,0 +1,7 @@
+<div class="admin-nav" role="navigation" aria-label="관리자 메뉴">
+  <a href="/admin" class="{{ 'active' if admin_section == 'dashboard' else '' }}">📊 대시보드</a>
+  <a href="/admin/logs" class="{{ 'active' if admin_section == 'logs' else '' }}">💬 채팅 로그</a>
+  <a href="/admin/events" class="{{ 'active' if admin_section == 'events' else '' }}">🧾 이벤트 로그</a>
+  <a href="/admin/network" class="{{ 'active' if admin_section == 'network' else '' }}">🌐 네트워크 로그</a>
+  <a href="/admin/db" class="{{ 'active' if admin_section == 'db' else '' }}">🗄️ 데이터베이스</a>
+</div>

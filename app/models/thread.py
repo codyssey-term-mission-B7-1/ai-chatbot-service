@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -18,6 +18,9 @@ class Thread(Base):
     """대화 스레드 — "새 채팅"으로 대화를 나눈다."""
 
     __tablename__ = "threads"
+    __table_args__ = (
+        CheckConstraint("title IS NULL OR length(title) <= 60", name="ck_threads_title_length"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(

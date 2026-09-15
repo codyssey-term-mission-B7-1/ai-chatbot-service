@@ -7,10 +7,10 @@
   <!-- novalidate: 브라우저 기본 툴팁 대신 앱의 통일된 안내 문구(공백만 입력 포함)를 쓴다 -->
   <form id="auth-form" data-mode="{{ mode }}" novalidate>
     <label>이메일
-      <input type="email" id="email" required placeholder="you@example.com" autocomplete="email">
+      <input type="email" id="email" required maxlength="255" placeholder="you@example.com" autocomplete="email">
     </label>
     <label>비밀번호
-      <input type="password" id="password" required
+      <input type="password" id="password" required maxlength="64"
              placeholder="{{ '8~64자 · UTF-8 72바이트 이하' if mode == 'signup' else '비밀번호' }}"
              autocomplete="{{ 'new-password' if mode == 'signup' else 'current-password' }}">
     </label>
@@ -21,7 +21,7 @@
     </label>
     <p class="muted small">8자 이상 64자 이하, UTF-8 기준 72바이트 이하입니다. 비밀번호를 잘라 저장하지 않습니다.</p>
     <label>닉네임 (선택 · 20자 이하)
-      <input type="text" id="nickname" placeholder="표시될 이름" autocomplete="nickname">
+      <input type="text" id="nickname" maxlength="20" placeholder="표시될 이름" autocomplete="nickname">
     </label>
     <p class="muted small">가입하면 서비스 지원·오류 조사 목적으로 관리자가 대화 내용을 열람할 수 있어요. 열람 기록은 감사 로그로 남습니다.</p>
     {% endif %}

@@ -36,6 +36,10 @@ class E:
     AUTH_PASSWORD_RESET_COMPLETED = "auth_password_reset_completed"
 
     ADMIN_LOGS_VIEWED = "admin_logs_viewed"
+    ADMIN_STATS_VIEWED = "admin_stats_viewed"
+    ADMIN_EVENTS_VIEWED = "admin_events_viewed"
+    ADMIN_NETWORK_VIEWED = "admin_network_viewed"
+    ADMIN_DB_VIEWED = "admin_db_viewed"
     ADMIN_HASH_STATUS_VIEWED = "admin_hash_status_viewed"
     ADMIN_USER_DELETED = "admin_user_deleted"
 
