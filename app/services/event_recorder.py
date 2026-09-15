@@ -83,11 +83,14 @@ def _maybe_trim(model) -> None:
     if random.random() >= _TRIM_PROBABILITY:
         return
     try:
+        from app.config import settings
+
+        keep_rows = getattr(settings, "admin_log_keep_rows", ADMIN_LOG_KEEP_ROWS)
         with _session() as db:
             max_id = db.scalar(select(func.max(model.id)))
-            if max_id is None or max_id <= ADMIN_LOG_KEEP_ROWS:
+            if max_id is None or max_id <= keep_rows:
                 return
-            deleted = db.query(model).filter(model.id <= max_id - ADMIN_LOG_KEEP_ROWS).delete()
+            deleted = db.query(model).filter(model.id <= max_id - keep_rows).delete()
             db.commit()
             if deleted:
                 logger.debug("log trim: %s %d행", model.__tablename__, deleted)
