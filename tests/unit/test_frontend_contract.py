@@ -257,8 +257,8 @@ def test_layout_locked_viewport():
         " flex-direction: column; overflow: hidden; }"
     )
     assert body_rule in css, "본문이 항상 창 크기로 고정되어야 한다"
-    assert ".container { flex: 1 1 auto; min-height: 0; overflow-y: auto; }" in css, (
-        "본문 컨테이너가 내부 스크롤을 가져야 한다"
-    )
+    assert (
+        ".container { flex: 1 1 auto; min-height: 0; overflow-y: auto; }" in css
+    ), "본문 컨테이너가 내부 스크롤을 가져야 한다"
     assert ".page-shell.app-layout > main.container { min-height: 0; overflow-y: auto; }" in css
     assert ".table-scroll { overflow: auto; }" in css, "넓은 표도 본문 안에서 스크롤되어야 한다"
