@@ -19,17 +19,22 @@
 | 메서드 | 경로 | 접근 / 성공 |
 |---|---|---|
 | POST | /api/users | 공개 / 201 (세션 미발급, 로그인 별도) |
-| POST | /api/session | 공개 / 200 + 쿠키 |
-| POST | /api/session | 비로그인도 가능 / 200 |
+| POST | /api/session | 공개 / 201 + 쿠키 (로그인) |
+| DELETE | /api/session | 비로그인도 가능 / 204 (로그아웃) |
 | GET | /api/users/me | 로그인 / 200 |
 | POST | /api/password-resets | 공개 / 202 (계정 존재 은닉) |
 | POST | /api/password-resets/{token} | 공개 / 200 · 400 |
-| POST | /api/chats | 로그인 / 200 · 404 (thread_id 타인·부존재) |
-| POST | /api/thread | 로그인 / 201 · 409 (상한) |
-| GET | /api/thread/list | 로그인 / 내 대화 목록(최근 활동순, 최대 50) |
-| GET | /api/thread/{id} | 로그인 / 대화 단건 · 404 |
-| GET | /api/thread/{id}/chats | 로그인 / 그 대화의 기록(최신순, limit·status·before_id) · 404 |
-| DELETE | /api/thread/{id} | 로그인 / 204 · 404 — 기록 CASCADE 삭제 |
+| POST | /api/chats | 로그인 / 201 (DB 저장 성공) · 200 (DB 저장 실패 시) · 404 (thread_id 타인·부존재) |
+| POST | /api/threads | 로그인 / 201 · 409 (상한, REST 표준) |
+| GET | /api/threads | 로그인 / 내 대화 목록 (최근 활동순 최대 50, REST 표준) |
+| GET | /api/threads/{id} | 로그인 / 대화 단건 · 404 (REST 표준) |
+| GET | /api/threads/{id}/chats | 로그인 / 그 대화의 기록 (최신순, REST 표준) · 404 |
+| DELETE | /api/threads/{id} | 로그인 / 204 · 404 (대화 삭제, REST 표준) |
+| POST | /api/thread | 로그인 / 201 · 409 (상한, 하위 호환) |
+| GET | /api/thread/list | 로그인 / 내 대화 목록(최근 활동순, 최대 50, 하위 호환) |
+| GET | /api/thread/{id} | 로그인 / 대화 단건 · 404 (하위 호환) |
+| GET | /api/thread/{id}/chats | 로그인 / 그 대화의 기록(최신순, limit·status·before_id) · 404 (하위 호환) |
+| DELETE | /api/thread/{id} | 로그인 / 204 · 404 — 기록 CASCADE 삭제 (하위 호환) |
 | GET | /api/users/me/chats | 로그인 / 본인 기록 (thread_id 필터 가능) |
 | GET | /api/admin/chats | 명시적 앱 관리자 / 전체 조회 (user_id·thread_id·status 필터) |
 | GET | /api/admin/stats | 명시적 앱 관리자 / 대시보드 통계 |
@@ -37,7 +42,11 @@
 | GET | /api/admin/network | 명시적 앱 관리자 / 네트워크 로그(status·before_id·limit) |
 | GET | /api/admin/db/tables | 명시적 앱 관리자 / 테이블 목록·행수(화이트리스트) |
 | GET | /api/admin/db/tables/{name}/rows | 명시적 앱 관리자 / 행 미리보기(읽기 전용) |
-| GET | /health | 공개 / 200 |
+| GET | /api/admin/security/password-hashes | 명시적 앱 관리자 / 해시 마이그레이션 현황 |
+| DELETE | /api/admin/users/{id} | 명시적 앱 관리자 / 200 (사용자 삭제 및 세션 폐기) |
+| GET | /api/admin/suggest | 명시적 앱 관리자 / 필터 값 자동완성 |
+| GET | /health | 공개 / 200 (헬스체크) |
+| GET | /readyz | 공개 / 200 (준비성 검사, 장애 시 503) |
 
 `/health` 응답의 `build` 필드는 **배포 지문**(CD가 주입한 커밋 SHA)이다. 개발·미주입 시 빈 문자열이며, CD가 이 필드로 "실제로 서빙 중인 배포가 이번 커밋인지" 확인한다(#120).
 

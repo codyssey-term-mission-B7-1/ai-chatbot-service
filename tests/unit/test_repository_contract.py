@@ -63,3 +63,29 @@ def test_admin_table_can_be_added_without_changing_existing_users(tmp_path):
             assert connection.exec_driver_sql("SELECT COUNT(*) FROM admin_grants").scalar_one() == 0
     finally:
         engine.dispose()
+
+
+def test_admin_repository_functions(db):
+    """admin repository의 조회 함수들이 정상 동작하는지 검증."""
+    from datetime import datetime, timezone
+
+    from app.repositories import admin as admin_repo
+
+    # 통계 집계 검증
+    horizon = datetime.now(timezone.utc)
+    counts = admin_repo.get_admin_dashboard_counts(db, horizon)
+    assert "users" in counts and "chats" in counts and "threads" in counts
+
+    # 테이블 목록 조회 검증
+    tables = admin_repo.get_table_counts(db)
+    table_names = [name for name, _ in tables]
+    assert "users" in table_names and "chat_logs" in table_names
+
+    # 테이블 행 조회 검증
+    res = admin_repo.get_table_rows(db, "users")
+    assert res is not None
+    rows, cols = res
+    assert "email" in cols
+
+    # 미지 테이블 조회 시 None 반환 검증
+    assert admin_repo.get_table_rows(db, "unknown_table") is None

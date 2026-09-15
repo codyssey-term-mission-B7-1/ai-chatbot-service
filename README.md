@@ -34,10 +34,10 @@ flowchart LR
 
 | 책임 | 파일 |
 |---|---|
-| 앱·미들웨어·오류 헤더 | `app/main.py` |
+| 앱·미들웨어·오류 헤더 | `app/main.py`, `app/middleware/`, `app/exception_handlers.py` |
 | 인증·관리자 의존성 | `app/deps.py`, `app/services/security.py`, `app/services/admin.py` |
-| 목적별 라우트 | `app/routers/auth.py`, `chat.py`, `logs.py`, `admin.py`, `pages.py` |
-| DB·모델·CRUD | `app/database.py`, `app/models.py`, `app/repositories/` |
+| 목적별 라우트 | `app/routers/auth.py`, `chat.py`, `logs.py`, `threads.py`, `admin.py`, `pages.py`, `health.py` |
+| DB·모델·CRUD | `app/database.py`, `app/models/`, `app/repositories/` |
 | 입력·응답 계약 | `app/schemas.py`, `app/policies.py` |
 | 서버 AI 호출·문맥 | `app/services/ai_client.py`, `context.py` |
 | 회원가입/로그인 UI | `/signup`, `/login` → `templates/login.html`, `static/js/auth.js` |

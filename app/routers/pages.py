@@ -14,9 +14,16 @@ from app.database import get_db
 from app.deps import resolve_session_user
 from app.logging_config import log_event
 from app.models import Thread, User
+from app.repositories import admin as admin_repo
 from app.repositories.chat_logs import list_logs
-from app.routers.admin import all_events, all_requests, db_table_rows, db_tables, stats
-from app.services.admin import is_admin
+from app.services.admin import (
+    get_admin_dashboard_stats,
+    get_admin_db_table_rows,
+    get_admin_db_tables,
+    get_admin_events_page,
+    get_admin_requests_page,
+    is_admin,
+)
 from app.services.filter_query import parse_filter
 from app.services.password_reset import is_reset_token_valid
 
@@ -140,17 +147,9 @@ def admin_logs_page(
     log_status = fq.get("status")
     if log_status not in (None, "success", "ai_error"):
         log_status = None
-    # email:는 부분일치 — 타이핑 중간에도 후보가 곧바로 검색되게 한다(#204).
-    # 와일드카드는 문자 그대로 취급(이스케이프)해 인젝션 표면을 줄인다.
     target = None
     if clean_email:
-        escaped = clean_email.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        target = (
-            db.query(User)
-            .filter(User.email.ilike(f"%{escaped}%", escape="\\"))
-            .order_by(User.id)
-            .first()
-        )
+        target = admin_repo.find_user_by_email_substring(db, clean_email)
     user_not_found = bool(clean_email) and target is None
     thread_exists = (
         thread is None or db.query(Thread.id).filter(Thread.id == thread).first() is not None
@@ -180,28 +179,11 @@ def admin_logs_page(
     user_infos = {}
     if rows:
         ids = {row.user_id for row in rows}
-        users_q = db.query(User.id, User.email, User.nickname).filter(User.id.in_(ids))
-        for uid, u_email, nick in users_q:
-            user_infos[uid] = {"email": u_email, "nickname": nick}
-    # 스레드 콤보 옵션: 이메일 필터면 그 사용자의 스레드, 아니면 화면의 스레드들
-    if target is not None:
-        thread_rows = (
-            db.query(Thread.id, Thread.title).filter(Thread.user_id == target.id).limit(50).all()
-        )
-    else:
-        log_thread_ids = {row.thread_id for row in rows if row.thread_id is not None}
-        thread_rows = (
-            db.query(Thread.id, Thread.title).filter(Thread.id.in_(log_thread_ids)).all()
-            if log_thread_ids
-            else []
-        )
-    thread_options = [
-        {
-            "id": tid,
-            "label": f"#{tid} · {title or '기본 대화'}",
-        }
-        for tid, title in sorted(thread_rows)
-    ]
+        user_infos = admin_repo.get_users_metadata_by_ids(db, ids)
+    log_thread_ids = {row.thread_id for row in rows if row.thread_id is not None}
+    thread_options = admin_repo.get_threads_for_admin_logs(
+        db, target.id if target is not None else None, log_thread_ids
+    )
     return templates.TemplateResponse(
         request,
         "admin-logs.html",
@@ -239,7 +221,7 @@ def admin_dashboard_page(request: Request, db: Session = Depends(get_db)):
     user, redirect = _admin_gate(request, db)
     if redirect:
         return redirect
-    data = stats(user=user, db=db)
+    data = get_admin_dashboard_stats(db, user)
     return templates.TemplateResponse(
         request,
         "admin-dashboard.html",
@@ -262,9 +244,9 @@ def admin_events_page(
     if redirect:
         return redirect
     fq = parse_filter(filter_query, EVENT_FILTER_KEYS)
-    page = all_events(
-        user=user,
-        db=db,
+    page = get_admin_events_page(
+        db,
+        user,
         filter_query="",
         event=fq.get("event", event.strip()) or None,
         user_id=fq.int_or("user"),
@@ -302,9 +284,9 @@ def admin_network_page(
     if redirect:
         return redirect
     fq = parse_filter(filter_query, NETWORK_FILTER_KEYS)
-    page = all_requests(
-        user=user,
-        db=db,
+    page = get_admin_requests_page(
+        db,
+        user,
         filter_query="",
         status_=fq.int_or("status", status),
         path=fq.get("path"),
@@ -343,14 +325,14 @@ def admin_db_page(
     if redirect:
         return redirect
     fq = parse_filter(filter_query, DB_FILTER_KEYS)
-    tables = db_tables(user=user, db=db)
+    tables = get_admin_db_tables(db, user)
     clean_name = (fq.get("table") or table).strip()
     rows_page = None
     not_found = False
     if clean_name:
         try:
-            rows_page = db_table_rows(
-                user=user, db=db, name=clean_name, before_id=before_id, limit=50
+            rows_page = get_admin_db_table_rows(
+                db, user, name=clean_name, before_id=before_id, limit=50
             )
         except HTTPException:
             not_found = True

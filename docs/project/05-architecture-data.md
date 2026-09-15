@@ -24,11 +24,16 @@ flowchart LR
 
 | 계층 | 위치 | 책임 | 금지 |
 |---|---|---|---|
-| 라우터 | `app/routers/` (auth·chat·logs·admin·pages) | HTTP 진입·응답 계약 | 직접 SQL |
-| 서비스 | `app/services/` (ai_client·context·security·sessions·rate_limit·password_reset·admin) | 도메인 로직·외부 I/O | HTTP 객체 직접 반환 |
-| 저장소 | `app/repositories/` (users·chat_logs) | 쿼리 집중 | 비즈니스 판단 |
-| 계약 | `app/schemas.py` · `app/policies.py` | Pydantic 검증·정책 상수 | 라우터별 하드코딩 |
+| 라우터 | `app/routers/` (auth·chat·logs·admin·pages·threads·health) | HTTP 진입·응답 계약 (HTML 페이지 및 REST API 엔드포인트) | 직접 SQL, 라우터 간 직접 호출 |
+| 서비스 | `app/services/` (ai_client·context·security·sessions·rate_limit·password_reset·admin·chat·suggest·filter_query) | 도메인 로직·외부 I/O·감사 로깅 | HTTP 객체 직접 반환 |
+| 저장소 | `app/repositories/` (users·chat_logs·threads·admin) | 쿼리 집중 (DB 입출력) | 비즈니스 판단 |
+| 계약 | `app/schemas.py` · `app/policies.py` · `app/enums.py` | Pydantic 검증·정책 상수·열거형 | 라우터별 하드코딩 |
 | 인프라 | `app/database.py` · `logging_config.py` · `config.py` | 세션·로깅·설정 게이트 | — |
+
+**계층 원칙 준수 보장 (#150, #172, 표준화 리팩토링)**
+- **라우터 간 직접 호출 금지**: HTML 렌더러(`pages.py`)가 API 라우터(`admin.py`)를 직접 임포트/호출하는 안티패턴을 제거하고, 공통 `services/admin.py` 및 `repositories/admin.py`를 호출하여 재사용성을 확보함.
+- **라우터 내 직접 SQL 금지**: 라우터 내부에 잔존하던 `SELECT COUNT(*)`, raw ORM 집계 쿼리를 `repositories/admin.py`로 완전히 이전하여 '라우터 내 직접 SQL 금지' 계약을 100% 준수.
+- **REST 표준 및 하위 호환**: 스레드 엔드포인트는 RESTful 표준인 `/api/threads` (GET/POST/DELETE)를 신설하고, 기존 `/api/thread`, `/api/thread/list`도 하위 호환 별칭으로 유지.
 
 ## 3. ERD (최종)
 
