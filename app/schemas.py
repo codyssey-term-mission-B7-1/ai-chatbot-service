@@ -85,6 +85,12 @@ class PasswordResetRequestIn(BaseModel):
     email: EmailStr
     model_config = {"extra": "forbid"}
 
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value):
+        """가입·로그인과 동일한 정규화(공백 제거·소문화)를 적용한다."""
+        return value.strip().lower() if isinstance(value, str) else value
+
 
 class PasswordResetCompleteIn(BaseModel):
     """재설정 완료 — 새 비밀번호(회원가입과 동일한 정책). 토큰은 경로 매개변수다."""

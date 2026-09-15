@@ -33,6 +33,7 @@ authForm.addEventListener('submit', async (event) => {
       return showAuthMessage('비밀번호가 일치하지 않아요. 두 입력을 다시 확인해 주세요.');
     }
     body.nickname = document.getElementById('nickname').value.trim();
+    if (body.nickname && FormUtils.codepointLength(body.nickname) > 20) return showAuthMessage('닉네임은 20자 이하여야 해요.');
     if (FormUtils.codepointLength(body.nickname) > 20) {
       return showAuthMessage('닉네임은 20자 이하여야 해요.');
     }

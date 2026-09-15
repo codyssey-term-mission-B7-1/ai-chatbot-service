@@ -41,6 +41,13 @@ def fresh_sqlite_url(tmp_path):
     yield f"sqlite:///{db_path.resolve()}"
 
 
+def _head_revision() -> str:
+    """스크립트 디렉터리의 현재 헤드 리비전 — 새 마이그레이션마다 테스트 수정이 필요 없도록."""
+    from alembic.script import ScriptDirectory
+
+    return ScriptDirectory.from_config(_alembic_config("sqlite://")).get_current_head()
+
+
 def test_upgrade_head_creates_all_tables(fresh_sqlite_url):
     cfg = _alembic_config(fresh_sqlite_url)
     command.upgrade(cfg, "head")
@@ -108,7 +115,7 @@ def test_legacy_db_without_version_table_is_adopted(fresh_sqlite_url, monkeypatc
         with engine.connect() as conn:
             assert (
                 conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
-                == "c7e4a9b21d05"
+                == _head_revision()
             )
             titles = conn.execute(text("SELECT title FROM threads")).fetchall()
             assert titles == [("기본 대화",)]
@@ -139,7 +146,7 @@ def test_init_db_records_sync_state(fresh_sqlite_url, monkeypatch):
             conn.execute(text("DROP TABLE alembic_version"))
         database.init_db(alembic_cfg=cfg, eng=engine)
         assert database.schema_sync["status"] == "ok"
-        assert database.schema_sync["revision"] == "c7e4a9b21d05"
+        assert database.schema_sync["revision"] == _head_revision()
 
         # 2) 실패 경로 — 운영과 동일한 'table users already exists' 시뮬레이션
         with engine.begin() as conn:
@@ -196,7 +203,7 @@ def test_legacy_db_with_current_schema_gets_head_stamp(fresh_sqlite_url, monkeyp
         init_db(alembic_cfg=cfg, eng=engine)
         with engine.connect() as conn:
             head = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
-            assert head == "c7e4a9b21d05"
+            assert head == _head_revision()
             # 스탬프만 — 기존 데이터에 손대지 않는다
             titles = conn.execute(text("SELECT title FROM threads")).fetchall()
             assert titles == [("보존될 제목",)]
@@ -327,7 +334,7 @@ def test_legacy_db_with_empty_version_table_is_adopted(fresh_sqlite_url, monkeyp
         with engine.connect() as conn:
             assert (
                 conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
-                == "c7e4a9b21d05"
+                == _head_revision()
             )
     finally:
         engine.dispose()
