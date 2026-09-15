@@ -13,6 +13,7 @@ from app.audit import E
 from app.config import settings
 from app.database import get_db
 from app.deps import get_chat_limiter, get_current_user
+from app.enums import ChatStatus
 from app.logging_config import log_event
 from app.models import User
 from app.repositories import chat_logs
@@ -32,7 +33,7 @@ def _save_log(
     question: str,
     answer: str,
     latency_ms: int,
-    status_: str,
+    status_: ChatStatus,
     request_id: str,
     thread_id: int | None = None,
 ) -> int | None:
@@ -155,7 +156,14 @@ async def chat(
             level=logging.ERROR,
         )
         _save_log(
-            db, user.id, body.question, "", latency_ms, "ai_error", request_id, thread_id=thread.id
+            db,
+            user.id,
+            body.question,
+            "",
+            latency_ms,
+            ChatStatus.AI_ERROR,
+            request_id,
+            thread_id=thread.id,
         )
         threads_repo.touch_after_message(db, thread.id, body.question)
         raise HTTPException(
@@ -169,12 +177,19 @@ async def chat(
             E.AI_CALL_FAIL,
             user_id=user.id,
             request_id=request_id,
-            reason="ai_error",
+            reason=ChatStatus.AI_ERROR,
             latency_ms=latency_ms,
             level=logging.ERROR,
         )
         _save_log(
-            db, user.id, body.question, "", latency_ms, "ai_error", request_id, thread_id=thread.id
+            db,
+            user.id,
+            body.question,
+            "",
+            latency_ms,
+            ChatStatus.AI_ERROR,
+            request_id,
+            thread_id=thread.id,
         )
         threads_repo.touch_after_message(db, thread.id, body.question)
         raise HTTPException(
@@ -182,10 +197,19 @@ async def chat(
             detail=("AI 서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요. (error: AI_ERROR)"),
         ) from None
     chat_id = _save_log(
-        db, user.id, body.question, answer, latency_ms, "success", request_id, thread_id=thread.id
+        db,
+        user.id,
+        body.question,
+        answer,
+        latency_ms,
+        ChatStatus.SUCCESS,
+        request_id,
+        thread_id=thread.id,
     )
     threads_repo.touch_after_message(db, thread.id, body.question)
-    payload = ChatOut(answer=answer, latency_ms=latency_ms, chat_id=chat_id or -1, status="success")
+    payload = ChatOut(
+        answer=answer, latency_ms=latency_ms, chat_id=chat_id or -1, status=ChatStatus.SUCCESS
+    )
     return JSONResponse(
         status_code=status.HTTP_201_CREATED if chat_id else status.HTTP_200_OK,
         content=payload.model_dump(),

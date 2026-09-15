@@ -4,7 +4,12 @@ from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.models import ChatLog, Thread, utcnow
-from app.policies import DEFAULT_THREAD_TITLE, MAX_THREAD_TITLE_CHARS
+from app.policies import (
+    DEFAULT_PAGE_SIZE,
+    DEFAULT_THREAD_TITLE,
+    MAX_LOG_PAGE_SIZE,
+    MAX_THREAD_TITLE_CHARS,
+)
 
 
 def _truncate_title(question: str) -> str:
@@ -28,13 +33,13 @@ def get_thread(db: Session, thread_id: int, *, user_id: int | None = None) -> Th
     return query.first()
 
 
-def list_threads(db: Session, *, user_id: int, limit: int = 50) -> list[Thread]:
+def list_threads(db: Session, *, user_id: int, limit: int = DEFAULT_PAGE_SIZE) -> list[Thread]:
     """최근 활동순(updated_at desc, id desc) — '나중에 보러올' 스레드가 위쪽에 온다."""
     return (
         db.query(Thread)
         .filter(Thread.user_id == user_id)
         .order_by(Thread.updated_at.desc(), Thread.id.desc())
-        .limit(max(1, min(limit, 200)))
+        .limit(max(1, min(limit, MAX_LOG_PAGE_SIZE)))
         .all()
     )
 

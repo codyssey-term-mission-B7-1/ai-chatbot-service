@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.audit import E
 from app.config import settings
+from app.enums import DeliveryResult
 from app.logging_config import log_event
 from app.models import PasswordReset, User
 from app.services.security import hash_password
@@ -77,19 +78,19 @@ def is_reset_token_valid(db: Session, token: str) -> bool:
 
 
 def deliver_reset_email(to_email: str, link: str) -> str:
-    """전송 결과: 'sent' | 'dev_console'. 발송 수단 미설정(운영)은 SmtpNotConfigured 예외."""
+    """전송 결과는 DeliveryResult. 발송 수단 미설정(운영)은 SmtpNotConfigured 예외."""
     if settings.resend_api_key:
         _send_via_resend(to_email, link)
-        return "sent"
+        return DeliveryResult.SENT
     if settings.smtp_host:
         _send_via_smtp(to_email, link)
-        return "sent"
+        return DeliveryResult.SENT
     if settings.debug:
         logger.warning(
             "발송 수단 미설정(개발 모드) — 재설정 링크를 콘솔에 출력(운영은 발송 실패): %s",
             link,
         )
-        return "dev_console"
+        return DeliveryResult.DEV_CONSOLE
     raise SmtpNotConfigured(
         "이메일 발송 설정(resend_api_key 또는 smtp_host)이 비어 있어 메일을 발송할 수 없습니다."
     )
