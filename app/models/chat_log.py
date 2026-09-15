@@ -3,12 +3,12 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 from app.models.base import utcnow
-from app.policies import REQUEST_ID_CHARS
+from app.policies import QUESTION_ABS_MAX_CHARS, REQUEST_ID_CHARS
 
 if TYPE_CHECKING:
     from app.models.thread import Thread
@@ -17,6 +17,13 @@ if TYPE_CHECKING:
 
 class ChatLog(Base):
     __tablename__ = "chat_logs"
+    __table_args__ = (
+        CheckConstraint("status IN ('success', 'ai_error')", name="ck_chat_logs_status"),
+        CheckConstraint(
+            "length(trim(question)) BETWEEN 1 AND " + str(QUESTION_ABS_MAX_CHARS),
+            name="ck_chat_logs_question_length",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(

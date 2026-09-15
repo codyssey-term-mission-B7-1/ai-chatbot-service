@@ -7,7 +7,7 @@ from functools import lru_cache
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from app.policies import MAX_CONTEXT_TURNS
+from app.policies import MAX_CONTEXT_TURNS, QUESTION_ABS_MAX_CHARS
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ class Settings(BaseSettings):
     max_request_body_bytes: int = Field(default=1_048_576, ge=0)
 
     context_turns: int = Field(default=5, ge=0, le=MAX_CONTEXT_TURNS)
-    max_question_length: int = Field(default=1000, ge=1, le=100000)
+    max_question_length: int = Field(default=1000, ge=1, le=QUESTION_ABS_MAX_CHARS)
     max_threads_per_user: int = Field(default=100, ge=1)
 
     login_max_fails: int = Field(default=5, ge=1)
