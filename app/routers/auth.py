@@ -15,6 +15,7 @@ from app.deps import (
     get_password_reset_ip_limiter,
     get_signup_ip_limiter,
 )
+from app.enums import DeliveryResult, SessionKey
 from app.logging_config import log_event
 from app.models import User
 from app.repositories.users import DuplicateEmailError, create_user, find_by_email
@@ -152,9 +153,9 @@ def login(
         raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않아요.")
     login_limiter.clear(body.email)
     request.session.clear()
-    request.session["user_id"] = user.id
-    request.session["email_fp"] = email_fingerprint(user.email)
-    request.session["iat"] = int(time.time())
+    request.session[SessionKey.USER_ID] = user.id
+    request.session[SessionKey.EMAIL_FP] = email_fingerprint(user.email)
+    request.session[SessionKey.IAT] = int(time.time())
     request.state.authenticated_user_id = user.id
     log_event(logger, E.USER_LOGIN, user_id=user.id)
     return UserOut(email=user.email, nickname=user.nickname, is_admin=is_admin(db, user))
@@ -228,7 +229,7 @@ async def password_reset_request(
         raise HTTPException(
             status_code=502, detail="재설정 메일 발송에 실패했어요. 잠시 후 다시 시도해 주세요."
         ) from None
-    if result == "dev_console":
+    if result == DeliveryResult.DEV_CONSOLE:
         event_name = E.AUTH_PASSWORD_RESET_EMAIL_DEV_CONSOLE
     else:
         event_name = E.AUTH_PASSWORD_RESET_EMAIL_SENT

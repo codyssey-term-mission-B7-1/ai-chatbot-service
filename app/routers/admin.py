@@ -10,7 +10,7 @@ from app.database import get_db
 from app.deps import get_admin_user
 from app.logging_config import log_event
 from app.models import User
-from app.policies import MAX_LOG_PAGE_SIZE
+from app.policies import DEFAULT_PAGE_SIZE, MAX_AUDIT_REASON_CHARS, MAX_LOG_PAGE_SIZE
 from app.repositories.chat_logs import list_logs
 from app.schemas import (
     AdminChatLogOut,
@@ -38,11 +38,15 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
     responses={401: {"description": "로그인 필요"}, 403: {"description": "앱 관리자 권한 필요"}},
 )
 def all_chats(
-    limit: int = 50,
+    limit: int = DEFAULT_PAGE_SIZE,
     user_id: int | None = Query(default=None, gt=0),
     status_: LogStatus | None = Query(default=None, alias="status"),
     before_id: int | None = Query(default=None, gt=0),
-    reason: str = Query(default="", max_length=200, description="열람 사유 — 감사 로그에 기록"),
+    reason: str = Query(
+        default="",
+        max_length=MAX_AUDIT_REASON_CHARS,
+        description="열람 사유 — 감사 로그에 기록",
+    ),
     user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
@@ -57,7 +61,7 @@ def all_chats(
         "before_id": before_id,
     }
     if reason.strip():
-        audit["reason"] = reason.strip()[:200]
+        audit["reason"] = reason.strip()[:MAX_AUDIT_REASON_CHARS]
     log_event(logger, E.ADMIN_LOGS_VIEWED, **audit)
     return AdminLogPage(
         items=[AdminChatLogOut.model_validate(row) for row in rows],

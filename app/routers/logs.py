@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.deps import get_current_user
 from app.models import User
+from app.policies import DEFAULT_PAGE_SIZE
 from app.repositories import threads as threads_repo
 from app.repositories.chat_logs import list_logs
 from app.schemas import ChatLogOut, LogStatus
@@ -28,7 +29,7 @@ router = APIRouter(prefix="/api/users/me", tags=["logs"])
     },
 )
 def my_chats(
-    limit: int = 50,
+    limit: int = DEFAULT_PAGE_SIZE,
     status_: LogStatus | None = Query(default=None, alias="status"),
     before_id: int | None = Query(default=None, gt=0),
     thread_id: int | None = Query(default=None, ge=1),

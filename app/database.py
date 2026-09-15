@@ -6,6 +6,7 @@ from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import settings
+from app.enums import SchemaSyncStatus
 
 
 class Base(DeclarativeBase):
@@ -63,7 +64,11 @@ def _sqlite_pragmas_on_connect(dbapi_conn, _conn_record):
 if _is_sqlite:
     event.listens_for(engine, "connect")(_sqlite_pragmas_on_connect)
 
-schema_sync = {"status": "pending", "error": None, "revision": None}
+schema_sync = {
+    "status": SchemaSyncStatus.PENDING,
+    "error": None,
+    "revision": None,
+}
 
 
 def _classify_db_error(exc: Exception) -> str:
@@ -171,7 +176,9 @@ def init_db(alembic_cfg=None, eng=None) -> None:
                     "root 이전 구조의 DB는 데이터 백업 후 초기화하세요."
                 )
     except Exception as exc:
-        schema_sync.update(status="error", error=_classify_db_error(exc), revision=None)
+        schema_sync.update(
+            status=SchemaSyncStatus.ERROR, error=_classify_db_error(exc), revision=None
+        )
         raise
 
     try:
@@ -181,7 +188,7 @@ def init_db(alembic_cfg=None, eng=None) -> None:
             ).scalar()
     except Exception:
         revision = None
-    schema_sync.update(status="ok", error=None, revision=revision)
+    schema_sync.update(status=SchemaSyncStatus.OK, error=None, revision=revision)
 
 
 def get_db():
