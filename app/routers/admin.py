@@ -40,6 +40,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 def all_chats(
     limit: int = DEFAULT_PAGE_SIZE,
     user_id: int | None = Query(default=None, gt=0),
+    thread_id: int | None = Query(default=None, gt=0),
     status_: LogStatus | None = Query(default=None, alias="status"),
     before_id: int | None = Query(default=None, gt=0),
     reason: str = Query(
@@ -52,11 +53,17 @@ def all_chats(
 ):
     effective_limit = max(1, min(limit, MAX_LOG_PAGE_SIZE))
     rows = list_logs(
-        db, user_id=user_id, limit=effective_limit, status=status_, before_id=before_id
+        db,
+        user_id=user_id,
+        thread_id=thread_id,
+        limit=effective_limit,
+        status=status_,
+        before_id=before_id,
     )
     audit = {
         "user_id": user.id,
         "filter_user_id": user_id,
+        "filter_thread_id": thread_id,
         "result_count": len(rows),
         "before_id": before_id,
     }
