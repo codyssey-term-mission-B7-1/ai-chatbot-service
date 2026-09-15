@@ -4,6 +4,7 @@
 {% block content %}
 <div class="logs-wrap admin-panel">
   <h1>관리자 대화 조회</h1>
+  {% include "admin-nav.html" %}
   <p class="muted small">명시적으로 부여된 앱 관리자만 접근할 수 있습니다. 원문에는 개인정보가 포함될 수 있습니다.</p>
   <form id="admin-filter" class="admin-filter" action="/admin/logs" method="get">
     <label>사용자 이메일 <input id="admin-user-email" type="email" value="{{ filter_email or '' }}" placeholder="전체 사용자 (예: user@example.com)"></label>

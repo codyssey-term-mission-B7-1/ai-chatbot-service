@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}관리자 콘솔{% endblock %}
+{% block body_class %}admin-page{% endblock %}
+{% block content %}
+<div class="logs-wrap admin-panel">
+  <h1>관리자 콘솔</h1>
+  {% include "admin-nav.html" %}
+  <div class="stat-cards">
+    <div class="stat-card"><span class="stat-num">{{ users }}</span><span class="stat-label">사용자</span></div>
+    <div class="stat-card"><span class="stat-num">{{ threads }}</span><span class="stat-label">대화(스레드)</span></div>
+    <div class="stat-card"><span class="stat-num">{{ chats }}</span><span class="stat-label">대화 기록</span></div>
+    <div class="stat-card"><span class="stat-num">{{ chats_success }}</span><span class="stat-label">성공 응답</span></div>
+    <div class="stat-card"><span class="stat-num">{{ chats_ai_error }}</span><span class="stat-label">AI 오류</span></div>
+    <div class="stat-card"><span class="stat-num">{{ requests_24h }}</span><span class="stat-label">최근 24h 요청</span></div>
+    <div class="stat-card"><span class="stat-num">{{ events_24h }}</span><span class="stat-label">최근 24h 이벤트</span></div>
+    <div class="stat-card"><span class="stat-num">{{ requests_total }}</span><span class="stat-label">누적 요청</span></div>
+  </div>
+  <p class="muted small">명시적으로 부여된 앱 관리자만 접근할 수 있습니다. 열람 행위는 감사 이벤트로 기록됩니다.</p>
+</div>
+{% endblock %}

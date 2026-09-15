@@ -41,19 +41,33 @@ def _value(value) -> str:
 
 
 def log_event(logger: logging.Logger, event: str, level: int = logging.INFO, **fields) -> None:
-    """정의된 이벤트만 기록. 입력 원문 대신 길이·상태·식별자 등 허용된 메타데이터 사용."""
+    """정의된 이벤트만 기록. 입력 원문 대신 길이·상태·식별자 등 허용된 메타데이터 사용.
+
+    마스킹된 필드를 그대로 DB(audit_events)에도 미러링한다 —
+    관리자 콘솔 이벤트 로그 화면의 원천(#189). DB 기록 실패는
+    stderr 로그에 영향을 주지 않도록 조용히 무시한다.
+    """
     if event not in EVENTS:
         raise ValueError("Unregistered log event")
     if "request_id" not in fields and REQUEST_ID.get() is not None:
         fields = {"request_id": REQUEST_ID.get(), **fields}
     parts = [f"event={event}"]
+    safe_fields = {}
     for key, value in fields.items():
         if not re.fullmatch(r"[a-z][a-z0-9_]*", key):
             raise ValueError("Invalid log field name")
         if key in SENSITIVE_FIELDS or key.endswith(("_secret", "_token")):
             value = "[REDACTED]"
+        safe_fields[key] = value
         parts.append(f"{key}={_value(value)}")
     logger.log(level, " ".join(parts))
+    try:
+        # 로거 모듈은 DB 모델보다 낮은 층이라 상단 import 시 순환 — 함수 내 지연 import가 필요하다.
+        from app.services.event_recorder import record_event
+
+        record_event(event, fields=safe_fields)
+    except Exception:
+        pass
 
 
 def truncate(text: str, limit: int = 50) -> str:

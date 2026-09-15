@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}이벤트 로그 — 관리자{% endblock %}
+{% block body_class %}admin-page{% endblock %}
+{% block content %}
+<div class="logs-wrap admin-panel">
+  <h1>이벤트 로그</h1>
+  {% include "admin-nav.html" %}
+  <form class="admin-filter" action="/admin/events" method="get">
+    <label>이벤트
+      <select name="event" onchange="this.form.submit()">
+        <option value="">전체 이벤트</option>
+        {% for name in event_names %}
+        <option value="{{ name }}" {{ 'selected' if filter_event == name else '' }}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <a href="/admin/events">필터 초기화</a>
+  </form>
+  <p class="muted small">최신 {{ events | length }}건 · 마스킹된 메타데이터만 저장됩니다(원문 질문·응답 제외).</p>
+  <div class="table-scroll">
+    <table class="logs-table">
+      <thead><tr><th>ID</th><th>시각 (KST / UTC)</th><th>이벤트</th><th>사용자</th><th>요청 ID</th><th>필드</th></tr></thead>
+      <tbody>
+      {% for e in events %}
+        <tr>
+          <td>{{ e.id }}</td>
+          <td class="nowrap">{{ e.created_at | kst }}<br><span class="muted small">{{ e.created_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC</span></td>
+          <td>{{ e.event }}</td>
+          <td>{{ e.user_id if e.user_id else '—' }}</td>
+          <td class="request-id">{{ e.request_id }}</td>
+          <td class="small">{{ e.fields | tojson if e.fields else '—' }}</td>
+        </tr>
+      {% else %}<tr><td colspan="6">기록이 없습니다.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if next_before_id %}<a class="next-page" href="/admin/events?before_id={{ next_before_id }}{% if filter_event %}&amp;event={{ filter_event | urlencode }}{% endif %}">이전 기록 더 보기</a>{% endif %}
+</div>
+{% endblock %}

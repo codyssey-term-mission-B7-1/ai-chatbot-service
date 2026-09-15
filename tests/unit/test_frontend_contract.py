@@ -197,7 +197,7 @@ def test_sidebar_user_menu_contract():
     # base: 사이드바가 전 로그인 페이지에 공통(닉네임 조건부) + 하단 사용자 메뉴
     assert "if nickname" in base and "sidebar-foot" in base
     assert base.index("sidebar-foot") > base.index("thread-list")
-    assert 'href="/logs"' in base and 'href="/admin/logs"' in base and "is_admin" in base
+    assert 'href="/logs"' in base and 'href="/admin"' in base and "is_admin" in base
     assert base.count('id="theme-toggle"') == 2 and base.count('id="logout-btn"') == 1
     # 사이드바 하단 메뉴가 리스트 아래(바인딩) — app-page 바디 클래스로 네비 슬림
     assert "app-page" in base

@@ -12,7 +12,7 @@ def test_non_admin_cannot_access_admin_api_or_page(client):
     assert client.get("/api/users/me").json()["is_admin"] is False
     assert client.get("/api/admin/chats").status_code == 403
     assert client.get("/admin/logs").status_code == 403
-    assert "관리자 조회" not in client.get("/").text
+    assert "관리자 콘솔" not in client.get("/").text
 
 
 def test_admin_reads_all_users_but_ordinary_endpoint_stays_isolated(client, db):
@@ -29,7 +29,7 @@ def test_admin_reads_all_users_but_ordinary_endpoint_stays_isolated(client, db):
     filtered = client.get("/api/admin/chats", params={"user_id": user.id}).json()["items"]
     assert len(filtered) == 1 and filtered[0]["user_id"] == user.id
     assert client.get("/admin/logs").status_code == 200
-    assert "관리자 조회" in client.get("/").text
+    assert "관리자 콘솔" in client.get("/").text
 
 
 def test_admin_revoke_takes_effect_without_waiting_for_cookie_expiry(client, db):

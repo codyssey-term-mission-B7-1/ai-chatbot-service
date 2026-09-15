@@ -26,6 +26,23 @@ python scripts/manage_admin.py revoke --email operator@example.com
 
 ## 조회
 
+### 관리자 콘솔 (/admin)
+
+사이드바의 **관리자 콘솔**에서 진입하며 하위 메뉴 5종으로 구성된다(#189):
+
+| 메뉴 | 경로 | 내용 |
+|---|---|---|
+| 대시보드 | `/admin` | 사용자·스레드·대화·성공률·최근 24h 요청/이벤트 카드 |
+| 채팅 로그 | `/admin/logs` | 전체 대화 원문 조회 — 이메일·스레드 콤보 필터, 열람 사유 |
+| 이벤트 로그 | `/admin/events` | 감사 이벤트 DB 영속분(audit_events, 보존 5,000건) — 이벤트명 필터 |
+| 네트워크 로그 | `/admin/network` | /api/ 요청 기록(request_logs, 보존 5,000건) — 상태코드 필터 |
+| 데이터베이스 | `/admin/db` | 테이블 목록·행수·최근 행 미리보기(읽기 전용, 화이트리스트) |
+
+- 웹 셸 터미널은 의도적으로 제공하지 않는다 — 관리자 세션 탈취 시 서버 전체 장악(RCE)으로 이어지는 안티패턴.
+- 이벤트·네트워크 로그 기록은 best-effort다. 기록 실패가 사용자 요청 처리에 영향을 주지 않는다(테스트 `test_recorder_failure_never_breaks_requests`).
+- 열람 행위 자체도 감사 이벤트(admin_*_viewed)로 기록된다.
+
+
 - 화면: `/admin/logs` — 사용자 ID 필터, 최근 50건, 이전 페이지
 - API: `GET /api/admin/chats?limit=50&user_id=12&status=success&before_id=100`
 - 생략 가능한 필터: `user_id`, `status`, `before_id`. `limit`은 1~200으로 제한한다.

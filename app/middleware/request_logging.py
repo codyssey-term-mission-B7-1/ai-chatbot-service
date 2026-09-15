@@ -52,6 +52,7 @@ async def log_requests(request: Request, call_next):
         return await unhandled_exception_handler(request, exc)
     finally:
         if is_api:
+            latency_ms = int((time.perf_counter() - started) * 1000)
             log_event(
                 logger,
                 E.REQUEST_FINISHED,
@@ -60,6 +61,20 @@ async def log_requests(request: Request, call_next):
                 user_id=getattr(request.state, "authenticated_user_id", None),
                 status=status_code,
                 request_id=request_id,
-                latency_ms=int((time.perf_counter() - started) * 1000),
+                latency_ms=latency_ms,
             )
+            try:
+                # 관리자 콘솔 네트워크 로그 화면용 DB 미러링(#189) — 실패는 recorder가 무시한다.
+                from app.services.event_recorder import record_request
+
+                record_request(
+                    method=request.method,
+                    path=request.url.path,
+                    status=status_code,
+                    user_id=getattr(request.state, "authenticated_user_id", None),
+                    latency_ms=latency_ms,
+                    request_id=request_id,
+                )
+            except Exception:
+                pass
         REQUEST_ID.reset(token)
