@@ -32,7 +32,9 @@ def main() -> int:
     parser.add_argument("--password", required=True)
     parser.add_argument("--set", default="scripts/golden_set.json")
     parser.add_argument("--out", default="golden_results.json")
-    parser.add_argument("--sleep", type=float, default=7.0, help="요청 간 대기 초(기본 7 — 분당 10회 제한 대응)")
+    parser.add_argument(
+        "--sleep", type=float, default=7.0, help="요청 간 대기 초(기본 7 — 분당 10회 제한 대응)"
+    )
     parser.add_argument("--skip", nargs="*", default=[], help="제외할 케이스 ID (예: G-09)")
     args = parser.parse_args()
 
@@ -49,9 +51,7 @@ def main() -> int:
     if signup.status_code not in (201, 409):
         print(f"가입 실패: {signup.status_code} {signup.text[:200]}", file=sys.stderr)
         return 2
-    login = client.post(
-        "/api/session", json={"email": args.email, "password": args.password}
-    )
+    login = client.post("/api/session", json={"email": args.email, "password": args.password})
     if login.status_code != 200:
         print(f"로그인 실패: {login.status_code}", file=sys.stderr)
         return 2
@@ -59,7 +59,12 @@ def main() -> int:
 
     results = []
     for case in cases:
-        entry = {"id": case["id"], "category": case["category"], "expect": case["expect"], "turns": []}
+        entry = {
+            "id": case["id"],
+            "category": case["category"],
+            "expect": case["expect"],
+            "turns": [],
+        }
         for question in case["turns"]:
             payload = {"question": question}
             for attempt in (1, 2):  # 429 시 Retry-After만큼 대기 후 1회 재시도
@@ -78,10 +83,16 @@ def main() -> int:
                     "status": body.get("status"),
                     "latency_ms": body.get("latency_ms"),
                     "chat_id": body.get("chat_id"),
-                    "answer": body.get("answer", "") if response.status_code == 200 else response.text[:300],
+                    "answer": (
+                        body.get("answer", "")
+                        if response.status_code == 200
+                        else response.text[:300]
+                    ),
                 }
             )
-            print(f"  [{case['id']}] HTTP {response.status_code} ({body.get('latency_ms')}ms) {question[:24]}…")
+            print(
+                f"  [{case['id']}] HTTP {response.status_code} ({body.get('latency_ms')}ms) {question[:24]}…"
+            )
             time.sleep(args.sleep)
         results.append(entry)
 
