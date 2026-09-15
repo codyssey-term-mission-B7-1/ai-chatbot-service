@@ -262,3 +262,22 @@ body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
   .logs-table .nowrap { white-space: nowrap; }
   .admin-panel .logs-table { min-width: 1000px; }
 }
+
+
+/* ── 관리자 콘솔(#189) ─────────────────────────── */
+.admin-nav { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 20px; }
+.admin-nav a {
+  padding: 7px 14px; border: 1px solid var(--border, #ddd); border-radius: 999px;
+  text-decoration: none; font-size: 14px; color: inherit;
+}
+.admin-nav a.active { background: var(--accent, #4f6ef7); color: #fff; border-color: var(--accent, #4f6ef7); }
+.stat-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin: 16px 0; }
+.stat-card {
+  display: flex; flex-direction: column; gap: 4px; padding: 14px 16px;
+  border: 1px solid var(--border, #ddd); border-radius: 12px; background: var(--card, #fff);
+}
+.stat-num { font-size: 24px; font-weight: 700; }
+.stat-label { font-size: 13px; color: var(--muted, #777); }
+.h-small { font-size: 16px; margin: 20px 0 8px; }
+.db-cell { max-width: 260px; overflow-wrap: anywhere; font-size: 12px; }
+.row-active { font-weight: 600; }

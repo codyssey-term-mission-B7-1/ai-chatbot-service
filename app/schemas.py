@@ -189,6 +189,50 @@ class AdminLogPage(BaseModel):
     next_before_id: int | None = None
 
 
+class AdminEventOut(BaseModel):
+    """관리자 이벤트 로그 1행 — 이미 마스킹된 메타데이터만 담는다."""
+
+    id: int
+    created_at: datetime
+    event: str
+    user_id: int | None = None
+    request_id: str = ""
+    fields: dict = {}
+
+
+class AdminEventPage(BaseModel):
+    items: list[AdminEventOut]
+    next_before_id: int | None = None
+
+
+class AdminRequestLogOut(BaseModel):
+    id: int
+    created_at: datetime
+    method: str
+    path: str
+    status: int
+    user_id: int | None = None
+    latency_ms: int
+    request_id: str = ""
+
+
+class AdminRequestLogPage(BaseModel):
+    items: list[AdminRequestLogOut]
+    next_before_id: int | None = None
+
+
+class AdminDbTableOut(BaseModel):
+    name: str
+    rows: int
+
+
+class AdminDbRows(BaseModel):
+    table: str
+    columns: list[str]
+    rows: list[dict]
+    next_before_id: int | None = None
+
+
 LogStatus = Literal[ChatStatus.SUCCESS, ChatStatus.AI_ERROR]
 
 

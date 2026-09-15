@@ -5,7 +5,7 @@ import re
 from app import audit
 from app.logging_config import EVENTS
 
-EXPECTED_EVENT_COUNT = 34  # 카탈로그 변경은 의도된 변경이어야 한다 — 수치로 강제한다
+EXPECTED_EVENT_COUNT = 38  # 카탈로그 변경은 의도된 변경이어야 한다 — 수치로 강제한다
 
 
 def test_catalog_values_follow_event_naming():

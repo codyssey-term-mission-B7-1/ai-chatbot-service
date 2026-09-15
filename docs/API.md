@@ -31,7 +31,12 @@
 | GET | /api/thread/{id}/chats | 로그인 / 그 대화의 기록(최신순, limit·status·before_id) · 404 |
 | DELETE | /api/thread/{id} | 로그인 / 204 · 404 — 기록 CASCADE 삭제 |
 | GET | /api/users/me/chats | 로그인 / 본인 기록 (thread_id 필터 가능) |
-| GET | /api/admin/chats | 명시적 앱 관리자 / 전체 조회 |
+| GET | /api/admin/chats | 명시적 앱 관리자 / 전체 조회 (user_id·thread_id·status 필터) |
+| GET | /api/admin/stats | 명시적 앱 관리자 / 대시보드 통계 |
+| GET | /api/admin/events | 명시적 앱 관리자 / 이벤트 로그(event·before_id·limit) |
+| GET | /api/admin/network | 명시적 앱 관리자 / 네트워크 로그(status·before_id·limit) |
+| GET | /api/admin/db/tables | 명시적 앱 관리자 / 테이블 목록·행수(화이트리스트) |
+| GET | /api/admin/db/tables/{name}/rows | 명시적 앱 관리자 / 행 미리보기(읽기 전용) |
 | GET | /health | 공개 / 200 |
 
 `/health` 응답의 `build` 필드는 **배포 지문**(CD가 주입한 커밋 SHA)이다. 개발·미주입 시 빈 문자열이며, CD가 이 필드로 "실제로 서빙 중인 배포가 이번 커밋인지" 확인한다(#120).

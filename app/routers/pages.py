@@ -16,6 +16,7 @@ from app.logging_config import log_event
 from app.models import Thread, User
 from app.repositories.chat_logs import list_logs
 from app.repositories.users import find_by_email
+from app.routers.admin import all_events, all_requests, db_table_rows, db_tables, stats
 from app.services.admin import is_admin
 from app.services.password_reset import is_reset_token_valid
 
@@ -193,5 +194,124 @@ def admin_logs_page(
             "filter_thread": thread,
             "thread_options": thread_options,
             "next_before_id": rows[-1].id if len(rows) == 50 else None,
+            "admin_section": "logs",
+        },
+    )
+
+
+def _admin_gate(request: Request, db: Session):
+    """관리자 페이지 공통 게이트 — 비로그인은 로그인으로, 관리자 아님은 403."""
+    user = _session_user(request, db)
+    if user is None:
+        return None, RedirectResponse("/login", status_code=302)
+    if not is_admin(db, user):
+        raise HTTPException(status_code=403, detail="관리자 권한이 필요한 기능이에요.")
+    return user, None
+
+
+@router.get("/admin")
+def admin_dashboard_page(request: Request, db: Session = Depends(get_db)):
+    """관리자 콘솔 허브 — 통계 카드와 서브메뉴(#189)."""
+    user, redirect = _admin_gate(request, db)
+    if redirect:
+        return redirect
+    data = stats(user=user, db=db)
+    return templates.TemplateResponse(
+        request,
+        "admin-dashboard.html",
+        {**_context(db, user), **data, "admin_section": "dashboard"},
+    )
+
+
+@router.get("/admin/events")
+def admin_events_page(
+    request: Request,
+    event: str = Query(default="", max_length=64),
+    before_id: int | None = Query(default=None, gt=0),
+    db: Session = Depends(get_db),
+):
+    user, redirect = _admin_gate(request, db)
+    if redirect:
+        return redirect
+    page = all_events(
+        user=user,
+        db=db,
+        event=event.strip() or None,
+        before_id=before_id,
+        limit=50,
+    )
+    event_names = sorted({item.event for item in page.items})
+    return templates.TemplateResponse(
+        request,
+        "admin-events.html",
+        {
+            **_context(db, user),
+            "events": page.items,
+            "event_names": event_names,
+            "filter_event": event.strip(),
+            "next_before_id": page.next_before_id,
+            "admin_section": "events",
+        },
+    )
+
+
+@router.get("/admin/network")
+def admin_network_page(
+    request: Request,
+    status: int | None = Query(default=None, gt=0),
+    before_id: int | None = Query(default=None, gt=0),
+    db: Session = Depends(get_db),
+):
+    user, redirect = _admin_gate(request, db)
+    if redirect:
+        return redirect
+    page = all_requests(user=user, db=db, status_=status, before_id=before_id, limit=50)
+    statuses = sorted({item.status for item in page.items})
+    return templates.TemplateResponse(
+        request,
+        "admin-network.html",
+        {
+            **_context(db, user),
+            "requests": page.items,
+            "statuses": statuses,
+            "filter_status": status,
+            "next_before_id": page.next_before_id,
+            "admin_section": "network",
+        },
+    )
+
+
+@router.get("/admin/db")
+def admin_db_page(
+    request: Request,
+    table: str = Query(default="", max_length=64),
+    before_id: int | None = Query(default=None, gt=0),
+    db: Session = Depends(get_db),
+):
+    user, redirect = _admin_gate(request, db)
+    if redirect:
+        return redirect
+    tables = db_tables(user=user, db=db)
+    clean_name = table.strip()
+    rows_page = None
+    not_found = False
+    if clean_name:
+        try:
+            rows_page = db_table_rows(
+                user=user, db=db, name=clean_name, before_id=before_id, limit=50
+            )
+        except HTTPException:
+            not_found = True
+    return templates.TemplateResponse(
+        request,
+        "admin-db.html",
+        {
+            **_context(db, user),
+            "tables": tables,
+            "current_table": clean_name,
+            "rows_page": rows_page,
+            "table_not_found": not_found,
+            "next_before_id": rows_page.next_before_id if rows_page else None,
+            "admin_section": "db",
         },
     )

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}데이터베이스 — 관리자{% endblock %}
+{% block body_class %}admin-page{% endblock %}
+{% block content %}
+<div class="logs-wrap admin-panel">
+  <h1>데이터베이스</h1>
+  {% include "admin-nav.html" %}
+  <p class="muted small">읽기 전용 미리보기입니다. 수정은 앱 API·마이그레이션으로만 가능합니다.</p>
+  <div class="table-scroll">
+    <table class="logs-table">
+      <thead><tr><th>테이블</th><th>행 수</th><th></th></tr></thead>
+      <tbody>
+      {% for t in tables %}
+        <tr class="{{ 'row-active' if current_table == t.name else '' }}">
+          <td>{{ t.name }}</td><td>{{ t.rows }}</td>
+          <td><a href="/admin/db?table={{ t.name }}">보기</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if table_not_found %}<p class="msg error">존재하지 않는 테이블이에요.</p>{% endif %}
+  {% if rows_page %}
+  <h2 class="h-small">{{ rows_page.table }} 최근 {{ rows_page.rows | length }}행</h2>
+  <div class="table-scroll">
+    <table class="logs-table db-rows">
+      <thead><tr>{% for col in rows_page.columns %}<th>{{ col }}</th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for row in rows_page.rows %}
+        <tr>{% for col in rows_page.columns %}<td class="db-cell">{{ row[col] if row[col] is not none else '—' }}</td>{% endfor %}</tr>
+      {% else %}<tr><td colspan="{{ rows_page.columns | length }}">빈 테이블입니다.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if next_before_id %}<a class="next-page" href="/admin/db?table={{ rows_page.table }}&amp;before_id={{ next_before_id }}">이전 행 더 보기</a>{% endif %}
+  {% endif %}
+</div>
+{% endblock %}
