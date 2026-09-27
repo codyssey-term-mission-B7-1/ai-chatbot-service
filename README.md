@@ -1,5 +1,24 @@
 # AI Chatbot Service
 
+
+<!-- codyssey-links:start -->
+## 🔗 Codyssey 연결
+
+| 항목 | 링크 |
+|---|---|
+| **과제** | **B7-1** — 웹 기반 AI 챗봇 서비스 개발 프로젝트 · 기초(Basic) 「AI/SW 기초」 · Term Project · 120h |
+| 미션 원문 (정의서) | [`B7-1/b7-1-description.md`](https://github.com/giyeop-cody/codyssey-taskmap/blob/main/B7-1/b7-1-description.md) · [`B7-1-mission.jpg`](https://github.com/giyeop-cody/codyssey-taskmap/blob/main/B7-1/b7-1-mission.jpg) · [`meta.json`](https://github.com/giyeop-cody/codyssey-taskmap/blob/main/B7-1/meta.json) |
+| 이 과제 연결 카드 | [`B7-1/links.md`](https://github.com/giyeop-cody/codyssey-taskmap/blob/main/B7-1/links.md) |
+| 전체 연결 대장 | [`LINKS.md`](https://github.com/giyeop-cody/codyssey-taskmap/blob/main/LINKS.md) · 진행 현황 [`PROGRESS.md`](https://github.com/giyeop-cody/codyssey-taskmap/blob/main/PROGRESS.md) · [원문 API URL 41개](https://github.com/giyeop-cody/codyssey-taskmap/blob/main/codyssey-all-urls.md) |
+| 과정 허브 | [ai-sw-basic](https://github.com/giyeop-cody/ai-sw-basic) `/B7-1/` 서브모듈 |
+| 통합 레포 | [codyssey](https://github.com/giyeop-cody/codyssey) → `ai-sw-basic/B7-1/` |
+| 다음 과정 | 심화(A) [codyssey-A-studylog-hub](https://github.com/giyeop-cody/codyssey-A-studylog-hub) · 응용(M) 정의서 [`taskmap/M*/`](https://github.com/giyeop-cody/codyssey-taskmap/tree/main/M1-1) |
+| 같은 과제의 다른 레포 | <sub>개인 fork</sub> [giyeop-cody/ai-chatbot-service](https://github.com/giyeop-cody/ai-chatbot-service) · <sub>개인 정리</sub> [giyeop-cody/B7-1](https://github.com/giyeop-cody/B7-1) |
+| 같은 과목 다른 과제 | [B7-2](https://github.com/giyeop-cody/codyssey-taskmap/blob/main/B7-2/links.md) |
+
+> 🔒 = 비공개 레포. 상태·pin 커밋은 연결 카드와 `PROGRESS.md` 에 있다. 이 표는 2026-09-27 기준이며 미션 원문 3종은 원본 데이터라 진행 상태를 쓰지 않는다.
+<!-- codyssey-links:end -->
+
 FastAPI + SQLite 기반의 로그인형 AI 챗봇입니다. **현재 소스에는 실제 앱·UI·테스트가 포함되어 있습니다.** 대화별 저장·개인 문맥·관리자 조회를 제공하며, 실제 외부 AI와 배포 성공은 별도로 검증해야 합니다.
 
 [![CI](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/ci.yml/badge.svg)](https://github.com/codyssey-term-mission-B7-1/ai-chatbot-service/actions/workflows/ci.yml)
